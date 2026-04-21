@@ -286,7 +286,7 @@ stalePluginDirs.forEach(dir => {
 // ============================================================
 console.log('\n【第 6 步】注册 OpenCode 开机自启');
 
-const opencodeCwd = 'D:\\code\\opencode-wps';
+const opencodeCwd = 'D:\\code\\office-test';
 const opencodePort = 14096;
 
 // 查找 opencode 可执行文件路径

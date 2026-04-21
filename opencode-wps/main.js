@@ -7,7 +7,7 @@
 // ===== 全局配置 =====
 var OPENCODE_PORT = 14096
 var OPENCODE_HOST = '127.0.0.1'
-var OPENCODE_CWD = 'D:\\code\\opencode-wps'
+var OPENCODE_CWD = 'D:\\code\\office-test'
 var OPENCODE_API_BASE = 'http://' + OPENCODE_HOST + ':' + OPENCODE_PORT
 
 // 运行时状态

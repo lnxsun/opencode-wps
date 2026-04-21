@@ -721,7 +721,7 @@ function scrollToBottom() { setTimeout(function() { $messages.scrollTop = $messa
 function initApp() {
     showOverlay('loading')
     var apiBase = getPS('opencode_api_base'); if (apiBase) API_BASE = apiBase
-    PROJECT_DIR = getPS('opencode_cwd') || 'D:\\code\\opencode-wps'
+    PROJECT_DIR = getPS('opencode_cwd') || 'D:\\code\\office-test'
     SESSION_ID = getPS('opencode_session_id')
     fetchJSON('GET', '/global/health', null, function(data) {
         if (data && data.healthy) {
