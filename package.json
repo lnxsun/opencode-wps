@@ -1,0 +1,23 @@
+{
+  "name": "opencode-wps",
+  "version": "1.0.0",
+  "description": "OpenCode AI WPS Office 插件 - AI助手WPS插件",
+  "scripts": {
+    "build": "cd wps-office-mcp && npm run build",
+    "mcp:test": "cd wps-office-mcp && npm test",
+    "mcp:start": "cd wps-office-mcp && npm start",
+    "mcp:install": "cd wps-office-mcp && npm install",
+    "mcp:clean": "cd wps-office-mcp && rm -rf dist node_modules",
+    "install:addons": "node install-addons.js"
+  },
+  "keywords": [
+    "opencode",
+    "wps",
+    "ai",
+    "mcp"
+  ],
+  "license": "SEE LICENSE IN LICENSE",
+  "dependencies": {
+    "fs-extra": "^8.1.0"
+  }
+}

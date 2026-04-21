@@ -1,0 +1,14 @@
+<customUI xmlns="http://schemas.microsoft.com/office/2006/01/customui" onLoad="OnAddinLoad">
+    <ribbon startFromScratch="false">
+        <tabs>
+            <tab id="wpsAddinTab" label="OpenCode AI">
+                <group id="grpMain" label="AI 助手">
+                    <button id="btnShowTaskPane" label="打开面板" onAction="OnAction" getEnabled="OnGetEnabled" imageMso="TaskDelegation" visible="true" size="large"/>
+                </group>
+                <group id="grpStatus" label="连接状态">
+                    <button id="btnCheckStatus" label="连接状态" onAction="OnAction" getEnabled="OnGetEnabled" imageMso="Info" visible="true" size="large"/>
+                </group>
+            </tab>
+        </tabs>
+    </ribbon>
+</customUI>

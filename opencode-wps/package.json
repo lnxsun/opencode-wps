@@ -1,0 +1,9 @@
+{
+  "name": "test-wps-addon",
+  "version": "1.0.0",
+  "description": "Test WPS Add-on",
+  "scripts": {
+    "build": "echo 'Build completed'"
+  },
+  "addonType": "wps"
+}

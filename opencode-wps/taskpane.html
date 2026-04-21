@@ -1,0 +1,798 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>OpenCode</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:100%;height:100%;overflow:hidden;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft YaHei",sans-serif;font-size:14px;color:#1a1a1a;background:#fff}
+
+/* ===== Layout ===== */
+.app{display:flex;flex-direction:column;height:100%}
+
+/* ===== Top bar ===== */
+.topbar{display:flex;align-items:center;padding:12px 16px;border-bottom:1px solid #f0f0f0;flex-shrink:0;background:#fff}
+.topbar-logo{display:flex;align-items:center;gap:8px;flex:1}
+.topbar-logo svg{width:20px;height:20px;flex-shrink:0}
+.topbar-logo span{font-weight:700;font-size:15px;letter-spacing:-0.3px}
+.topbar-actions{display:flex;gap:4px}
+.topbar-btn{width:32px;height:32px;border:none;background:none;cursor:pointer;border-radius:6px;display:flex;align-items:center;justify-content:center;color:#888}
+.topbar-btn:hover{background:#f5f5f5;color:#333}
+.topbar-btn svg{width:18px;height:18px}
+
+/* ===== Sub header: hamburger ===== */
+.subheader{padding:8px 16px;border-bottom:1px solid #f0f0f0;flex-shrink:0}
+.hamburger-btn{width:32px;height:32px;border:none;background:none;cursor:pointer;border-radius:6px;display:flex;align-items:center;justify-content:center;color:#666}
+.hamburger-btn:hover{background:#f5f5f5}
+.hamburger-btn svg{width:18px;height:18px}
+
+
+/* ===== Session header ===== */
+.session-header{display:flex;align-items:center;padding:14px 16px;flex-shrink:0}
+.session-title{flex:1;font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.session-status{width:16px;height:16px;display:flex;align-items:center;justify-content:center;margin:0 6px;flex-shrink:0}
+.session-status .dot{width:8px;height:8px;border-radius:50%;background:#ccc}
+.session-status .dot.busy{background:#f5a623;animation:pulse-dot 1.2s ease-in-out infinite}
+.session-status .dot.idle{background:#ccc}
+@keyframes pulse-dot{0%,100%{opacity:1}50%{opacity:0.4}}
+.session-menu{width:28px;height:28px;border:none;background:none;cursor:pointer;border-radius:6px;display:flex;align-items:center;justify-content:center;color:#999;font-size:16px;letter-spacing:1px}
+.session-menu:hover{background:#f5f5f5;color:#333}
+
+/* ===== Messages ===== */
+.messages{flex:1;overflow-y:auto;padding:0 16px 16px 16px;display:flex;flex-direction:column;gap:16px}
+.messages::-webkit-scrollbar{width:4px}
+.messages::-webkit-scrollbar-thumb{background:#ddd;border-radius:2px}
+
+.msg-user{align-self:flex-end;max-width:88%;background:#f2f2f2;color:#1a1a1a;padding:10px 16px;border-radius:18px;border-bottom-right-radius:4px;font-size:14px;line-height:1.6;word-wrap:break-word;overflow-wrap:break-word}
+.msg-assistant{align-self:flex-start;max-width:100%;color:#1a1a1a;font-size:14px;line-height:1.7;word-wrap:break-word;overflow-wrap:break-word;padding:0 2px}
+.msg-system{align-self:center;font-size:12px;color:#999;padding:4px 12px}
+.msg-context{align-self:center;font-size:11px;color:#999;padding:2px 10px;background:#fafafa;border-radius:10px}
+
+/* Markdown in assistant */
+.msg-assistant p{margin:0 0 10px 0}
+.msg-assistant p:last-child{margin-bottom:0}
+.msg-assistant code{background:#f5f5f5;padding:2px 6px;border-radius:4px;font-family:Consolas,"Courier New",monospace;font-size:13px}
+.msg-assistant pre{background:#1e1e1e;color:#d4d4d4;padding:12px 14px;border-radius:8px;overflow-x:auto;margin:10px 0;font-size:12.5px;line-height:1.55}
+.msg-assistant pre code{background:none;padding:0;color:inherit}
+.msg-assistant strong{font-weight:600}
+.msg-assistant em{font-style:italic}
+.msg-assistant ul,.msg-assistant ol{margin:6px 0;padding-left:22px}
+.msg-assistant li{margin:3px 0}
+.msg-assistant h1,.msg-assistant h2,.msg-assistant h3,.msg-assistant h4{margin:14px 0 8px 0;font-weight:600}
+.msg-assistant h1{font-size:17px}.msg-assistant h2{font-size:16px}.msg-assistant h3{font-size:15px}
+.msg-assistant blockquote{border-left:3px solid #e0e0e0;padding-left:12px;margin:8px 0;color:#666}
+.msg-assistant a{color:#2563eb;text-decoration:none}
+.msg-assistant a:hover{text-decoration:underline}
+
+/* Thinking */
+.thinking-toggle{font-size:12px;color:#aaa;cursor:pointer;padding:4px 0;display:flex;align-items:center;gap:4px;user-select:none}
+.thinking-toggle:hover{color:#666}
+.thinking-content{font-size:12px;color:#999;margin:4px 0 8px 0;padding:8px 12px;background:#fafafa;border-radius:6px;border-left:2px solid #e0e0e0;display:none;max-height:200px;overflow-y:auto;white-space:pre-wrap;word-wrap:break-word;line-height:1.5}
+.thinking-content.show{display:block}
+
+/* Streaming cursor */
+.streaming-cursor::after{content:"";display:inline-block;width:7px;height:15px;background:#1a1a1a;margin-left:2px;vertical-align:text-bottom;animation:cursor-blink 0.8s step-end infinite}
+@keyframes cursor-blink{0%,100%{opacity:1}50%{opacity:0}}
+
+/* ===== Input area ===== */
+.input-area{padding:12px 16px 8px 16px;flex-shrink:0;background:#fff}
+.input-wrapper{border:1px solid #e5e5e5;border-radius:12px;padding:0;overflow:hidden;transition:border-color 0.15s}
+.input-wrapper:focus-within{border-color:#ccc}
+.input-box{width:100%;border:none;outline:none;padding:12px 16px 4px 16px;font-family:inherit;font-size:14px;line-height:1.5;resize:none;min-height:44px;max-height:120px;color:#1a1a1a;background:transparent}
+.input-box::placeholder{color:#bbb}
+.input-toolbar{display:flex;align-items:center;justify-content:space-between;padding:4px 8px 8px 8px}
+.input-toolbar-left{display:flex;align-items:center;gap:4px}
+.plus-btn{width:28px;height:28px;border:none;background:none;cursor:pointer;border-radius:6px;display:flex;align-items:center;justify-content:center;color:#bbb;font-size:18px}
+.plus-btn:hover{background:#f5f5f5;color:#888}
+.send-btn{width:32px;height:32px;border:none;border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all 0.15s}
+.send-btn.ready{background:#1a1a1a;color:#fff}
+.send-btn.ready:hover{background:#333}
+.send-btn.disabled{background:#f0f0f0;color:#ccc;cursor:default}
+.send-btn svg{width:16px;height:16px}
+.stop-btn{width:32px;height:32px;border:1px solid #e0e0e0;border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;background:#fff;flex-shrink:0}
+.stop-btn:hover{background:#f5f5f5;border-color:#ccc}
+.stop-btn .stop-icon{width:12px;height:12px;background:#1a1a1a;border-radius:2px}
+
+/* ===== Bottom bar ===== */
+.bottombar{display:flex;align-items:center;padding:6px 16px 10px 16px;gap:4px;flex-shrink:0;border-top:1px solid #f5f5f5;position:relative}
+.bb-btn{display:flex;align-items:center;gap:4px;font-size:12px;color:#888;cursor:pointer;padding:4px 8px;border:1px solid transparent;border-radius:6px;background:none;white-space:nowrap;position:relative}
+.bb-btn:hover{background:#f5f5f5;border-color:#e8e8e8}
+.bb-btn.active{background:#f5f5f5;border-color:#ddd}
+.bb-btn svg{width:14px;height:14px;flex-shrink:0}
+.bb-btn .chevron{font-size:9px;color:#bbb;margin-left:1px}
+
+/* ===== Dropdown ===== */
+.dropdown-backdrop{position:fixed;top:0;left:0;right:0;bottom:0;z-index:50}
+.dropdown{position:absolute;background:#fff;border:1px solid #e8e8e8;border-radius:10px;box-shadow:0 4px 24px rgba(0,0,0,0.12);z-index:51;min-width:160px;padding:6px 0;max-height:400px;overflow-y:auto}
+.dropdown.bottom-up{bottom:100%;margin-bottom:6px}
+.dropdown.top-down{top:100%;margin-top:6px}
+.dd-header{padding:10px 16px 6px 16px;font-size:13px;font-weight:600;color:#1a1a1a}
+.dd-divider{height:1px;background:#f0f0f0;margin:6px 0}
+.dd-item{display:flex;align-items:center;justify-content:space-between;padding:8px 16px;font-size:13px;color:#1a1a1a;cursor:pointer;gap:8px}
+.dd-item:hover{background:#f5f5f5}
+.dd-item.selected{font-weight:500}
+.dd-item .dd-check{color:#1a1a1a;font-size:14px;flex-shrink:0}
+.dd-item .dd-badge{font-size:10px;padding:1px 6px;border-radius:4px;background:#f0f0f0;color:#888;flex-shrink:0}
+.dd-item .dd-badge.free{background:#e8f5e9;color:#2e7d32}
+.dd-item-danger{color:#e53935}
+.dd-item-danger:hover{background:#fef2f2}
+
+/* Sidebar */
+.sidebar-backdrop{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.3);z-index:60}
+.sidebar{position:fixed;top:0;left:0;bottom:0;width:260px;background:#fff;z-index:61;box-shadow:2px 0 16px rgba(0,0,0,0.1);display:flex;flex-direction:column}
+.sidebar-header{padding:16px;font-weight:700;font-size:15px;border-bottom:1px solid #f0f0f0;display:flex;align-items:center;justify-content:space-between}
+.sidebar-close{background:none;border:none;font-size:18px;cursor:pointer;color:#999;padding:4px}
+.sidebar-close:hover{color:#333}
+.sidebar-list{flex:1;overflow-y:auto;padding:8px 0}
+.sidebar-item{padding:10px 16px;font-size:13px;cursor:pointer;display:flex;align-items:center;gap:8px;color:#333}
+.sidebar-item:hover{background:#f5f5f5}
+.sidebar-item.active{background:#f0f0f0;font-weight:500}
+.sidebar-item .sl-slug{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sidebar-item .sl-time{font-size:11px;color:#bbb;flex-shrink:0}
+
+
+/* ===== Overlays ===== */
+.overlay{position:absolute;top:0;left:0;right:0;bottom:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#fff;z-index:10;padding:24px;text-align:center;gap:14px}
+.overlay h3{font-size:15px;font-weight:600;color:#1a1a1a}
+.overlay p{color:#999;max-width:260px;line-height:1.6;font-size:13px}
+.overlay button{padding:9px 28px;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:500;background:#1a1a1a;color:#fff}
+.overlay button:hover{background:#333}
+.spinner{width:24px;height:24px;border:2.5px solid #e8e8e8;border-top-color:#1a1a1a;border-radius:50%;animation:spin 0.6s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.hidden{display:none!important}
+</style>
+</head>
+<body>
+<div class="app">
+  <div id="overlay-start" class="overlay hidden">
+    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#1a1a1a" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M9 9h6M9 13h4"/></svg>
+    <h3>OpenCode 未运行</h3>
+    <p style="margin-top:8px">请在终端中执行以下命令启动：</p>
+    <div style="background:#1e1e1e;color:#d4d4d4;padding:10px 14px;border-radius:8px;font-family:Consolas,monospace;font-size:12px;text-align:left;margin:8px 0;width:100%;word-break:break-all">schtasks /Run /TN "OpenCodeServer"</div>
+    <button onclick="tryConnect()">重新连接</button>
+  </div>
+  <div id="overlay-loading" class="overlay hidden">
+    <div class="spinner"></div>
+    <h3>Connecting to OpenCode...</h3>
+    <p>Waiting for the server to be ready</p>
+  </div>
+  <div id="overlay-error" class="overlay hidden">
+    <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#e53935" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+    <h3 id="error-title">Connection Failed</h3>
+    <p id="error-detail">Unable to connect to OpenCode server</p>
+    <button onclick="initApp()">Retry</button>
+    <button onclick="requestStart()" style="background:#fff;color:#1a1a1a;border:1px solid #e0e0e0;margin-top:4px">Start OpenCode</button>
+  </div>
+
+  <div class="topbar">
+    <div class="topbar-logo">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M9 9h6M9 13h4"/></svg>
+      <span>OpenCode</span>
+    </div>
+    <div class="topbar-actions">
+      <button class="topbar-btn" title="New Session" onclick="newSession()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 2v6h-6M3 12a9 9 0 0 1 15-6.7L21 8M3 22v-6h6M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>
+      </button>
+    </div>
+  </div>
+  <div class="subheader">
+    <button class="hamburger-btn" title="Menu" onclick="openSidebar()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    </button>
+  </div>
+  <div class="session-header" id="session-header-area">
+    <span class="session-title" id="session-title">WPS Office</span>
+    <div class="session-status"><div class="dot idle" id="status-dot"></div></div>
+    <button class="session-menu" title="More" onclick="toggleSessionMenu(event)">...</button>
+  </div>
+  <div class="messages" id="messages"></div>
+  <div class="input-area">
+    <div class="input-wrapper">
+      <textarea class="input-box" id="input-box" placeholder="Ask anything..." rows="1" onkeydown="onInputKey(event)" oninput="autoGrow(this)"></textarea>
+      <div class="input-toolbar">
+        <div class="input-toolbar-left">
+          <button class="plus-btn" title="Attach context" onclick="forceInjectContext()">+</button>
+        </div>
+        <div id="send-area">
+          <button class="send-btn disabled" id="send-btn" onclick="sendMessage()" title="Send">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="bottombar" id="bottombar">
+    <button class="bb-btn" id="bb-mode" onclick="toggleModeDropdown(event)">
+      <span id="mode-label">Build</span><span class="chevron">&#9662;</span>
+    </button>
+    <button class="bb-btn" id="bb-model" onclick="toggleModelDropdown(event)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a4 4 0 0 1 4 4v2H8V6a4 4 0 0 1 4-4zM5 10h14v10a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V10z"/></svg>
+      <span id="model-name">Loading...</span><span class="chevron">&#9662;</span>
+    </button>
+    <button class="bb-btn" id="bb-default" onclick="toggleDefaultDropdown(event)">
+      <span id="default-label">Default</span><span class="chevron">&#9662;</span>
+    </button>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// OpenCode Chat - Custom UI for WPS sidebar (Chrome 104 compatible)
+// Uses REST API + SSE, no iframe dependency
+// ============================================================
+
+var API_BASE = 'http://127.0.0.1:14096'
+var SESSION_ID = ''
+var PROJECT_DIR = ''
+var IS_BUSY = false
+var SSE = null
+var PART_TYPES = {}
+var STREAMING_MSG_ID = ''
+var STREAMING_TEXT = ''
+var STREAMING_REASONING = ''
+var STREAMING_TEXT_PART_ID = ''
+var STREAMING_REASONING_PART_ID = ''
+var CONNECTED = false
+var LAST_INJECTED_CONTEXT = ''
+var CURRENT_MODEL = ''
+var CURRENT_MODE = 'build'
+var AVAILABLE_MODELS = []
+
+var $messages = document.getElementById('messages')
+var $input = document.getElementById('input-box')
+var $sendBtn = document.getElementById('send-btn')
+var $sendArea = document.getElementById('send-area')
+var $sessionTitle = document.getElementById('session-title')
+var $statusDot = document.getElementById('status-dot')
+var $overlayStart = document.getElementById('overlay-start')
+var $overlayLoading = document.getElementById('overlay-loading')
+var $overlayError = document.getElementById('overlay-error')
+var $errorTitle = document.getElementById('error-title')
+var $errorDetail = document.getElementById('error-detail')
+var $modelName = document.getElementById('model-name')
+
+// --- Storage ---
+function getPS(key) { try { return window.Application.PluginStorage.getItem(key) || '' } catch(e) { return '' } }
+function setPS(key, val) { try { window.Application.PluginStorage.setItem(key, val) } catch(e) {} }
+
+// --- Dropdowns ---
+function closeAllDropdowns() {
+    var els = document.querySelectorAll('.dropdown,.dropdown-backdrop,.sidebar-backdrop,.sidebar')
+    for (var i = 0; i < els.length; i++) els[i].parentNode.removeChild(els[i])
+    var actives = document.querySelectorAll('.bb-btn.active')
+    for (var i = 0; i < actives.length; i++) actives[i].classList.remove('active')
+}
+function createDropdown(anchorEl, html, direction) {
+    closeAllDropdowns()
+    var backdrop = document.createElement('div')
+    backdrop.className = 'dropdown-backdrop'
+    backdrop.onclick = closeAllDropdowns
+    document.body.appendChild(backdrop)
+    var dd = document.createElement('div')
+    dd.className = 'dropdown ' + (direction || 'bottom-up')
+    dd.innerHTML = html
+    dd.onclick = function(e) { e.stopPropagation() }
+    anchorEl.style.position = 'relative'
+    anchorEl.appendChild(dd)
+    if (anchorEl.classList) anchorEl.classList.add('active')
+}
+function escapeHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;') }
+function escapeAttr(s) { return s.replace(/'/g, "\\'").replace(/"/g, '&quot;') }
+
+// Mode dropdown
+function toggleModeDropdown(e) {
+    e.stopPropagation()
+    var html = '<div class="dd-item' + (CURRENT_MODE === 'build' ? ' selected' : '') + '" onclick="selectMode(\'build\')"><span>Build</span>' + (CURRENT_MODE === 'build' ? '<span class="dd-check">&#10003;</span>' : '') + '</div>' +
+        '<div class="dd-item' + (CURRENT_MODE === 'plan' ? ' selected' : '') + '" onclick="selectMode(\'plan\')"><span>Plan</span>' + (CURRENT_MODE === 'plan' ? '<span class="dd-check">&#10003;</span>' : '') + '</div>'
+    createDropdown(document.getElementById('bb-mode'), html, 'bottom-up')
+}
+function selectMode(mode) { CURRENT_MODE = mode; document.getElementById('mode-label').textContent = mode === 'build' ? 'Build' : 'Plan'; closeAllDropdowns() }
+
+// Model dropdown
+function toggleModelDropdown(e) {
+    e.stopPropagation()
+    var btn = document.getElementById('bb-model')
+    if (AVAILABLE_MODELS.length === 0) {
+        createDropdown(btn, '<div class="dd-header">Loading models...</div>', 'bottom-up')
+        fetchAvailableModels(function() { closeAllDropdowns(); toggleModelDropdown(e) })
+        return
+    }
+    var html = '<div class="dd-header">Select Model</div>'
+    for (var i = 0; i < AVAILABLE_MODELS.length; i++) {
+        var m = AVAILABLE_MODELS[i]
+        var sel = (m.id === CURRENT_MODEL)
+        html += '<div class="dd-item' + (sel ? ' selected' : '') + '" onclick="selectModel(\'' + escapeAttr(m.id) + '\')">'
+        html += '<span>' + escapeHtml(m.name || m.id) + '</span><span style="display:flex;align-items:center;gap:4px">'
+        if (m.free) html += '<span class="dd-badge free">Free</span>'
+        if (sel) html += '<span class="dd-check">&#10003;</span>'
+        html += '</span></div>'
+    }
+    createDropdown(btn, html, 'bottom-up')
+}
+function selectModel(id) { CURRENT_MODEL = id; $modelName.textContent = id; closeAllDropdowns() }
+function fetchAvailableModels(cb) {
+    fetchJSON('GET', '/global/config', null, function(cfg) {
+        AVAILABLE_MODELS = []
+        if (!cfg) { if (cb) cb(); return }
+        var providers = cfg.provider || {}
+        for (var pid in providers) {
+            var p = providers[pid]
+            if (p && p.models) {
+                for (var mid in p.models) {
+                    AVAILABLE_MODELS.push({ id: mid, name: p.models[mid].name || mid, providerID: pid, free: false })
+                }
+            }
+        }
+        if (!CURRENT_MODEL && AVAILABLE_MODELS.length > 0) { CURRENT_MODEL = AVAILABLE_MODELS[0].id }
+        if (cb) cb()
+    })
+}
+
+// Default dropdown
+function toggleDefaultDropdown(e) {
+    e.stopPropagation()
+    createDropdown(document.getElementById('bb-default'), '<div class="dd-item selected" onclick="closeAllDropdowns()"><span>Default</span><span class="dd-check">&#10003;</span></div>', 'bottom-up')
+}
+
+// Session menu
+function toggleSessionMenu(e) {
+    e.stopPropagation()
+    createDropdown(document.getElementById('session-header-area'),
+        '<div class="dd-item" onclick="renameSession()">Rename</div><div class="dd-divider"></div><div class="dd-item dd-item-danger" onclick="deleteSession()">Delete</div>', 'top-down')
+}
+function renameSession() {
+    closeAllDropdowns()
+    if (!SESSION_ID) return
+    // 用自定义输入框替代 prompt()（WPS 内嵌浏览器不支持 prompt）
+    var backdrop = document.createElement('div')
+    backdrop.className = 'dropdown-backdrop'
+    document.body.appendChild(backdrop)
+    var renameBox = document.createElement('div')
+    renameBox.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.2);z-index:100;padding:20px;width:260px'
+    renameBox.innerHTML = '<div style="font-size:15px;font-weight:600;margin-bottom:12px">Rename Session</div>' +
+        '<input id="rename-input" type="text" value="' + escapeHtml($sessionTitle.textContent) + '" style="width:100%;border:1px solid #e5e5e5;border-radius:8px;padding:8px 12px;font-size:14px;outline:none;font-family:inherit" />'
+    var btnRow = document.createElement('div')
+    btnRow.style.cssText = 'display:flex;gap:8px;margin-top:14px;justify-content:flex-end'
+    var cancelBtn = document.createElement('button')
+    cancelBtn.textContent = 'Cancel'
+    cancelBtn.style.cssText = 'padding:6px 16px;border:1px solid #e0e0e0;border-radius:8px;background:#fff;cursor:pointer;font-size:13px'
+    var confirmBtn = document.createElement('button')
+    confirmBtn.textContent = 'Rename'
+    confirmBtn.style.cssText = 'padding:6px 16px;border:none;border-radius:8px;background:#1a1a1a;color:#fff;cursor:pointer;font-size:13px'
+    btnRow.appendChild(cancelBtn)
+    btnRow.appendChild(confirmBtn)
+    renameBox.appendChild(btnRow)
+    document.body.appendChild(renameBox)
+    var input = document.getElementById('rename-input')
+    input.focus()
+    input.select()
+    function closeRename() { if (renameBox.parentNode) document.body.removeChild(renameBox); if (backdrop.parentNode) document.body.removeChild(backdrop) }
+    function doRename() {
+        var n = input.value.trim()
+        if (!n) return
+        closeRename()
+        fetchJSON('PATCH', '/session/' + SESSION_ID, { title: n }, function(r) {
+            var d = r && r.data ? r.data : r
+            if (d) $sessionTitle.textContent = d.title || d.slug || n
+        })
+    }
+    backdrop.onclick = closeRename
+    cancelBtn.onclick = closeRename
+    confirmBtn.onclick = doRename
+    input.onkeydown = function(e) { if (e.key === 'Enter') doRename(); if (e.key === 'Escape') closeRename() }
+}
+function deleteSession() {
+    closeAllDropdowns()
+    if (!SESSION_ID || !confirm('Delete this session?')) return
+    var deletedId = SESSION_ID
+    fetchJSON('DELETE', '/session/' + deletedId, null, function() {
+        // 切换到最近的已有session，没有时才新建
+        fetchJSON('GET', '/session', null, function(sessions) {
+            var list = sessions && sessions.data ? sessions.data : (Array.isArray(sessions) ? sessions : [])
+            var other = null
+            for (var i = 0; i < list.length; i++) { if (list[i].id !== deletedId) { other = list[i]; break } }
+            if (other) {
+                SESSION_ID = other.id; setPS('opencode_session_id', SESSION_ID); LAST_INJECTED_CONTEXT = ''
+                $sessionTitle.textContent = other.title || other.slug || 'WPS Office'
+                $messages.innerHTML = ''; loadSessionMessages(SESSION_ID); if (!SSE) connectSSE()
+            } else {
+                SESSION_ID = ''; setPS('opencode_session_id', ''); $messages.innerHTML = ''
+                createNewSession(function() { if (!SSE) connectSSE() })
+            }
+        })
+    })
+}
+
+// Sidebar
+function openSidebar() {
+    closeAllDropdowns()
+    var backdrop = document.createElement('div'); backdrop.className = 'sidebar-backdrop'; backdrop.onclick = closeSidebar; document.body.appendChild(backdrop)
+    var sb = document.createElement('div'); sb.className = 'sidebar'; sb.id = 'sidebar'
+    sb.innerHTML = '<div class="sidebar-header"><span>Sessions</span><button class="sidebar-close" onclick="closeSidebar()">&#10005;</button></div><div class="sidebar-list" id="sidebar-list"><div style="padding:16px;color:#999;font-size:13px">Loading...</div></div>'
+    document.body.appendChild(sb)
+    fetchJSON('GET', '/session', null, function(sessions) {
+        var list = sessions && sessions.data ? sessions.data : (Array.isArray(sessions) ? sessions : [])
+        var el = document.getElementById('sidebar-list'); if (!el) return
+        if (!list.length) { el.innerHTML = '<div style="padding:16px;color:#999;font-size:13px">No sessions</div>'; return }
+        var html = ''
+        for (var i = 0; i < list.length; i++) {
+            var s = list[i], active = (s.id === SESSION_ID)
+            var date = s.time ? new Date(s.time.updated || s.time.created) : null
+            var ts = date ? (date.getMonth()+1)+'/'+date.getDate() : ''
+            html += '<div class="sidebar-item' + (active ? ' active' : '') + '" onclick="switchSession(\'' + s.id + '\')"><span class="sl-slug">' + escapeHtml(s.title || s.slug || s.id) + '</span><span class="sl-time">' + ts + '</span></div>'
+        }
+        el.innerHTML = html
+    })
+}
+function closeSidebar() { var els = document.querySelectorAll('.sidebar-backdrop,.sidebar'); for (var i = 0; i < els.length; i++) els[i].parentNode.removeChild(els[i]) }
+function switchSession(id) { closeSidebar(); SESSION_ID = id; setPS('opencode_session_id', id); LAST_INJECTED_CONTEXT = ''; loadSessionMessages(id) }
+
+
+// --- Overlay / Status ---
+function showOverlay(type) {
+    $overlayStart.classList.add('hidden'); $overlayLoading.classList.add('hidden'); $overlayError.classList.add('hidden')
+    if (type === 'start') $overlayStart.classList.remove('hidden')
+    if (type === 'loading') $overlayLoading.classList.remove('hidden')
+    if (type === 'error') $overlayError.classList.remove('hidden')
+}
+function hideOverlays() { $overlayStart.classList.add('hidden'); $overlayLoading.classList.add('hidden'); $overlayError.classList.add('hidden') }
+function showError(t, d) { $errorTitle.textContent = t; $errorDetail.textContent = d; showOverlay('error') }
+function setStatus(s) { IS_BUSY = (s === 'busy'); $statusDot.className = 'dot ' + (IS_BUSY ? 'busy' : 'idle'); updateInputState() }
+
+// --- Fetch ---
+function fetchJSON(method, path, body, onSuccess, onError, timeout) {
+    var xhr = new XMLHttpRequest(); xhr.timeout = timeout || 15000
+    xhr.onreadystatechange = function() { if (xhr.readyState === 4) { if (xhr.status >= 200 && xhr.status < 300) { try { onSuccess(JSON.parse(xhr.responseText)) } catch(e) { onSuccess(null) } } else if (xhr.status > 0 && onError) { onError(xhr.status, xhr.responseText) } } }
+    xhr.onerror = function() { if (onError) onError(0, 'Network error') }
+    xhr.ontimeout = function() { if (onError) onError(0, 'Timeout') }
+    xhr.open(method, API_BASE + path, true); xhr.setRequestHeader('Content-Type', 'application/json')
+    if (body) xhr.send(JSON.stringify(body)); else xhr.send()
+}
+function postMessage(path, body, onError) {
+    var xhr = new XMLHttpRequest(); xhr.timeout = 300000
+    xhr.onreadystatechange = function() { if (xhr.readyState === 4 && xhr.status >= 400 && onError) onError(xhr.status, xhr.responseText) }
+    xhr.onerror = function() { if (onError) onError(0, 'Network error') }
+    xhr.ontimeout = function() { console.log('[Chat] POST timeout (SSE still active)') }
+    xhr.open('POST', API_BASE + path, true); xhr.setRequestHeader('Content-Type', 'application/json'); xhr.send(JSON.stringify(body))
+}
+
+// --- Session ---
+function createNewSession(cb) {
+    fetchJSON('POST', '/session', { title: 'WPS Office' }, function(resp) {
+        var data = resp && resp.data ? resp.data : resp
+        if (data && data.id) { SESSION_ID = data.id; setPS('opencode_session_id', SESSION_ID); $sessionTitle.textContent = data.title || data.slug || 'WPS Office'; $messages.innerHTML = ''; LAST_INJECTED_CONTEXT = ''; if (cb) cb() }
+        else showError('Session Error', 'Failed to create session')
+    }, function(s, t) { showError('Session Error', 'Failed: ' + (t || s)) })
+}
+function newSession() { if (IS_BUSY) return; createNewSession(function() { if (!SSE) connectSSE() }) }
+function loadSessionMessages(sid) {
+    fetchJSON('GET', '/session/' + sid + '/message', null, function(msgs) {
+        $messages.innerHTML = ''; if (!msgs) return
+        var list = msgs.data ? msgs.data : (Array.isArray(msgs) ? msgs : [msgs])
+        for (var i = 0; i < list.length; i++) renderHistoryMessage(list[i])
+        scrollToBottom()
+    })
+    fetchJSON('GET', '/session/' + sid, null, function(sess) { var d = sess && sess.data ? sess.data : sess; if (d) $sessionTitle.textContent = d.title || d.slug || 'WPS Office' })
+}
+function renderHistoryMessage(msg) {
+    if (!msg || !msg.info) return
+    var parts = msg.parts || []
+    if (msg.info.role === 'user') {
+        var texts = []
+        for (var i = 0; i < parts.length; i++) { if (parts[i].type === 'text' && !parts[i].ignored && !(parts[i].text && parts[i].text.indexOf('<wps-context>') === 0)) texts.push(parts[i].text) }
+        if (texts.length > 0) addUserMessage(texts.join('\n'))
+    } else if (msg.info.role === 'assistant') {
+        var reasoning = '', text = ''
+        for (var i = 0; i < parts.length; i++) { if (parts[i].type === 'reasoning' && parts[i].text) reasoning += parts[i].text; if (parts[i].type === 'text' && parts[i].text) text += parts[i].text }
+        if (text || reasoning) addAssistantMessage(text, reasoning)
+        if (msg.info.modelID && !CURRENT_MODEL) { CURRENT_MODEL = msg.info.modelID; $modelName.textContent = CURRENT_MODEL }
+    }
+}
+
+// --- SSE ---
+function connectSSE() {
+    if (SSE) { SSE.close(); SSE = null }
+    try {
+        SSE = new EventSource(API_BASE + '/global/event')
+        SSE.onmessage = function(ev) { try { handleSSEEvent(JSON.parse(ev.data)) } catch(e) {} }
+        SSE.onerror = function() { setTimeout(function() { if (CONNECTED) connectSSE() }, 3000) }
+    } catch(e) {}
+}
+function handleSSEEvent(data) {
+    if (!data || !data.payload) return
+    var type = data.payload.type, props = data.payload.properties || {}
+    if (props.sessionID && props.sessionID !== SESSION_ID) return
+    switch(type) {
+        case 'session.status':
+            if (props.status) { setStatus(props.status.type === 'busy' ? 'busy' : 'idle'); if (props.status.type === 'idle') finalizeStreaming() }
+            break
+        case 'message.updated':
+            if (props.info && props.info.role === 'assistant' && !props.info.finish) {
+                STREAMING_MSG_ID = props.info.id; STREAMING_TEXT = ''; STREAMING_REASONING = ''; STREAMING_TEXT_PART_ID = ''; STREAMING_REASONING_PART_ID = ''
+                ensureStreamingBubble()
+                if (props.info.modelID) { CURRENT_MODEL = props.info.modelID; $modelName.textContent = CURRENT_MODEL }
+            }
+            if (props.info && props.info.role === 'assistant' && props.info.finish) finalizeStreaming()
+            break
+        case 'message.part.updated':
+            if (props.part) {
+                PART_TYPES[props.part.id] = { type: props.part.type, messageID: props.part.messageID }
+                if (props.part.type === 'text' && props.part.messageID === STREAMING_MSG_ID) { STREAMING_TEXT_PART_ID = props.part.id; if (props.part.text && props.part.time && props.part.time.end) { STREAMING_TEXT = props.part.text; updateStreamingBubble() } }
+                if (props.part.type === 'reasoning' && props.part.messageID === STREAMING_MSG_ID) { STREAMING_REASONING_PART_ID = props.part.id; if (props.part.text && props.part.time && props.part.time.end) { STREAMING_REASONING = props.part.text; updateStreamingBubble() } }
+            }
+            break
+        case 'message.part.delta':
+            if (props.field === 'text' && props.delta) {
+                var pi = PART_TYPES[props.partID]
+                if (pi) { if (pi.type === 'text') STREAMING_TEXT += props.delta; else if (pi.type === 'reasoning') STREAMING_REASONING += props.delta }
+                else if (props.partID === STREAMING_TEXT_PART_ID) STREAMING_TEXT += props.delta
+                else if (props.partID === STREAMING_REASONING_PART_ID) STREAMING_REASONING += props.delta
+                else STREAMING_TEXT += props.delta
+                updateStreamingBubble()
+            }
+            break
+    }
+}
+
+// --- Streaming UI ---
+function ensureStreamingBubble() { var el = document.getElementById('streaming-msg'); if (!el) { el = document.createElement('div'); el.id = 'streaming-msg'; el.className = 'msg-assistant'; el.innerHTML = '<span class="streaming-cursor"></span>'; $messages.appendChild(el); scrollToBottom() } }
+function updateStreamingBubble() {
+    var el = document.getElementById('streaming-msg'); if (!el) { ensureStreamingBubble(); el = document.getElementById('streaming-msg') }
+    var html = ''
+    if (STREAMING_REASONING) { html += '<div class="thinking-toggle" onclick="toggleThinking(this)">&#9654; Thinking (' + STREAMING_REASONING.length + ' chars)</div><div class="thinking-content">' + escapeHtml(STREAMING_REASONING) + '</div>' }
+    if (STREAMING_TEXT) { html += renderMarkdown(STREAMING_TEXT) + '<span class="streaming-cursor"></span>' } else if (!STREAMING_REASONING) { html += '<span class="streaming-cursor"></span>' }
+    el.innerHTML = html; scrollToBottom()
+}
+function finalizeStreaming() {
+    var el = document.getElementById('streaming-msg')
+    if (el && (STREAMING_TEXT || STREAMING_REASONING)) {
+        var html = ''
+        if (STREAMING_REASONING) html += '<div class="thinking-toggle" onclick="toggleThinking(this)">&#9654; Thinking (' + STREAMING_REASONING.length + ' chars)</div><div class="thinking-content">' + escapeHtml(STREAMING_REASONING) + '</div>'
+        if (STREAMING_TEXT) html += renderMarkdown(STREAMING_TEXT)
+        el.innerHTML = html; el.removeAttribute('id')
+    } else if (el) el.removeAttribute('id')
+    STREAMING_MSG_ID = ''; STREAMING_TEXT = ''; STREAMING_REASONING = ''; STREAMING_TEXT_PART_ID = ''; STREAMING_REASONING_PART_ID = ''
+    setStatus('idle'); scrollToBottom()
+}
+function toggleThinking(el) { var c = el.nextElementSibling; if (c) { c.classList.toggle('show'); el.innerHTML = (c.classList.contains('show') ? '&#9660;' : '&#9654;') + ' Thinking (' + c.textContent.length + ' chars)' } }
+
+// --- Messages ---
+function addUserMessage(text) { var el = document.createElement('div'); el.className = 'msg-user'; el.textContent = text; $messages.appendChild(el); scrollToBottom() }
+function addAssistantMessage(text, reasoning) {
+    var el = document.createElement('div'); el.className = 'msg-assistant'; var html = ''
+    if (reasoning) html += '<div class="thinking-toggle" onclick="toggleThinking(this)">&#9654; Thinking (' + reasoning.length + ' chars)</div><div class="thinking-content">' + escapeHtml(reasoning) + '</div>'
+    html += renderMarkdown(text || ''); el.innerHTML = html; $messages.appendChild(el); scrollToBottom()
+}
+function addSystemMessage(text) { var el = document.createElement('div'); el.className = 'msg-system'; el.textContent = text; $messages.appendChild(el); scrollToBottom() }
+
+// --- Send ---
+function sendMessage() {
+    var text = $input.value.trim(); if (!text || IS_BUSY || !SESSION_ID) return
+    addUserMessage(text); $input.value = ''; autoGrow($input); setStatus('busy')
+    injectContext(function() {
+        postMessage('/session/' + SESSION_ID + '/message', { parts: [{ type: 'text', text: text }] }, function(s, t) { addSystemMessage('Error: ' + (t || 'status ' + s)); finalizeStreaming() })
+    })
+}
+function injectContext(cb) {
+    var ctx = gatherWpsContext(); if (!ctx || ctx === LAST_INJECTED_CONTEXT) { cb(); return }
+    LAST_INJECTED_CONTEXT = ctx
+    var xhr = new XMLHttpRequest(); xhr.timeout = 10000
+    xhr.onreadystatechange = function() { if (xhr.readyState === 4) cb() }
+    xhr.onerror = function() { cb() }; xhr.ontimeout = function() { cb() }
+    xhr.open('POST', API_BASE + '/session/' + SESSION_ID + '/message', true)
+    xhr.setRequestHeader('Content-Type', 'application/json')
+    xhr.send(JSON.stringify({ noReply: true, parts: [{ type: 'text', text: ctx }] }))
+}
+function forceInjectContext() {
+    if (!SESSION_ID || IS_BUSY) return; LAST_INJECTED_CONTEXT = ''
+    var ctx = gatherWpsContext(); if (!ctx) { addSystemMessage('No document context available'); return }
+    LAST_INJECTED_CONTEXT = ctx; addSystemMessage('Document context injected')
+    var xhr = new XMLHttpRequest(); xhr.timeout = 10000
+    xhr.open('POST', API_BASE + '/session/' + SESSION_ID + '/message', true)
+    xhr.setRequestHeader('Content-Type', 'application/json')
+    xhr.send(JSON.stringify({ noReply: true, parts: [{ type: 'text', text: ctx }] }))
+}
+function gatherWpsContext() {
+    var lines = []
+    try { var doc = window.Application.ActiveDocument; if (doc) { if (doc.Name) lines.push('Current document: ' + doc.Name); if (doc.Path) lines.push('Path: ' + doc.Path) } } catch(e) {}
+    try { var sel = window.Application.Selection; if (sel && sel.Text && sel.Text.trim()) { var t = sel.Text; if (t.length > 3000) t = t.substring(0, 3000) + '...[truncated]'; lines.push(''); lines.push('Selected text:'); lines.push('"""'); lines.push(t); lines.push('"""') } } catch(e) {}
+    if (lines.length === 0) return null
+    return '<wps-context>\n' + lines.join('\n') + '\n</wps-context>'
+}
+function abortMessage() { if (!SESSION_ID) return; fetchJSON('POST', '/session/' + SESSION_ID + '/abort', null, function() { addSystemMessage('Aborted'); finalizeStreaming() }) }
+
+// --- Input ---
+function onInputKey(e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage() }; setTimeout(updateSendButton, 0) }
+function autoGrow(el) { el.style.height = 'auto'; el.style.height = Math.min(el.scrollHeight, 120) + 'px'; updateSendButton() }
+function updateSendButton() { $sendBtn.className = 'send-btn ' + ($input.value.trim().length > 0 && !IS_BUSY ? 'ready' : 'disabled') }
+function updateInputState() {
+    $input.disabled = IS_BUSY
+    if (IS_BUSY) { $sendArea.innerHTML = '<button class="stop-btn" onclick="abortMessage()" title="Stop"><div class="stop-icon"></div></button>' }
+    else { $sendArea.innerHTML = '<button class="send-btn disabled" id="send-btn" onclick="sendMessage()" title="Send"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg></button>'; $sendBtn = document.getElementById('send-btn'); updateSendButton() }
+}
+
+// --- Markdown ---
+function renderMarkdown(text) {
+    if (!text) return ''
+    // 1. 提取代码块，避免内部被 markdown 规则处理
+    var codeBlocks = []
+    text = text.replace(/```(\w*)\n([\s\S]*?)```/g, function(m, lang, code) {
+        codeBlocks.push('<pre><code>' + escapeHtml(code) + '</code></pre>')
+        return '\x00CB' + (codeBlocks.length - 1) + '\x00'
+    })
+    var inlineCodes = []
+    text = text.replace(/`([^`\n]+)`/g, function(m, code) {
+        inlineCodes.push('<code>' + escapeHtml(code) + '</code>')
+        return '\x00IC' + (inlineCodes.length - 1) + '\x00'
+    })
+    // 2. 转义 HTML
+    text = escapeHtml(text)
+    // 3. 还原占位符（代码块和行内代码已转义）
+    text = text.replace(/\x00CB(\d+)\x00/g, function(m, i) { return codeBlocks[i] })
+    text = text.replace(/\x00IC(\d+)\x00/g, function(m, i) { return inlineCodes[i] })
+    // 4. 按行处理
+    var lines = text.split('\n')
+    var out = '', inList = false, inPara = false
+    for (var i = 0; i < lines.length; i++) {
+        var line = lines[i]
+        // 代码块（已还原为 <pre>）
+        if (line.indexOf('<pre>') === 0 || line.indexOf('</pre>') !== -1) {
+            if (inList) { out += '</ul>'; inList = false }
+            if (inPara) { out += '</p>'; inPara = false }
+            out += line; continue
+        }
+        // 空行
+        if (/^\s*$/.test(line)) {
+            if (inList) { out += '</ul>'; inList = false }
+            if (inPara) { out += '</p>'; inPara = false }
+            continue
+        }
+        // 标题
+        var hm = line.match(/^(#{1,4})\s+(.+)$/)
+        if (hm) {
+            if (inList) { out += '</ul>'; inList = false }
+            if (inPara) { out += '</p>'; inPara = false }
+            var lv = hm[1].length; out += '<h' + lv + '>' + inlineFmt(hm[2]) + '</h' + lv + '>'; continue
+        }
+        // 水平线
+        if (/^(-{3,}|\*{3,}|_{3,})\s*$/.test(line)) {
+            if (inList) { out += '</ul>'; inList = false }
+            if (inPara) { out += '</p>'; inPara = false }
+            out += '<hr>'; continue
+        }
+        // 引用
+        if (/^&gt;\s?/.test(line)) {
+            if (inList) { out += '</ul>'; inList = false }
+            if (inPara) { out += '</p>'; inPara = false }
+            out += '<blockquote>' + inlineFmt(line.replace(/^&gt;\s?/, '')) + '</blockquote>'; continue
+        }
+        // 无序列表
+        var ulm = line.match(/^[-*]\s+(.+)$/)
+        if (ulm) {
+            if (inPara) { out += '</p>'; inPara = false }
+            if (!inList) { out += '<ul>'; inList = true }
+            out += '<li>' + inlineFmt(ulm[1]) + '</li>'; continue
+        }
+        // 有序列表
+        var olm = line.match(/^\d+\.\s+(.+)$/)
+        if (olm) {
+            if (inPara) { out += '</p>'; inPara = false }
+            if (!inList) { out += '<ul>'; inList = true }
+            out += '<li>' + inlineFmt(olm[1]) + '</li>'; continue
+        }
+        // 表格行（简单支持）
+        if (/^\|(.+)\|$/.test(line) && line.split('|').length > 3) {
+            if (inList) { out += '</ul>'; inList = false }
+            if (inPara) { out += '</p>'; inPara = false }
+            // 分隔行跳过
+            if (/^\|[\s\-:|]+\|$/.test(line)) continue
+            var cells = line.replace(/^\||\|$/g, '').split('|')
+            out += '<tr>' + cells.map(function(c) { return '<td style="border:1px solid #ddd;padding:4px 8px">' + inlineFmt(c.trim()) + '</td>' }).join('') + '</tr>'
+            continue
+        }
+        // 普通段落
+        if (inList) { out += '</ul>'; inList = false }
+        if (inPara) { out += ' ' + inlineFmt(line) }
+        else { out += '<p>' + inlineFmt(line); inPara = true }
+    }
+    if (inList) out += '</ul>'
+    if (inPara) out += '</p>'
+    return out
+}
+function inlineFmt(s) {
+    if (!s) return ''
+    // 加粗斜体 ***text***
+    s = s.replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>')
+    // 加粗 **text**
+    s = s.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    // 斜体 *text*
+    s = s.replace(/\*(.+?)\*/g, '<em>$1</em>')
+    // 删除线 ~~text~~
+    s = s.replace(/~~(.+?)~~/g, '<del>$1</del>')
+    // 链接 [text](url)
+    s = s.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>')
+    // 图片 ![alt](url)
+    s = s.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" style="max-width:100%">')
+    return s
+}
+function scrollToBottom() { setTimeout(function() { $messages.scrollTop = $messages.scrollHeight }, 50) }
+
+// --- Init ---
+function initApp() {
+    showOverlay('loading')
+    var apiBase = getPS('opencode_api_base'); if (apiBase) API_BASE = apiBase
+    PROJECT_DIR = getPS('opencode_cwd') || 'D:\\code\\opencode-wps'
+    SESSION_ID = getPS('opencode_session_id')
+    fetchJSON('GET', '/global/health', null, function(data) {
+        if (data && data.healthy) {
+            CONNECTED = true; hideOverlays(); setStatus('idle')
+            fetchAvailableModels(function() { $modelName.textContent = CURRENT_MODEL || 'AI Model' })
+            if (SESSION_ID) { loadSessionMessages(SESSION_ID) } else { createNewSession(function() { connectSSE() }); return }
+            connectSSE()
+        } else {
+            // 服务不健康，可能是刚启动还未就绪，等待重试
+            showOverlay('loading')
+            setTimeout(function() { initApp() }, 2000)
+        }
+    }, function() {
+        // 连接失败，等待重试而不是直接显示错误
+        if (RETRY_COUNT < MAX_RETRIES) {
+            RETRY_COUNT++
+            showOverlay('loading')
+            setTimeout(function() { initApp() }, 2000)
+        } else {
+            showError('Connection Failed', 'Cannot reach OpenCode at ' + API_BASE + '. Click Start to try again.')
+        }
+    })
+}
+
+var RETRY_COUNT = 0
+var MAX_RETRIES = 15
+
+// --- Startup ---
+// 不再由 WPS 插件启动 opencode，只负责连接已运行的服务
+var INIT_HANDLED = false
+var initTimer = setInterval(function() {
+    var state = getPS('opencode_state')
+    if (state === 'running') { clearInterval(initTimer); INIT_HANDLED = true; RETRY_COUNT = 0; initApp() }
+    else if (state === 'stopped' || state === '' || state === 'error') {
+        clearInterval(initTimer); INIT_HANDLED = true
+        tryConnect()
+    }
+    else if (state === 'connecting') { /* 等待连接结果 */ }
+}, 300)
+setTimeout(function() {
+    if (!INIT_HANDLED && !CONNECTED) { clearInterval(initTimer); INIT_HANDLED = true; tryConnect() }
+}, 3000)
+
+// 直接尝试连接，连不上就显示操作指引
+function tryConnect() {
+    showOverlay('loading')
+    fetchJSON('GET', '/global/health', null, function(data) {
+        if (data && data.healthy) {
+            CONNECTED = true; hideOverlays(); setStatus('idle')
+            setPS('opencode_state', 'running')
+            fetchAvailableModels(function() { $modelName.textContent = CURRENT_MODEL || 'AI Model' })
+            if (SESSION_ID) { loadSessionMessages(SESSION_ID) } else { createNewSession(function() { connectSSE() }); return }
+            connectSSE()
+        } else {
+            showStartGuide()
+        }
+    }, function() {
+        showStartGuide()
+    })
+}
+
+// 显示启动指引（而非弹安全警告去启动进程）
+function showStartGuide() {
+    var overlay = document.getElementById('overlay-start')
+    overlay.innerHTML = '<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#1a1a1a" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M9 9h6M9 13h4"/></svg>' +
+        '<h3>OpenCode 未运行</h3>' +
+        '<p style="margin-top:8px">请在终端中执行以下命令启动：</p>' +
+        '<div style="background:#1e1e1e;color:#d4d4d4;padding:10px 14px;border-radius:8px;font-family:Consolas,monospace;font-size:12px;text-align:left;margin:8px 0;width:100%;word-break:break-all">schtasks /Run /TN "OpenCodeServer"</div>' +
+        '<button onclick="tryConnect()">重新连接</button>'
+    showOverlay('start')
+}
+</script>
+</body>
+</html>
