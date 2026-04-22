@@ -50,8 +50,10 @@ const staleClaudeDirs = [
 const jsaddonsDir = path.join(process.env.APPDATA, 'kingsoft', 'wps', 'jsaddons');
 
 console.log('========================================');
-console.log('  WPS Office AI 一键安装工具');
-console.log('========================================\n');
+console.log('  WPS Office AI 安装工具');
+console.log('========================================');
+console.log('  CWD 将在插件面板中由用户指定');
+console.log('  不再自动注册开机自启任务\n');
 
 // ============================================================
 // 第 1 步: 安装 WPS 插件
@@ -92,6 +94,19 @@ mergedAddons.forEach(name => {
         const p = path.join(jsaddonsDir, dir);
         try { if (fsEx.existsSync(p)) { fsEx.removeSync(p); console.log('    已清理旧插件: ' + dir); } } catch(e) {}
     });
+});
+
+// 清理旧的开机自启计划任务
+const taskName = 'OpenCodeServer';
+try { execSync('schtasks /Delete /TN "' + taskName + '" /F', { stdio: 'pipe' }); console.log('  已移除旧的开机自启任务'); } catch(e) {}
+
+// 清理旧的 VBS 启动器
+const oldVbsFiles = [
+    path.join(rootDir, 'start-opencode-silent.vbs'),
+    path.join(jsaddonsDir, 'opencode-wps_', 'start-opencode-silent.vbs')
+];
+oldVbsFiles.forEach(f => {
+    try { if (fsEx.existsSync(f)) { fsEx.removeSync(f); console.log('  已清理旧 VBS: ' + path.basename(f)); } } catch(e) {}
 });
 
 // 更新 publish.xml
@@ -207,7 +222,6 @@ if (fsEx.existsSync(mcpEntryPath)) {
     if (!config.mcp) config.mcp = {};
 
     // 更新 wps-office MCP 配置
-    // OpenCode 全局配置格式: "mcp": { "name": { "command": [...], "type": "local" } }
     config.mcp[mcpServer.name] = {
         command: ['node', mcpEntryForward],
         type: 'local'
@@ -252,7 +266,7 @@ if (fsEx.existsSync(skillsSrcDir)) {
 }
 
 // ============================================================
-// 第 5 步: 清理废弃的 Claude 配置
+// 第 5 步: 清理废弃配置
 // ============================================================
 console.log('\n【第 5 步】清理废弃配置');
 
@@ -267,7 +281,7 @@ staleClaudeDirs.forEach(dir => {
     }
 });
 
-// 清理旧的 .claude-plugin 和 .opencode-plugin（已废弃，OpenCode 不使用此格式）
+// 清理旧的 .claude-plugin 和 .opencode-plugin（已废弃）
 const stalePluginDirs = [
     path.resolve(rootDir, '.claude-plugin'),
     path.resolve(rootDir, '.opencode-plugin'),
@@ -282,104 +296,78 @@ stalePluginDirs.forEach(dir => {
 });
 
 // ============================================================
-// 第 6 步: 注册 OpenCode 开机自启任务
+// 第 6 步: 注册 launcher 开机自启 + 立即启动
 // ============================================================
-console.log('\n【第 6 步】注册 OpenCode 开机自启');
+console.log('\n【第 6 步】注册 launcher 开机自启');
 
-const opencodeCwd = 'D:\\code\\office-test';
-const opencodePort = 14096;
+const launcherPath = path.join(jsaddonsDir, 'opencode-wps_', 'launcher.js');
 
-// 查找 opencode 可执行文件路径
-let opencodeBin = '';
-const npmGlobalDir = path.join(homeDir, 'AppData', 'Roaming', 'npm');
-const npmOpencodeExe = path.join(npmGlobalDir, 'node_modules', 'opencode-ai', 'node_modules', 'opencode-windows-x64', 'bin', 'opencode.exe');
-const npmOpencodeCmd = path.join(npmGlobalDir, 'opencode.cmd');
+if (fsEx.existsSync(launcherPath)) {
+    // 生成 VBS 静默启动器
+    const launcherVbsPath = path.join(jsaddonsDir, 'opencode-wps_', 'start-launcher.vbs');
+    // VBS: "node ""path""" → 实际执行 node "path"
+    // 外层 "..." 是 VBS 字符串，内层 "" 是字面引号，最后一个 " 关闭 VBS 字符串
+    const launcherVbsContent = 'CreateObject("Wscript.Shell").Run "node ""' + launcherPath + '""", 0, False';
+    fs.writeFileSync(launcherVbsPath, launcherVbsContent, 'utf-8');
+    console.log('  已生成 launcher VBS: ' + launcherVbsPath);
 
-if (fsEx.existsSync(npmOpencodeExe)) {
-    opencodeBin = npmOpencodeExe;
-} else if (fsEx.existsSync(npmOpencodeCmd)) {
-    opencodeBin = npmOpencodeCmd;
-} else {
-    opencodeBin = 'opencode.exe';
-}
+    // 注册计划任务（用户登录时自动启动 launcher）
+    const taskName = 'OpenCodeLauncher';
+    try { execSync('schtasks /Delete /TN "' + taskName + '" /F', { stdio: 'pipe' }); } catch(e) {}
 
-const taskName = 'OpenCodeServer';
+    const xmlContent = [
+        '<?xml version="1.0" encoding="UTF-16"?>',
+        '<Task version="1.2" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">',
+        '  <RegistrationInfo><Description>OpenCode Launcher</Description></RegistrationInfo>',
+        '  <Triggers><LogonTrigger><Enabled>true</Enabled></LogonTrigger></Triggers>',
+        '  <Principals><Principal id="Author"><LogonType>InteractiveToken</LogonType><RunLevel>LeastPrivilege</RunLevel></Principal></Principals>',
+        '  <Settings>',
+        '    <MultipleInstancesPolicy>IgnoreNew</MultipleInstancesPolicy>',
+        '    <DisallowStartIfOnBatteries>false</DisallowStartIfOnBatteries>',
+        '    <StopIfGoingOnBatteries>false</StopIfGoingOnBatteries>',
+        '    <AllowHardTerminate>true</AllowHardTerminate>',
+        '    <StartWhenAvailable>true</StartWhenAvailable>',
+        '    <AllowStartOnDemand>true</AllowStartOnDemand>',
+        '    <Enabled>true</Enabled><Hidden>true</Hidden>',
+        '    <ExecutionTimeLimit>PT0S</ExecutionTimeLimit>',
+        '  </Settings>',
+        '  <Actions Context="Author">',
+        '    <Exec>',
+        '      <Command>wscript.exe</Command>',
+        '      <Arguments>"' + launcherVbsPath + '"</Arguments>',
+        '    </Exec>',
+        '  </Actions>',
+        '</Task>'
+    ].join('\r\n');
 
-// 先删除旧任务
-try { execSync('schtasks /Delete /TN "' + taskName + '" /F', { stdio: 'pipe' }); } catch(e) {}
+    const tmpXml = path.join(rootDir, '_launcher_task.xml');
+    const bom = Buffer.from([0xFF, 0xFE]);
+    const xmlBuf = Buffer.from(xmlContent, 'utf16le');
+    fs.writeFileSync(tmpXml, Buffer.concat([bom, xmlBuf]));
 
-// 生成 VBS 静默启动器（模式0=完全隐藏窗口，不会闪一下）
-const vbsPath = path.join(rootDir, 'start-opencode-silent.vbs');
-const vbsContent = 'CreateObject("Wscript.Shell").Run "' + opencodeBin + ' serve --port ' + opencodePort + ' --hostname 127.0.0.1 --cors file://", 0, False';
-fs.writeFileSync(vbsPath, vbsContent, 'utf-8');
-console.log('  已生成静默启动器: ' + vbsPath);
-
-// 用 XML 创建计划任务（支持设置工作目录）
-const xmlContent = [
-    '<?xml version="1.0" encoding="UTF-16"?>',
-    '<Task version="1.2" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">',
-    '  <RegistrationInfo>',
-    '    <Description>OpenCode AI Server</Description>',
-    '  </RegistrationInfo>',
-    '  <Triggers>',
-    '    <LogonTrigger>',
-    '      <Enabled>true</Enabled>',
-    '    </LogonTrigger>',
-    '  </Triggers>',
-    '  <Principals>',
-    '    <Principal id="Author">',
-    '      <LogonType>InteractiveToken</LogonType>',
-    '      <RunLevel>HighestAvailable</RunLevel>',
-    '    </Principal>',
-    '  </Principals>',
-    '  <Settings>',
-    '    <MultipleInstancesPolicy>IgnoreNew</MultipleInstancesPolicy>',
-    '    <DisallowStartIfOnBatteries>false</DisallowStartIfOnBatteries>',
-    '    <StopIfGoingOnBatteries>false</StopIfGoingOnBatteries>',
-    '    <AllowHardTerminate>true</AllowHardTerminate>',
-    '    <StartWhenAvailable>true</StartWhenAvailable>',
-    '    <AllowStartOnDemand>true</AllowStartOnDemand>',
-    '    <Enabled>true</Enabled>',
-    '    <Hidden>true</Hidden>',
-    '    <ExecutionTimeLimit>PT0S</ExecutionTimeLimit>',
-    '  </Settings>',
-    '  <Actions Context="Author">',
-    '    <Exec>',
-    '      <Command>wscript.exe</Command>',
-    '      <Arguments>"' + vbsPath + '"</Arguments>',
-    '      <WorkingDirectory>' + opencodeCwd + '</WorkingDirectory>',
-    '    </Exec>',
-    '  </Actions>',
-    '</Task>'
-].join('\r\n');
-
-// 写入临时 XML 文件（UTF-16 LE 编码，schtasks 要求）
-const tmpXml = path.join(rootDir, '_opencode_task.xml');
-const bom = Buffer.from([0xFF, 0xFE]);
-const xmlBuf = Buffer.from(xmlContent, 'utf16le');
-fs.writeFileSync(tmpXml, Buffer.concat([bom, xmlBuf]));
-
-try {
-    execSync('schtasks /Create /TN "' + taskName + '" /F /XML "' + tmpXml + '"', { stdio: 'pipe' });
-    console.log('  已注册开机自启任务: ' + taskName);
-    console.log('  程序: ' + opencodeBin);
-    console.log('  端口: ' + opencodePort);
-    console.log('  工作目录: ' + opencodeCwd);
-
-    // 立即启动（不需要重启电脑）
     try {
-        execSync('schtasks /Run /TN "' + taskName + '"', { stdio: 'pipe' });
-        console.log('  已启动 opencode serve');
+        execSync('schtasks /Create /TN "' + taskName + '" /F /XML "' + tmpXml + '"', { stdio: 'pipe' });
+        console.log('  已注册开机自启: ' + taskName);
     } catch(e) {
-        console.log('  [提示] 自动启动失败，请手动运行:');
-        console.log('    schtasks /Run /TN "' + taskName + '"');
+        console.log('  [警告] 注册计划任务失败: ' + (e.message || '').split('\n')[0]);
+    } finally {
+        try { fs.unlinkSync(tmpXml); } catch(e) {}
     }
-} catch(e) {
-    console.log('  [警告] 注册计划任务失败: ' + (e.message || '').split('\n')[0]);
-    console.log('  请手动注册或用终端启动:');
-    console.log('    opencode serve --port ' + opencodePort);
-} finally {
-    try { fs.unlinkSync(tmpXml); } catch(e) {}
+
+    // 立即启动 launcher
+    try {
+        const { spawn: spawnProc } = require('child_process');
+        const child = spawnProc('node', [launcherPath], {
+            detached: true, stdio: 'ignore', windowsHide: true
+        });
+        child.unref();
+        console.log('  已启动 launcher (PID: ' + child.pid + ')');
+    } catch(e) {
+        console.log('  [警告] 启动 launcher 失败，尝试 VBS 启动');
+        try { execSync('wscript.exe "' + launcherVbsPath + '"', { stdio: 'pipe' }); } catch(e2) {}
+    }
+} else {
+    console.log('  [跳过] launcher.js 不存在');
 }
 
 // ===== 完成 =====
@@ -391,10 +379,9 @@ console.log('  1. WPS 插件 (opencode-wps) → jsaddons');
 console.log('  2. MCP 服务器 → ' + mcpServer.src);
 console.log('  3. OpenCode MCP 配置 → opencode.json');
 console.log('  4. Skills → ~/.opencode/skills/');
-console.log('  5. OpenCode 开机自启任务');
+console.log('  5. launcher 进程管理 → http://127.0.0.1:14097');
 console.log('');
 console.log('后续步骤:');
 console.log('  - 重启 WPS Office 以加载插件');
-console.log('  - 如需立即启动 opencode (无需重启):');
-console.log('    schtasks /Run /TN "OpenCodeServer"');
+console.log('  - 在插件面板中设置工作目录并启动服务');
 console.log('========================================');

@@ -1,19 +1,18 @@
 // ========================================
 // WPS 加载项 - OpenCode 集成
 // 自定义 Chat UI (REST API + SSE) + 上下文注入
-// 注意: opencode 需要单独启动，本插件不负责启动进程
+// CWD 由用户在 taskpane 中指定，通过 launcher.js 管理进程
 // ========================================
 
 // ===== 全局配置 =====
 var OPENCODE_PORT = 14096
 var OPENCODE_HOST = '127.0.0.1'
-var OPENCODE_CWD = 'D:\\code\\office-test'
 var OPENCODE_API_BASE = 'http://' + OPENCODE_HOST + ':' + OPENCODE_PORT
+var LAUNCHER_API = 'http://' + OPENCODE_HOST + ':14097'
 
 // 运行时状态
 var OPENCODE_STATE = 'stopped' // stopped | connecting | running | error
 var OPENCODE_ERROR = ''
-var OPENCODE_SESSION_ID = ''
 
 // ===== 工具函数 =====
 var WPS_Enum = {
@@ -34,10 +33,61 @@ function setOpenCodeState(state, error) {
         window.Application.PluginStorage.setItem('opencode_state', state)
         window.Application.PluginStorage.setItem('opencode_error', error || '')
         window.Application.PluginStorage.setItem('opencode_api_base', OPENCODE_API_BASE)
-        window.Application.PluginStorage.setItem('opencode_cwd', OPENCODE_CWD)
-        window.Application.PluginStorage.setItem('opencode_session_id', OPENCODE_SESSION_ID)
     } catch (e) {}
     console.log('[OpenCode] State: ' + state + (error ? ' Error: ' + error : ''))
+}
+
+// ===== 通过 launcher.js 管理进程 =====
+
+function startOpenCodeServer(cwd) {
+    if (!cwd) {
+        console.log('[OpenCode] No CWD specified for start')
+        return
+    }
+    // 保存 CWD
+    try { window.Application.PluginStorage.setItem('opencode_cwd', cwd) } catch (e) {}
+
+    console.log('[OpenCode] Requesting launcher to start with CWD: ' + cwd)
+
+    var xhr = new XMLHttpRequest()
+    xhr.timeout = 10000
+    xhr.open('POST', LAUNCHER_API + '/start', true)
+    xhr.setRequestHeader('Content-Type', 'application/json')
+    xhr.onreadystatechange = function() {
+        if (xhr.readyState === 4) {
+            if (xhr.status === 200) {
+                console.log('[OpenCode] Launcher accepted start request')
+            } else {
+                console.log('[OpenCode] Launcher start failed: ' + xhr.status + ' ' + xhr.responseText)
+            }
+        }
+    }
+    xhr.onerror = function() { console.log('[OpenCode] Cannot reach launcher at ' + LAUNCHER_API) }
+    xhr.ontimeout = function() { console.log('[OpenCode] Launcher request timeout') }
+    try {
+        xhr.send(JSON.stringify({ cwd: cwd, port: OPENCODE_PORT }))
+    } catch (e) {
+        console.log('[OpenCode] Failed to call launcher: ' + e.message)
+    }
+}
+
+function stopOpenCodeServer() {
+    console.log('[OpenCode] Requesting launcher to stop')
+
+    var xhr = new XMLHttpRequest()
+    xhr.timeout = 5000
+    xhr.open('POST', LAUNCHER_API + '/stop', true)
+    xhr.setRequestHeader('Content-Type', 'application/json')
+    xhr.onreadystatechange = function() {
+        if (xhr.readyState === 4) {
+            console.log('[OpenCode] Launcher stop response: ' + xhr.status)
+        }
+    }
+    xhr.onerror = function() { console.log('[OpenCode] Cannot reach launcher for stop') }
+    try {
+        xhr.send()
+    } catch (e) {}
+    setOpenCodeState('stopped')
 }
 
 // ===== 服务器检测 =====
@@ -68,73 +118,9 @@ function connectOpenCode() {
 
     checkServerHealth(function (isRunning) {
         if (isRunning) {
-            onServerReady()
+            setOpenCodeState('running')
         } else {
             setOpenCodeState('stopped')
-        }
-    })
-}
-
-function onServerReady() {
-    createSession(function (sessionId) {
-        if (sessionId) {
-            OPENCODE_SESSION_ID = sessionId
-        }
-        setOpenCodeState('running')
-    })
-}
-
-// ===== Session 管理 =====
-
-function apiRequest(method, path, body, callback) {
-    var xhr = new XMLHttpRequest()
-    xhr.timeout = 5000
-    xhr.onreadystatechange = function () {
-        if (xhr.readyState === 4) {
-            if (xhr.status >= 200 && xhr.status < 300) {
-                try {
-                    var resp = JSON.parse(xhr.responseText)
-                    callback(resp)
-                } catch (e) {
-                    callback(null)
-                }
-            } else {
-                callback(null)
-            }
-        }
-    }
-    xhr.onerror = function () { callback(null) }
-    xhr.ontimeout = function () { callback(null) }
-    try {
-        xhr.open(method, OPENCODE_API_BASE + path, true)
-        xhr.setRequestHeader('Content-Type', 'application/json')
-        xhr.setRequestHeader('x-opencode-directory', OPENCODE_CWD)
-        if (body) {
-            xhr.send(JSON.stringify(body))
-        } else {
-            xhr.send()
-        }
-    } catch (e) {
-        callback(null)
-    }
-}
-
-function unwrapResponse(resp) {
-    if (!resp) return null
-    if (resp.data) return resp.data
-    if (resp.message) return resp.message
-    return resp
-}
-
-function createSession(callback) {
-    apiRequest('POST', '/session', { title: 'WPS Office' }, function (resp) {
-        var data = unwrapResponse(resp)
-        if (data && data.id) {
-            console.log('[OpenCode] Session created: ' + data.id)
-            callback(data.id)
-        } else {
-            console.log('[OpenCode] Session creation failed')
-            callback(null)
         }
     })
 }
@@ -148,7 +134,7 @@ function OnAddinLoad(ribbonUI) {
     if (typeof (window.Application.Enum) != "object") {
         window.Application.Enum = WPS_Enum
     }
-    // 加载时自动检测 opencode 是否已运行
+    // 加载时检测 opencode 是否已在运行
     connectOpenCode()
     return true
 }
@@ -203,14 +189,16 @@ function OnGetLabel(control) {
 // ===== 状态检查 =====
 
 function checkStatus() {
+    var cwd = ''
+    try { cwd = window.Application.PluginStorage.getItem('opencode_cwd') || '' } catch (e) {}
     var statusText = '=== OpenCode 状态 ===\n\n'
     statusText += '状态: ' + OPENCODE_STATE + '\n'
     statusText += '地址: ' + OPENCODE_API_BASE + '\n'
+    if (cwd) statusText += '工作目录: ' + cwd + '\n'
     if (OPENCODE_ERROR) statusText += '错误: ' + OPENCODE_ERROR + '\n'
 
     if (OPENCODE_STATE !== 'running') {
-        statusText += '\n提示: 请确保 opencode 已启动\n'
-        statusText += '命令: opencode serve --port ' + OPENCODE_PORT + '\n'
+        statusText += '\n提示: 请在插件面板中启动 OpenCode 服务\n'
     }
 
     try {
@@ -219,7 +207,6 @@ function checkStatus() {
             statusText += '应用: ' + (window.Application.Name || 'WPS Office') + '\n'
             if (window.Application.ActiveWorkbook) {
                 statusText += '当前文档: ' + window.Application.ActiveWorkbook.Name + ' (Excel)\n'
-                statusText += '工作表数: ' + window.Application.ActiveWorkbook.Sheets.Count + '\n'
             } else if (window.Application.ActiveDocument) {
                 statusText += '当前文档: ' + window.Application.ActiveDocument.Name + ' (Word)\n'
             } else if (window.Application.ActivePresentation) {
@@ -234,15 +221,22 @@ function checkStatus() {
 
 // ===== 命令轮询 =====
 // taskpane.html 通过 PluginStorage 发送命令，main.js 轮询执行
+// 支持命令:
+//   connect      - 连接已运行的服务
+//   start:CWD    - 启动服务（指定工作目录，调用 launcher API）
+//   stop         - 停止服务（调用 launcher API）
 setInterval(function () {
     try {
         var cmd = window.Application.PluginStorage.getItem('opencode_command')
         if (cmd) {
             window.Application.PluginStorage.setItem('opencode_command', '')
-            switch (cmd) {
-                case 'connect':
-                    connectOpenCode()
-                    break
+            if (cmd === 'connect') {
+                connectOpenCode()
+            } else if (cmd.indexOf('start:') === 0) {
+                var cwd = cmd.substring(6)
+                startOpenCodeServer(cwd)
+            } else if (cmd === 'stop') {
+                stopOpenCodeServer()
             }
         }
     } catch (e) {}

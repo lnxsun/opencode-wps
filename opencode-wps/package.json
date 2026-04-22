@@ -1,7 +1,7 @@
 {
-  "name": "test-wps-addon",
+  "name": "opencode-wps",
   "version": "1.0.0",
-  "description": "Test WPS Add-on",
+  "description": "OpenCode AI WPS Office Plugin",
   "scripts": {
     "build": "echo 'Build completed'"
   },

@@ -7,46 +7,87 @@
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{width:100%;height:100%;overflow:hidden;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft YaHei",sans-serif;font-size:14px;color:#1a1a1a;background:#fff}
 
+/* CSS-only icons for WPS Chromium 104 compatibility */
+.icon-play{display:inline-block;width:0;height:0;border-style:solid;border-width:7px 0 7px 12px;border-color:transparent transparent transparent #fff;margin-right:6px;vertical-align:middle}
+.icon-plus{display:inline-block;width:14px;height:14px;position:relative;vertical-align:middle;flex-shrink:0}
+.icon-plus::before{content:'';position:absolute;left:6px;top:1px;width:2px;height:12px;background:#666;border-radius:1px}
+.icon-plus::after{content:'';position:absolute;left:1px;top:6px;width:12px;height:2px;background:#666;border-radius:1px}
+.icon-stop{display:inline-block;width:10px;height:10px;background:#999;border-radius:2px;vertical-align:middle}
+.btn-stop:hover .icon-stop{background:#e53935}
+.icon-hamburger{display:inline-flex;flex-direction:column;justify-content:center;gap:3px;width:16px;height:16px}
+.icon-hamburger span{display:block;height:2px;background:#666;border-radius:1px}
+.icon-send{display:inline-block;width:0;height:0;border-style:solid;border-width:7px 0 7px 12px;border-color:transparent transparent transparent #fff;vertical-align:middle;margin-left:2px}
+.icon-model{display:inline-block;width:14px;height:14px;border:2px solid #666;border-radius:7px 7px 3px 3px;position:relative;vertical-align:middle}
+.icon-model::after{content:'';position:absolute;top:9px;left:2px;width:6px;height:2px;background:#666;border-radius:1px}
+.icon-pen{display:inline-block;width:14px;height:14px;position:relative;vertical-align:middle;flex-shrink:0}
+.icon-pen::before{content:'';position:absolute;right:1px;top:1px;width:8px;height:2px;background:#666;transform:rotate(-45deg);transform-origin:right top;border-radius:1px}
+.icon-pen::after{content:'';position:absolute;left:3px;bottom:1px;width:2px;height:4px;background:#666;transform:rotate(-45deg);transform-origin:left bottom;border-radius:1px}
+.icon-trash{display:inline-block;width:14px;height:14px;position:relative;vertical-align:middle;flex-shrink:0}
+.icon-trash::before{content:'';position:absolute;top:2px;left:3px;width:8px;height:10px;border:2px solid #666;border-top:none;border-radius:0 0 2px 2px}
+.icon-trash::after{content:'';position:absolute;top:1px;left:2px;width:10px;height:2px;background:#666;border-radius:1px}
+.icon-logo{display:inline-block;width:18px;height:18px;border:2px solid #1a1a1a;border-radius:4px;position:relative;flex-shrink:0}
+.icon-logo::before{content:'';position:absolute;top:4px;left:3px;width:8px;height:2px;background:#1a1a1a;border-radius:1px}
+.icon-logo::after{content:'';position:absolute;top:8px;left:3px;width:6px;height:2px;background:#1a1a1a;border-radius:1px}
+
 /* ===== Layout ===== */
 .app{display:flex;flex-direction:column;height:100%}
 
+/* ===== Setup View ===== */
+.view-setup{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;gap:16px}
+.view-setup .setup-icon{width:48px;height:48px;color:#1a1a1a;margin-bottom:4px}
+.view-setup h3{font-size:17px;font-weight:600}
+.view-setup p{color:#999;font-size:13px;text-align:center;max-width:260px;line-height:1.6}
+.setup-cwd-row{width:100%;max-width:300px;display:flex;gap:6px;margin-top:4px}
+.setup-cwd-row input{flex:1;border:1px solid #e5e5e5;border-radius:8px;padding:10px 12px;font-size:13px;outline:none;font-family:Consolas,"Microsoft YaHei",monospace;color:#1a1a1a}
+.setup-cwd-row input:focus{border-color:#999}
+.setup-cwd-row input::placeholder{color:#bbb}
+.btn-primary{padding:10px 32px;border:none;border-radius:8px;cursor:pointer;font-size:14px;font-weight:500;background:#1a1a1a;color:#fff;transition:background 0.15s}
+.btn-primary:hover{background:#333}
+.btn-primary:disabled{background:#e0e0e0;color:#999;cursor:default}
+.setup-status{font-size:12px;color:#999;min-height:18px}
+
 /* ===== Top bar ===== */
-.topbar{display:flex;align-items:center;padding:12px 16px;border-bottom:1px solid #f0f0f0;flex-shrink:0;background:#fff}
-.topbar-logo{display:flex;align-items:center;gap:8px;flex:1}
-.topbar-logo svg{width:20px;height:20px;flex-shrink:0}
-.topbar-logo span{font-weight:700;font-size:15px;letter-spacing:-0.3px}
-.topbar-actions{display:flex;gap:4px}
-.topbar-btn{width:32px;height:32px;border:none;background:none;cursor:pointer;border-radius:6px;display:flex;align-items:center;justify-content:center;color:#888}
-.topbar-btn:hover{background:#f5f5f5;color:#333}
-.topbar-btn svg{width:18px;height:18px}
+.topbar{display:flex;align-items:center;padding:8px 12px;border-bottom:1px solid #f0f0f0;flex-shrink:0;background:#fff;gap:8px}
+.topbar-logo{display:flex;align-items:center;gap:6px}
+.topbar-logo svg{width:18px;height:18px;flex-shrink:0}
+.topbar-logo .icon-logo{width:18px;height:18px}
+.topbar-logo span{font-weight:700;font-size:14px;letter-spacing:-0.3px}
+.topbar-cwd{flex:1;font-size:11px;color:#888;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:Consolas,monospace}
+.topbar-status{display:flex;align-items:center;gap:4px;flex-shrink:0}
+.status-dot{width:8px;height:8px;border-radius:50%;background:#ccc;flex-shrink:0}
+.status-dot.running{background:#4caf50}
+.status-dot.busy{background:#f5a623;animation:pulse-dot 1.2s ease-in-out infinite}
+@keyframes pulse-dot{0%,100%{opacity:1}50%{opacity:0.4}}
+.status-label{font-size:11px;color:#999}
+.status-label.running{color:#4caf50}
+.btn-stop{width:24px;height:24px;border:1px solid #e0e0e0;border-radius:6px;background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#999;flex-shrink:0;padding:0}
+.btn-stop:hover{background:#fef2f2;border-color:#e53935;color:#e53935}
+.btn-stop span{vertical-align:middle}
 
 /* ===== Sub header: hamburger ===== */
-.subheader{padding:8px 16px;border-bottom:1px solid #f0f0f0;flex-shrink:0}
-.hamburger-btn{width:32px;height:32px;border:none;background:none;cursor:pointer;border-radius:6px;display:flex;align-items:center;justify-content:center;color:#666}
+.subheader{padding:6px 12px;border-bottom:1px solid #f0f0f0;flex-shrink:0}
+.hamburger-btn{width:28px;height:28px;border:none;background:none;cursor:pointer;border-radius:6px;display:flex;align-items:center;justify-content:center;color:#666}
 .hamburger-btn:hover{background:#f5f5f5}
-.hamburger-btn svg{width:18px;height:18px}
-
+.hamburger-btn .icon-hamburger{width:16px;height:16px}
 
 /* ===== Session header ===== */
-.session-header{display:flex;align-items:center;padding:14px 16px;flex-shrink:0}
-.session-title{flex:1;font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.session-header{display:flex;align-items:center;padding:10px 12px;flex-shrink:0}
+.session-title{flex:1;font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .session-status{width:16px;height:16px;display:flex;align-items:center;justify-content:center;margin:0 6px;flex-shrink:0}
 .session-status .dot{width:8px;height:8px;border-radius:50%;background:#ccc}
 .session-status .dot.busy{background:#f5a623;animation:pulse-dot 1.2s ease-in-out infinite}
 .session-status .dot.idle{background:#ccc}
-@keyframes pulse-dot{0%,100%{opacity:1}50%{opacity:0.4}}
 .session-menu{width:28px;height:28px;border:none;background:none;cursor:pointer;border-radius:6px;display:flex;align-items:center;justify-content:center;color:#999;font-size:16px;letter-spacing:1px}
 .session-menu:hover{background:#f5f5f5;color:#333}
 
 /* ===== Messages ===== */
-.messages{flex:1;overflow-y:auto;padding:0 16px 16px 16px;display:flex;flex-direction:column;gap:16px}
+.messages{flex:1;overflow-y:auto;padding:0 12px 12px 12px;display:flex;flex-direction:column;gap:16px}
 .messages::-webkit-scrollbar{width:4px}
 .messages::-webkit-scrollbar-thumb{background:#ddd;border-radius:2px}
 
 .msg-user{align-self:flex-end;max-width:88%;background:#f2f2f2;color:#1a1a1a;padding:10px 16px;border-radius:18px;border-bottom-right-radius:4px;font-size:14px;line-height:1.6;word-wrap:break-word;overflow-wrap:break-word}
 .msg-assistant{align-self:flex-start;max-width:100%;color:#1a1a1a;font-size:14px;line-height:1.7;word-wrap:break-word;overflow-wrap:break-word;padding:0 2px}
 .msg-system{align-self:center;font-size:12px;color:#999;padding:4px 12px}
-.msg-context{align-self:center;font-size:11px;color:#999;padding:2px 10px;background:#fafafa;border-radius:10px}
 
 /* Markdown in assistant */
 .msg-assistant p{margin:0 0 10px 0}
@@ -75,12 +116,12 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:-apple-system,Blink
 @keyframes cursor-blink{0%,100%{opacity:1}50%{opacity:0}}
 
 /* ===== Input area ===== */
-.input-area{padding:12px 16px 8px 16px;flex-shrink:0;background:#fff}
+.input-area{padding:10px 12px 6px 12px;flex-shrink:0;background:#fff}
 .input-wrapper{border:1px solid #e5e5e5;border-radius:12px;padding:0;overflow:hidden;transition:border-color 0.15s}
 .input-wrapper:focus-within{border-color:#ccc}
-.input-box{width:100%;border:none;outline:none;padding:12px 16px 4px 16px;font-family:inherit;font-size:14px;line-height:1.5;resize:none;min-height:44px;max-height:120px;color:#1a1a1a;background:transparent}
+.input-box{width:100%;border:none;outline:none;padding:10px 14px 4px 14px;font-family:inherit;font-size:14px;line-height:1.5;resize:none;min-height:40px;max-height:120px;color:#1a1a1a;background:transparent}
 .input-box::placeholder{color:#bbb}
-.input-toolbar{display:flex;align-items:center;justify-content:space-between;padding:4px 8px 8px 8px}
+.input-toolbar{display:flex;align-items:center;justify-content:space-between;padding:4px 8px 6px 8px}
 .input-toolbar-left{display:flex;align-items:center;gap:4px}
 .plus-btn{width:28px;height:28px;border:none;background:none;cursor:pointer;border-radius:6px;display:flex;align-items:center;justify-content:center;color:#bbb;font-size:18px}
 .plus-btn:hover{background:#f5f5f5;color:#888}
@@ -88,17 +129,17 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:-apple-system,Blink
 .send-btn.ready{background:#1a1a1a;color:#fff}
 .send-btn.ready:hover{background:#333}
 .send-btn.disabled{background:#f0f0f0;color:#ccc;cursor:default}
-.send-btn svg{width:16px;height:16px}
+.send-btn span{vertical-align:middle}
 .stop-btn{width:32px;height:32px;border:1px solid #e0e0e0;border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;background:#fff;flex-shrink:0}
 .stop-btn:hover{background:#f5f5f5;border-color:#ccc}
 .stop-btn .stop-icon{width:12px;height:12px;background:#1a1a1a;border-radius:2px}
 
 /* ===== Bottom bar ===== */
-.bottombar{display:flex;align-items:center;padding:6px 16px 10px 16px;gap:4px;flex-shrink:0;border-top:1px solid #f5f5f5;position:relative}
+.bottombar{display:flex;align-items:center;padding:4px 12px 8px 12px;gap:4px;flex-shrink:0;border-top:1px solid #f5f5f5;position:relative}
 .bb-btn{display:flex;align-items:center;gap:4px;font-size:12px;color:#888;cursor:pointer;padding:4px 8px;border:1px solid transparent;border-radius:6px;background:none;white-space:nowrap;position:relative}
 .bb-btn:hover{background:#f5f5f5;border-color:#e8e8e8}
 .bb-btn.active{background:#f5f5f5;border-color:#ddd}
-.bb-btn svg{width:14px;height:14px;flex-shrink:0}
+.bb-btn .icon-model,.bb-btn svg{width:14px;height:14px;flex-shrink:0}
 .bb-btn .chevron{font-size:9px;color:#bbb;margin-left:1px}
 
 /* ===== Dropdown ===== */
@@ -130,95 +171,85 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:-apple-system,Blink
 .sidebar-item .sl-slug{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .sidebar-item .sl-time{font-size:11px;color:#bbb;flex-shrink:0}
 
-
-/* ===== Overlays ===== */
-.overlay{position:absolute;top:0;left:0;right:0;bottom:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#fff;z-index:10;padding:24px;text-align:center;gap:14px}
-.overlay h3{font-size:15px;font-weight:600;color:#1a1a1a}
-.overlay p{color:#999;max-width:260px;line-height:1.6;font-size:13px}
-.overlay button{padding:9px 28px;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:500;background:#1a1a1a;color:#fff}
-.overlay button:hover{background:#333}
-.spinner{width:24px;height:24px;border:2.5px solid #e8e8e8;border-top-color:#1a1a1a;border-radius:50%;animation:spin 0.6s linear infinite}
-@keyframes spin{to{transform:rotate(360deg)}}
 .hidden{display:none!important}
+.spinner{width:20px;height:20px;border:2.5px solid #e8e8e8;border-top-color:#1a1a1a;border-radius:50%;animation:spin 0.6s linear infinite;display:inline-block;vertical-align:middle}
+@keyframes spin{to{transform:rotate(360deg)}}
 </style>
 </head>
 <body>
 <div class="app">
-  <div id="overlay-start" class="overlay hidden">
-    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#1a1a1a" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M9 9h6M9 13h4"/></svg>
-    <h3>OpenCode 未运行</h3>
-    <p style="margin-top:8px">请在终端中执行以下命令启动：</p>
-    <div style="background:#1e1e1e;color:#d4d4d4;padding:10px 14px;border-radius:8px;font-family:Consolas,monospace;font-size:12px;text-align:left;margin:8px 0;width:100%;word-break:break-all">schtasks /Run /TN "OpenCodeServer"</div>
-    <button onclick="tryConnect()">重新连接</button>
-  </div>
-  <div id="overlay-loading" class="overlay hidden">
-    <div class="spinner"></div>
-    <h3>Connecting to OpenCode...</h3>
-    <p>Waiting for the server to be ready</p>
-  </div>
-  <div id="overlay-error" class="overlay hidden">
-    <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#e53935" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-    <h3 id="error-title">Connection Failed</h3>
-    <p id="error-detail">Unable to connect to OpenCode server</p>
-    <button onclick="initApp()">Retry</button>
-    <button onclick="requestStart()" style="background:#fff;color:#1a1a1a;border:1px solid #e0e0e0;margin-top:4px">Start OpenCode</button>
+
+  <!-- ===== Setup View ===== -->
+  <div id="view-setup" class="view-setup">
+    <div class="icon-logo"></div>
+    <h3>OpenCode</h3>
+    <p>Set the working directory and start the server</p>
+    <div class="setup-cwd-row">
+      <input id="setup-cwd" type="text" placeholder="D:\code\my-project" spellcheck="false">
+    </div>
+    <button class="btn-primary" id="btn-start" onclick="startOpenCode()"><span class="icon-play"></span>Start Server</button>
+    <div class="setup-status" id="setup-status"></div>
   </div>
 
-  <div class="topbar">
-    <div class="topbar-logo">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M9 9h6M9 13h4"/></svg>
-      <span>OpenCode</span>
-    </div>
-    <div class="topbar-actions">
-      <button class="topbar-btn" title="New Session" onclick="newSession()">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 2v6h-6M3 12a9 9 0 0 1 15-6.7L21 8M3 22v-6h6M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>
-      </button>
-    </div>
-  </div>
-  <div class="subheader">
-    <button class="hamburger-btn" title="Menu" onclick="openSidebar()">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
-    </button>
-  </div>
-  <div class="session-header" id="session-header-area">
-    <span class="session-title" id="session-title">WPS Office</span>
-    <div class="session-status"><div class="dot idle" id="status-dot"></div></div>
-    <button class="session-menu" title="More" onclick="toggleSessionMenu(event)">...</button>
-  </div>
-  <div class="messages" id="messages"></div>
-  <div class="input-area">
-    <div class="input-wrapper">
-      <textarea class="input-box" id="input-box" placeholder="Ask anything..." rows="1" onkeydown="onInputKey(event)" oninput="autoGrow(this)"></textarea>
-      <div class="input-toolbar">
-        <div class="input-toolbar-left">
-          <button class="plus-btn" title="Attach context" onclick="forceInjectContext()">+</button>
-        </div>
-        <div id="send-area">
-          <button class="send-btn disabled" id="send-btn" onclick="sendMessage()" title="Send">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-          </button>
+  <!-- ===== Chat View ===== -->
+  <div id="view-chat" class="hidden" style="display:flex;flex-direction:column;height:100%">
+    <div class="topbar">
+      <div class="topbar-logo">
+        <div class="icon-logo"></div>
+        <span>OpenCode</span>
+      </div>
+      <div class="topbar-cwd" id="topbar-cwd" title="Working directory"></div>
+      <div class="topbar-actions" style="display:flex;gap:4px;align-items:center">
+        <button class="topbar-btn" title="New Session" onclick="newSession()" style="width:24px;height:24px;border:1px solid #e0e0e0;border-radius:6px;background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0"><span class="icon-plus"></span></button>
+        <div class="topbar-status">
+          <div class="status-dot running" id="server-dot"></div>
+          <span class="status-label running" id="server-label">Running</span>
+          <button class="btn-stop" title="Stop server" onclick="stopOpenCode()"><span class="icon-stop"></span></button>
         </div>
       </div>
     </div>
-  </div>
-  <div class="bottombar" id="bottombar">
-    <button class="bb-btn" id="bb-mode" onclick="toggleModeDropdown(event)">
-      <span id="mode-label">Build</span><span class="chevron">&#9662;</span>
-    </button>
-    <button class="bb-btn" id="bb-model" onclick="toggleModelDropdown(event)">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a4 4 0 0 1 4 4v2H8V6a4 4 0 0 1 4-4zM5 10h14v10a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V10z"/></svg>
-      <span id="model-name">Loading...</span><span class="chevron">&#9662;</span>
-    </button>
-    <button class="bb-btn" id="bb-default" onclick="toggleDefaultDropdown(event)">
-      <span id="default-label">Default</span><span class="chevron">&#9662;</span>
-    </button>
+    <div class="subheader">
+      <button class="hamburger-btn" title="Menu" onclick="openSidebar()">
+        <div class="icon-hamburger"><span></span><span></span><span></span></div>
+      </button>
+    </div>
+    <div class="session-header" id="session-header-area">
+      <span class="session-title" id="session-title">WPS Office</span>
+      <div class="session-status"><div class="dot idle" id="status-dot"></div></div>
+      <button class="session-menu" title="More" onclick="toggleSessionMenu(event)">...</button>
+    </div>
+    <div class="messages" id="messages"></div>
+    <div class="input-area">
+      <div class="input-wrapper">
+        <textarea class="input-box" id="input-box" placeholder="Ask anything..." rows="1" onkeydown="onInputKey(event)" oninput="autoGrow(this)"></textarea>
+        <div class="input-toolbar">
+          <div class="input-toolbar-left">
+            <button class="plus-btn" title="Insert document context into chat" onclick="forceInjectContext()">+</button>
+          </div>
+          <div id="send-area">
+            <button class="send-btn disabled" id="send-btn" onclick="sendMessage()" title="Send">
+              <span class="icon-send"></span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="bottombar" id="bottombar">
+      <button class="bb-btn" id="bb-mode" onclick="toggleModeDropdown(event)">
+        <span id="mode-label">Build</span><span class="chevron">&#9662;</span>
+      </button>
+      <button class="bb-btn" id="bb-model" onclick="toggleModelDropdown(event)">
+        <span class="icon-model"></span>
+        <span id="model-name">AI Model</span><span class="chevron">&#9662;</span>
+      </button>
+    </div>
   </div>
 </div>
 
 <script>
 // ============================================================
 // OpenCode Chat - Custom UI for WPS sidebar (Chrome 104 compatible)
-// Uses REST API + SSE, no iframe dependency
+// Flow: Setup (choose CWD + start) → Chat (with status bar)
 // ============================================================
 
 var API_BASE = 'http://127.0.0.1:14096'
@@ -237,6 +268,8 @@ var LAST_INJECTED_CONTEXT = ''
 var CURRENT_MODEL = ''
 var CURRENT_MODE = 'build'
 var AVAILABLE_MODELS = []
+var SERVER_RUNNING = false
+var HEALTH_CHECK_TIMER = null
 
 var $messages = document.getElementById('messages')
 var $input = document.getElementById('input-box')
@@ -244,16 +277,150 @@ var $sendBtn = document.getElementById('send-btn')
 var $sendArea = document.getElementById('send-area')
 var $sessionTitle = document.getElementById('session-title')
 var $statusDot = document.getElementById('status-dot')
-var $overlayStart = document.getElementById('overlay-start')
-var $overlayLoading = document.getElementById('overlay-loading')
-var $overlayError = document.getElementById('overlay-error')
-var $errorTitle = document.getElementById('error-title')
-var $errorDetail = document.getElementById('error-detail')
 var $modelName = document.getElementById('model-name')
+var $viewSetup = document.getElementById('view-setup')
+var $viewChat = document.getElementById('view-chat')
+var $setupCwd = document.getElementById('setup-cwd')
+var $btnStart = document.getElementById('btn-start')
+var $setupStatus = document.getElementById('setup-status')
+var $topbarCwd = document.getElementById('topbar-cwd')
+var $serverDot = document.getElementById('server-dot')
+var $serverLabel = document.getElementById('server-label')
 
 // --- Storage ---
 function getPS(key) { try { return window.Application.PluginStorage.getItem(key) || '' } catch(e) { return '' } }
 function setPS(key, val) { try { window.Application.PluginStorage.setItem(key, val) } catch(e) {} }
+
+// --- View switching ---
+function showSetup() {
+    $viewSetup.classList.remove('hidden')
+    $viewChat.classList.add('hidden')
+    stopHealthCheck()
+    // 恢复上次 CWD
+    var lastCwd = getPS('opencode_cwd')
+    if (lastCwd) $setupCwd.value = lastCwd
+    $setupStatus.textContent = ''
+    $btnStart.disabled = false
+    $btnStart.textContent = 'Start Server'
+}
+
+function showChat() {
+    $viewSetup.classList.add('hidden')
+    $viewChat.classList.remove('hidden')
+}
+
+// --- Server start / stop ---
+function startOpenCode() {
+    var cwd = $setupCwd.value.replace(/\\/g, '\\\\').trim()
+    if (!cwd) { $setupStatus.textContent = 'Please enter a working directory'; return }
+    // 保存 CWD 到 PluginStorage
+    setPS('opencode_cwd', cwd)
+    PROJECT_DIR = cwd
+    $topbarCwd.textContent = cwd.replace(/\\\\/g, '\\')
+    $topbarCwd.title = cwd.replace(/\\\\/g, '\\')
+
+    // 通过 main.js 命令通道启动 VBS
+    $btnStart.disabled = true
+    $btnStart.innerHTML = '<span class="spinner"></span> Starting...'
+    $setupStatus.textContent = 'Starting OpenCode server...'
+
+    // 发送启动命令给 main.js
+    setPS('opencode_command', 'start:' + cwd.replace(/\\\\/g, '\\'))
+
+    // 先检查 launcher 是否可用
+    var launcherUrl = 'http://127.0.0.1:14097'
+    var launcherOk = false
+    var xhrLauncher = new XMLHttpRequest()
+    xhrLauncher.timeout = 3000
+    xhrLauncher.open('GET', launcherUrl + '/status', true)
+    xhrLauncher.onreadystatechange = function() {
+        if (xhrLauncher.readyState === 4 && xhrLauncher.status === 200) {
+            launcherOk = true
+        }
+    }
+    xhrLauncher.onerror = function() {}
+    xhrLauncher.ontimeout = function() {}
+    try { xhrLauncher.send() } catch(e) {}
+
+    // 轮询等待服务就绪
+    var retries = 0
+    var maxRetries = 30
+    var pollTimer = setInterval(function() {
+        fetchJSON('GET', '/global/health', null, function(data) {
+            if (data && data.healthy) {
+                clearInterval(pollTimer)
+                onServerConnected()
+            }
+        }, function() {
+            retries++
+            if (retries >= maxRetries) {
+                clearInterval(pollTimer)
+                $btnStart.disabled = false
+                $btnStart.textContent = 'Start Server'
+                if (!launcherOk) {
+                    $setupStatus.textContent = 'Launcher not running. Run: node launcher.js (in opencode-wps directory)'
+                } else {
+                    $setupStatus.textContent = 'Failed to start opencode. Check if opencode is installed.'
+                }
+            }
+        })
+    }, 1000)
+}
+
+function stopOpenCode() {
+    // 通过 main.js 命令通道停止
+    setPS('opencode_command', 'stop')
+    SERVER_RUNNING = false
+    CONNECTED = false
+    if (SSE) { SSE.close(); SSE = null }
+    updateServerStatus(false)
+    showSetup()
+}
+
+function onServerConnected() {
+    SERVER_RUNNING = true
+    CONNECTED = true
+    updateServerStatus(true)
+    showChat()
+    fetchAvailableModels(function() { $modelName.textContent = CURRENT_MODEL || 'AI Model' })
+    var sid = getPS('opencode_session_id')
+    if (sid) { SESSION_ID = sid; loadSessionMessages(sid) } else { createNewSession(function() { connectSSE() }); return }
+    connectSSE()
+    startHealthCheck()
+}
+
+function updateServerStatus(running) {
+    $serverDot.className = 'status-dot' + (running ? ' running' : '')
+    $serverLabel.className = 'status-label' + (running ? ' running' : '')
+    $serverLabel.textContent = running ? 'Running' : 'Stopped'
+}
+
+// --- Health check (detect server crash) ---
+function startHealthCheck() {
+    stopHealthCheck()
+    HEALTH_CHECK_TIMER = setInterval(function() {
+        fetchJSON('GET', '/global/health', null, function(data) {
+            var ok = data && data.healthy
+            if (!ok && SERVER_RUNNING) {
+                SERVER_RUNNING = false; CONNECTED = false
+                if (SSE) { SSE.close(); SSE = null }
+                updateServerStatus(false)
+                showSetup()
+                $setupStatus.textContent = 'Server disconnected. Restart to continue.'
+            }
+            if (ok) { SERVER_RUNNING = true; updateServerStatus(true) }
+        }, function() {
+            if (SERVER_RUNNING) {
+                SERVER_RUNNING = false; CONNECTED = false
+                if (SSE) { SSE.close(); SSE = null }
+                updateServerStatus(false)
+                showSetup()
+                $setupStatus.textContent = 'Server disconnected. Restart to continue.'
+            }
+        })
+    }, 10000)
+}
+function stopHealthCheck() { if (HEALTH_CHECK_TIMER) { clearInterval(HEALTH_CHECK_TIMER); HEALTH_CHECK_TIMER = null } }
 
 // --- Dropdowns ---
 function closeAllDropdowns() {
@@ -328,79 +495,55 @@ function fetchAvailableModels(cb) {
     })
 }
 
-// Default dropdown
-function toggleDefaultDropdown(e) {
-    e.stopPropagation()
-    createDropdown(document.getElementById('bb-default'), '<div class="dd-item selected" onclick="closeAllDropdowns()"><span>Default</span><span class="dd-check">&#10003;</span></div>', 'bottom-up')
-}
-
 // Session menu
 function toggleSessionMenu(e) {
     e.stopPropagation()
     createDropdown(document.getElementById('session-header-area'),
-        '<div class="dd-item" onclick="renameSession()">Rename</div><div class="dd-divider"></div><div class="dd-item dd-item-danger" onclick="deleteSession()">Delete</div>', 'top-down')
+        '<div class="dd-item" onclick="renameSession()"><span class="icon-pen"></span><span>Rename</span></div><div class="dd-divider"></div><div class="dd-item dd-item-danger" onclick="deleteSession()"><span class="icon-trash"></span><span>Delete</span></div>', 'top-down')
 }
 function renameSession() {
     closeAllDropdowns()
     if (!SESSION_ID) return
-    // 用自定义输入框替代 prompt()（WPS 内嵌浏览器不支持 prompt）
-    var backdrop = document.createElement('div')
-    backdrop.className = 'dropdown-backdrop'
-    document.body.appendChild(backdrop)
+    var backdrop = document.createElement('div'); backdrop.className = 'dropdown-backdrop'; document.body.appendChild(backdrop)
     var renameBox = document.createElement('div')
     renameBox.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.2);z-index:100;padding:20px;width:260px'
     renameBox.innerHTML = '<div style="font-size:15px;font-weight:600;margin-bottom:12px">Rename Session</div>' +
         '<input id="rename-input" type="text" value="' + escapeHtml($sessionTitle.textContent) + '" style="width:100%;border:1px solid #e5e5e5;border-radius:8px;padding:8px 12px;font-size:14px;outline:none;font-family:inherit" />'
-    var btnRow = document.createElement('div')
-    btnRow.style.cssText = 'display:flex;gap:8px;margin-top:14px;justify-content:flex-end'
-    var cancelBtn = document.createElement('button')
-    cancelBtn.textContent = 'Cancel'
-    cancelBtn.style.cssText = 'padding:6px 16px;border:1px solid #e0e0e0;border-radius:8px;background:#fff;cursor:pointer;font-size:13px'
-    var confirmBtn = document.createElement('button')
-    confirmBtn.textContent = 'Rename'
-    confirmBtn.style.cssText = 'padding:6px 16px;border:none;border-radius:8px;background:#1a1a1a;color:#fff;cursor:pointer;font-size:13px'
-    btnRow.appendChild(cancelBtn)
-    btnRow.appendChild(confirmBtn)
-    renameBox.appendChild(btnRow)
-    document.body.appendChild(renameBox)
-    var input = document.getElementById('rename-input')
-    input.focus()
-    input.select()
+    var btnRow = document.createElement('div'); btnRow.style.cssText = 'display:flex;gap:8px;margin-top:14px;justify-content:flex-end'
+    var cancelBtn = document.createElement('button'); cancelBtn.textContent = 'Cancel'; cancelBtn.style.cssText = 'padding:6px 16px;border:1px solid #e0e0e0;border-radius:8px;background:#fff;cursor:pointer;font-size:13px'
+    var confirmBtn = document.createElement('button'); confirmBtn.textContent = 'Rename'; confirmBtn.style.cssText = 'padding:6px 16px;border:none;border-radius:8px;background:#1a1a1a;color:#fff;cursor:pointer;font-size:13px'
+    btnRow.appendChild(cancelBtn); btnRow.appendChild(confirmBtn); renameBox.appendChild(btnRow); document.body.appendChild(renameBox)
+    var input = document.getElementById('rename-input'); input.focus(); input.select()
     function closeRename() { if (renameBox.parentNode) document.body.removeChild(renameBox); if (backdrop.parentNode) document.body.removeChild(backdrop) }
-    function doRename() {
-        var n = input.value.trim()
-        if (!n) return
-        closeRename()
-        fetchJSON('PATCH', '/session/' + SESSION_ID, { title: n }, function(r) {
-            var d = r && r.data ? r.data : r
-            if (d) $sessionTitle.textContent = d.title || d.slug || n
-        })
-    }
-    backdrop.onclick = closeRename
-    cancelBtn.onclick = closeRename
-    confirmBtn.onclick = doRename
+    function doRename() { var n = input.value.trim(); if (!n) return; closeRename(); fetchJSON('PATCH', '/session/' + SESSION_ID, { title: n }, function(r) { var d = r && r.data ? r.data : r; if (d) $sessionTitle.textContent = d.title || d.slug || n }) }
+    backdrop.onclick = closeRename; cancelBtn.onclick = closeRename; confirmBtn.onclick = doRename
     input.onkeydown = function(e) { if (e.key === 'Enter') doRename(); if (e.key === 'Escape') closeRename() }
 }
 function deleteSession() {
     closeAllDropdowns()
-    if (!SESSION_ID || !confirm('Delete this session?')) return
-    var deletedId = SESSION_ID
-    fetchJSON('DELETE', '/session/' + deletedId, null, function() {
-        // 切换到最近的已有session，没有时才新建
-        fetchJSON('GET', '/session', null, function(sessions) {
-            var list = sessions && sessions.data ? sessions.data : (Array.isArray(sessions) ? sessions : [])
-            var other = null
-            for (var i = 0; i < list.length; i++) { if (list[i].id !== deletedId) { other = list[i]; break } }
-            if (other) {
-                SESSION_ID = other.id; setPS('opencode_session_id', SESSION_ID); LAST_INJECTED_CONTEXT = ''
-                $sessionTitle.textContent = other.title || other.slug || 'WPS Office'
-                $messages.innerHTML = ''; loadSessionMessages(SESSION_ID); if (!SSE) connectSSE()
-            } else {
-                SESSION_ID = ''; setPS('opencode_session_id', ''); $messages.innerHTML = ''
-                createNewSession(function() { if (!SSE) connectSSE() })
-            }
+    if (!SESSION_ID) return
+    var backdrop = document.createElement('div'); backdrop.className = 'dropdown-backdrop'; document.body.appendChild(backdrop)
+    var confirmBox = document.createElement('div')
+    confirmBox.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.2);z-index:100;padding:20px;width:260px'
+    confirmBox.innerHTML = '<div style="font-size:15px;font-weight:600;margin-bottom:12px">Delete Session</div><div style="font-size:14px;color:#666;margin-bottom:16px">Are you sure you want to delete this session?</div>'
+    var btnRow = document.createElement('div'); btnRow.style.cssText = 'display:flex;gap:8px;justify-content:flex-end'
+    var cancelBtn = document.createElement('button'); cancelBtn.textContent = 'Cancel'; cancelBtn.style.cssText = 'padding:6px 16px;border:1px solid #e0e0e0;border-radius:8px;background:#fff;cursor:pointer;font-size:13px'
+    var deleteBtn = document.createElement('button'); deleteBtn.textContent = 'Delete'; deleteBtn.style.cssText = 'padding:6px 16px;border:none;border-radius:8px;background:#e53935;color:#fff;cursor:pointer;font-size:13px'
+    btnRow.appendChild(cancelBtn); btnRow.appendChild(deleteBtn); confirmBox.appendChild(btnRow); document.body.appendChild(confirmBox)
+    function closeConfirm() { if (confirmBox.parentNode) document.body.removeChild(confirmBox); if (backdrop.parentNode) document.body.removeChild(backdrop) }
+    backdrop.onclick = closeConfirm; cancelBtn.onclick = closeConfirm
+    deleteBtn.onclick = function() {
+        closeConfirm(); var deletedId = SESSION_ID
+        fetchJSON('DELETE', '/session/' + deletedId, null, function() {
+            fetchJSON('GET', '/session', null, function(sessions) {
+                var list = sessions && sessions.data ? sessions.data : (Array.isArray(sessions) ? sessions : [])
+                var other = null
+                for (var i = 0; i < list.length; i++) { if (list[i].id !== deletedId) { other = list[i]; break } }
+                if (other) { SESSION_ID = other.id; setPS('opencode_session_id', SESSION_ID); LAST_INJECTED_CONTEXT = ''; $sessionTitle.textContent = other.title || other.slug || 'WPS Office'; $messages.innerHTML = ''; loadSessionMessages(SESSION_ID); if (!SSE) connectSSE() }
+                else { SESSION_ID = ''; setPS('opencode_session_id', ''); $messages.innerHTML = ''; createNewSession(function() { if (!SSE) connectSSE() }) }
+            })
         })
-    })
+    }
 }
 
 // Sidebar
@@ -415,28 +558,14 @@ function openSidebar() {
         var el = document.getElementById('sidebar-list'); if (!el) return
         if (!list.length) { el.innerHTML = '<div style="padding:16px;color:#999;font-size:13px">No sessions</div>'; return }
         var html = ''
-        for (var i = 0; i < list.length; i++) {
-            var s = list[i], active = (s.id === SESSION_ID)
-            var date = s.time ? new Date(s.time.updated || s.time.created) : null
-            var ts = date ? (date.getMonth()+1)+'/'+date.getDate() : ''
-            html += '<div class="sidebar-item' + (active ? ' active' : '') + '" onclick="switchSession(\'' + s.id + '\')"><span class="sl-slug">' + escapeHtml(s.title || s.slug || s.id) + '</span><span class="sl-time">' + ts + '</span></div>'
-        }
+        for (var i = 0; i < list.length; i++) { var s = list[i], active = (s.id === SESSION_ID); var date = s.time ? new Date(s.time.updated || s.time.created) : null; var ts = date ? (date.getMonth()+1)+'/'+date.getDate() : ''; html += '<div class="sidebar-item' + (active ? ' active' : '') + '" onclick="switchSession(\'' + s.id + '\')"><span class="sl-slug">' + escapeHtml(s.title || s.slug || s.id) + '</span><span class="sl-time">' + ts + '</span></div>' }
         el.innerHTML = html
     })
 }
 function closeSidebar() { var els = document.querySelectorAll('.sidebar-backdrop,.sidebar'); for (var i = 0; i < els.length; i++) els[i].parentNode.removeChild(els[i]) }
 function switchSession(id) { closeSidebar(); SESSION_ID = id; setPS('opencode_session_id', id); LAST_INJECTED_CONTEXT = ''; loadSessionMessages(id) }
 
-
-// --- Overlay / Status ---
-function showOverlay(type) {
-    $overlayStart.classList.add('hidden'); $overlayLoading.classList.add('hidden'); $overlayError.classList.add('hidden')
-    if (type === 'start') $overlayStart.classList.remove('hidden')
-    if (type === 'loading') $overlayLoading.classList.remove('hidden')
-    if (type === 'error') $overlayError.classList.remove('hidden')
-}
-function hideOverlays() { $overlayStart.classList.add('hidden'); $overlayLoading.classList.add('hidden'); $overlayError.classList.add('hidden') }
-function showError(t, d) { $errorTitle.textContent = t; $errorDetail.textContent = d; showOverlay('error') }
+// --- Status ---
 function setStatus(s) { IS_BUSY = (s === 'busy'); $statusDot.className = 'dot ' + (IS_BUSY ? 'busy' : 'idle'); updateInputState() }
 
 // --- Fetch ---
@@ -461,8 +590,7 @@ function createNewSession(cb) {
     fetchJSON('POST', '/session', { title: 'WPS Office' }, function(resp) {
         var data = resp && resp.data ? resp.data : resp
         if (data && data.id) { SESSION_ID = data.id; setPS('opencode_session_id', SESSION_ID); $sessionTitle.textContent = data.title || data.slug || 'WPS Office'; $messages.innerHTML = ''; LAST_INJECTED_CONTEXT = ''; if (cb) cb() }
-        else showError('Session Error', 'Failed to create session')
-    }, function(s, t) { showError('Session Error', 'Failed: ' + (t || s)) })
+    }, function(s, t) { addSystemMessage('Session Error: ' + (t || s)) })
 }
 function newSession() { if (IS_BUSY) return; createNewSession(function() { if (!SSE) connectSSE() }) }
 function loadSessionMessages(sid) {
@@ -608,13 +736,12 @@ function updateSendButton() { $sendBtn.className = 'send-btn ' + ($input.value.t
 function updateInputState() {
     $input.disabled = IS_BUSY
     if (IS_BUSY) { $sendArea.innerHTML = '<button class="stop-btn" onclick="abortMessage()" title="Stop"><div class="stop-icon"></div></button>' }
-    else { $sendArea.innerHTML = '<button class="send-btn disabled" id="send-btn" onclick="sendMessage()" title="Send"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg></button>'; $sendBtn = document.getElementById('send-btn'); updateSendButton() }
+    else { $sendArea.innerHTML = '<button class="send-btn disabled" id="send-btn" onclick="sendMessage()" title="Send"><span class="icon-send"></span></button>'; $sendBtn = document.getElementById('send-btn'); updateSendButton() }
 }
 
 // --- Markdown ---
 function renderMarkdown(text) {
     if (!text) return ''
-    // 1. 提取代码块，避免内部被 markdown 规则处理
     var codeBlocks = []
     text = text.replace(/```(\w*)\n([\s\S]*?)```/g, function(m, lang, code) {
         codeBlocks.push('<pre><code>' + escapeHtml(code) + '</code></pre>')
@@ -625,174 +752,77 @@ function renderMarkdown(text) {
         inlineCodes.push('<code>' + escapeHtml(code) + '</code>')
         return '\x00IC' + (inlineCodes.length - 1) + '\x00'
     })
-    // 2. 转义 HTML
     text = escapeHtml(text)
-    // 3. 还原占位符（代码块和行内代码已转义）
     text = text.replace(/\x00CB(\d+)\x00/g, function(m, i) { return codeBlocks[i] })
     text = text.replace(/\x00IC(\d+)\x00/g, function(m, i) { return inlineCodes[i] })
-    // 4. 按行处理
     var lines = text.split('\n')
-    var out = '', inList = false, inPara = false
+    var out = '', inList = false, listType = '', inPara = false, inTable = false
+    function closeList() { if (inList) { out += '</' + listType + '>'; inList = false; listType = '' } }
+    function closePara() { if (inPara) { out += '</p>'; inPara = false } }
+    function closeTable() { if (inTable) { out += '</tbody></table>'; inTable = false } }
     for (var i = 0; i < lines.length; i++) {
         var line = lines[i]
-        // 代码块（已还原为 <pre>）
-        if (line.indexOf('<pre>') === 0 || line.indexOf('</pre>') !== -1) {
-            if (inList) { out += '</ul>'; inList = false }
-            if (inPara) { out += '</p>'; inPara = false }
-            out += line; continue
-        }
-        // 空行
-        if (/^\s*$/.test(line)) {
-            if (inList) { out += '</ul>'; inList = false }
-            if (inPara) { out += '</p>'; inPara = false }
-            continue
-        }
-        // 标题
+        if (line.indexOf('<pre>') === 0 || line.indexOf('</pre>') !== -1) { closeList(); closePara(); closeTable(); out += line; continue }
+        if (/^\s*$/.test(line)) { closeList(); closePara(); closeTable(); continue }
         var hm = line.match(/^(#{1,4})\s+(.+)$/)
-        if (hm) {
-            if (inList) { out += '</ul>'; inList = false }
-            if (inPara) { out += '</p>'; inPara = false }
-            var lv = hm[1].length; out += '<h' + lv + '>' + inlineFmt(hm[2]) + '</h' + lv + '>'; continue
-        }
-        // 水平线
-        if (/^(-{3,}|\*{3,}|_{3,})\s*$/.test(line)) {
-            if (inList) { out += '</ul>'; inList = false }
-            if (inPara) { out += '</p>'; inPara = false }
-            out += '<hr>'; continue
-        }
-        // 引用
-        if (/^&gt;\s?/.test(line)) {
-            if (inList) { out += '</ul>'; inList = false }
-            if (inPara) { out += '</p>'; inPara = false }
-            out += '<blockquote>' + inlineFmt(line.replace(/^&gt;\s?/, '')) + '</blockquote>'; continue
-        }
-        // 无序列表
+        if (hm) { closeList(); closePara(); closeTable(); var lv = hm[1].length; out += '<h' + lv + '>' + inlineFmt(hm[2]) + '</h' + lv + '>'; continue }
+        if (/^(-{3,}|\*{3,}|_{3,})\s*$/.test(line)) { closeList(); closePara(); closeTable(); out += '<hr>'; continue }
+        if (/^&gt;\s?/.test(line)) { closeList(); closePara(); closeTable(); out += '<blockquote>' + inlineFmt(line.replace(/^&gt;\s?/, '')) + '</blockquote>'; continue }
         var ulm = line.match(/^[-*]\s+(.+)$/)
-        if (ulm) {
-            if (inPara) { out += '</p>'; inPara = false }
-            if (!inList) { out += '<ul>'; inList = true }
-            out += '<li>' + inlineFmt(ulm[1]) + '</li>'; continue
-        }
-        // 有序列表
+        if (ulm) { closePara(); closeTable(); if (!inList || listType !== 'ul') { closeList(); out += '<ul>'; inList = true; listType = 'ul' } out += '<li>' + inlineFmt(ulm[1]) + '</li>'; continue }
         var olm = line.match(/^\d+\.\s+(.+)$/)
-        if (olm) {
-            if (inPara) { out += '</p>'; inPara = false }
-            if (!inList) { out += '<ul>'; inList = true }
-            out += '<li>' + inlineFmt(olm[1]) + '</li>'; continue
-        }
-        // 表格行（简单支持）
+        if (olm) { closePara(); closeTable(); if (!inList || listType !== 'ol') { closeList(); out += '<ol>'; inList = true; listType = 'ol' } out += '<li>' + inlineFmt(olm[1]) + '</li>'; continue }
         if (/^\|(.+)\|$/.test(line) && line.split('|').length > 3) {
-            if (inList) { out += '</ul>'; inList = false }
-            if (inPara) { out += '</p>'; inPara = false }
-            // 分隔行跳过
+            closeList(); closePara()
             if (/^\|[\s\-:|]+\|$/.test(line)) continue
+            if (!inTable) { out += '<table style="border-collapse:collapse;margin:8px 0"><tbody>'; inTable = true }
             var cells = line.replace(/^\||\|$/g, '').split('|')
             out += '<tr>' + cells.map(function(c) { return '<td style="border:1px solid #ddd;padding:4px 8px">' + inlineFmt(c.trim()) + '</td>' }).join('') + '</tr>'
             continue
         }
-        // 普通段落
-        if (inList) { out += '</ul>'; inList = false }
-        if (inPara) { out += ' ' + inlineFmt(line) }
-        else { out += '<p>' + inlineFmt(line); inPara = true }
+        closeList(); closeTable()
+        if (inPara) { out += ' ' + inlineFmt(line) } else { out += '<p>' + inlineFmt(line); inPara = true }
     }
-    if (inList) out += '</ul>'
-    if (inPara) out += '</p>'
+    closeList(); closePara(); closeTable()
     return out
 }
+function safeHref(url) { var u = (url || '').replace(/^\s+|\s+$/g, '').toLowerCase(); if (u.indexOf('javascript:') === 0 || u.indexOf('data:') === 0) return '#'; return url }
 function inlineFmt(s) {
     if (!s) return ''
-    // 加粗斜体 ***text***
     s = s.replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>')
-    // 加粗 **text**
     s = s.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-    // 斜体 *text*
     s = s.replace(/\*(.+?)\*/g, '<em>$1</em>')
-    // 删除线 ~~text~~
     s = s.replace(/~~(.+?)~~/g, '<del>$1</del>')
-    // 链接 [text](url)
-    s = s.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>')
-    // 图片 ![alt](url)
-    s = s.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" style="max-width:100%">')
+    s = s.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, function(m, alt, url) { return '<img src="' + safeHref(url) + '" alt="' + escapeHtml(alt) + '" style="max-width:100%">' })
+    s = s.replace(/\[([^\]]+)\]\(([^)]+)\)/g, function(m, text, url) { return '<a href="' + safeHref(url) + '" target="_blank">' + text + '</a>' })
     return s
 }
 function scrollToBottom() { setTimeout(function() { $messages.scrollTop = $messages.scrollHeight }, 50) }
 
-// --- Init ---
-function initApp() {
-    showOverlay('loading')
-    var apiBase = getPS('opencode_api_base'); if (apiBase) API_BASE = apiBase
-    PROJECT_DIR = getPS('opencode_cwd') || 'D:\\code\\office-test'
-    SESSION_ID = getPS('opencode_session_id')
+// ============================================================
+// 启动流程：检查服务是否已在运行 → 是则直接进 chat；否则显示 setup
+// ============================================================
+(function init() {
+    var lastCwd = getPS('opencode_cwd')
+    if (lastCwd) $setupCwd.value = lastCwd.replace(/\\\\/g, '\\')
+
+    // 先检查 opencode 是否已在运行
     fetchJSON('GET', '/global/health', null, function(data) {
         if (data && data.healthy) {
-            CONNECTED = true; hideOverlays(); setStatus('idle')
-            fetchAvailableModels(function() { $modelName.textContent = CURRENT_MODEL || 'AI Model' })
-            if (SESSION_ID) { loadSessionMessages(SESSION_ID) } else { createNewSession(function() { connectSSE() }); return }
-            connectSSE()
+            // 服务已运行，直接进 chat
+            PROJECT_DIR = lastCwd || ''
+            $topbarCwd.textContent = PROJECT_DIR.replace(/\\\\/g, '\\')
+            $topbarCwd.title = PROJECT_DIR.replace(/\\\\/g, '\\')
+            onServerConnected()
         } else {
-            // 服务不健康，可能是刚启动还未就绪，等待重试
-            showOverlay('loading')
-            setTimeout(function() { initApp() }, 2000)
+            // 服务未运行，显示 setup
+            showSetup()
         }
     }, function() {
-        // 连接失败，等待重试而不是直接显示错误
-        if (RETRY_COUNT < MAX_RETRIES) {
-            RETRY_COUNT++
-            showOverlay('loading')
-            setTimeout(function() { initApp() }, 2000)
-        } else {
-            showError('Connection Failed', 'Cannot reach OpenCode at ' + API_BASE + '. Click Start to try again.')
-        }
+        // 连接失败，显示 setup
+        showSetup()
     })
-}
-
-var RETRY_COUNT = 0
-var MAX_RETRIES = 15
-
-// --- Startup ---
-// 不再由 WPS 插件启动 opencode，只负责连接已运行的服务
-var INIT_HANDLED = false
-var initTimer = setInterval(function() {
-    var state = getPS('opencode_state')
-    if (state === 'running') { clearInterval(initTimer); INIT_HANDLED = true; RETRY_COUNT = 0; initApp() }
-    else if (state === 'stopped' || state === '' || state === 'error') {
-        clearInterval(initTimer); INIT_HANDLED = true
-        tryConnect()
-    }
-    else if (state === 'connecting') { /* 等待连接结果 */ }
-}, 300)
-setTimeout(function() {
-    if (!INIT_HANDLED && !CONNECTED) { clearInterval(initTimer); INIT_HANDLED = true; tryConnect() }
-}, 3000)
-
-// 直接尝试连接，连不上就显示操作指引
-function tryConnect() {
-    showOverlay('loading')
-    fetchJSON('GET', '/global/health', null, function(data) {
-        if (data && data.healthy) {
-            CONNECTED = true; hideOverlays(); setStatus('idle')
-            setPS('opencode_state', 'running')
-            fetchAvailableModels(function() { $modelName.textContent = CURRENT_MODEL || 'AI Model' })
-            if (SESSION_ID) { loadSessionMessages(SESSION_ID) } else { createNewSession(function() { connectSSE() }); return }
-            connectSSE()
-        } else {
-            showStartGuide()
-        }
-    }, function() {
-        showStartGuide()
-    })
-}
-
-// 显示启动指引（而非弹安全警告去启动进程）
-function showStartGuide() {
-    var overlay = document.getElementById('overlay-start')
-    overlay.innerHTML = '<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#1a1a1a" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M9 9h6M9 13h4"/></svg>' +
-        '<h3>OpenCode 未运行</h3>' +
-        '<p style="margin-top:8px">请在终端中执行以下命令启动：</p>' +
-        '<div style="background:#1e1e1e;color:#d4d4d4;padding:10px 14px;border-radius:8px;font-family:Consolas,monospace;font-size:12px;text-align:left;margin:8px 0;width:100%;word-break:break-all">schtasks /Run /TN "OpenCodeServer"</div>' +
-        '<button onclick="tryConnect()">重新连接</button>'
-    showOverlay('start')
-}
+})()
 </script>
 </body>
 </html>
