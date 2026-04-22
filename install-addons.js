@@ -308,6 +308,12 @@ const taskName = 'OpenCodeServer';
 // 先删除旧任务
 try { execSync('schtasks /Delete /TN "' + taskName + '" /F', { stdio: 'pipe' }); } catch(e) {}
 
+// 生成 VBS 静默启动器（模式0=完全隐藏窗口，不会闪一下）
+const vbsPath = path.join(rootDir, 'start-opencode-silent.vbs');
+const vbsContent = 'CreateObject("Wscript.Shell").Run "' + opencodeBin + ' serve --port ' + opencodePort + ' --hostname 127.0.0.1 --cors file://", 0, False';
+fs.writeFileSync(vbsPath, vbsContent, 'utf-8');
+console.log('  已生成静默启动器: ' + vbsPath);
+
 // 用 XML 创建计划任务（支持设置工作目录）
 const xmlContent = [
     '<?xml version="1.0" encoding="UTF-16"?>',
@@ -339,8 +345,8 @@ const xmlContent = [
     '  </Settings>',
     '  <Actions Context="Author">',
     '    <Exec>',
-    '      <Command>powershell.exe</Command>',
-    '      <Arguments>-WindowStyle Hidden -Command &quot;&amp; \'' + opencodeBin + '\' serve --port ' + opencodePort + ' --hostname 127.0.0.1 --cors file://&quot;</Arguments>',
+    '      <Command>wscript.exe</Command>',
+    '      <Arguments>"' + vbsPath + '"</Arguments>',
     '      <WorkingDirectory>' + opencodeCwd + '</WorkingDirectory>',
     '    </Exec>',
     '  </Actions>',

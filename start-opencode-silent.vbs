@@ -1,0 +1,1 @@
+CreateObject("Wscript.Shell").Run "C:\Users\Administrator\AppData\Roaming\npm\node_modules\opencode-ai\node_modules\opencode-windows-x64\bin\opencode.exe serve --port 14096 --hostname 127.0.0.1 --cors file://", 0, False
