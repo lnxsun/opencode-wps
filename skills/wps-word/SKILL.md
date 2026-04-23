@@ -47,6 +47,7 @@ description: WPS 文字智能助手，通过自然语言操控 Word 文档，解
 - 「目录」「大纲」→ 文档结构
 - 「替换」「改成」→ 查找替换
 - 「表格」「插入」→ 内容操作
+- 「填写」「模板」「表单」→ 模板填写
 
 ### Step 2: 获取上下文
 
@@ -153,6 +154,25 @@ description: WPS 文字智能助手，通过自然语言操控 Word 文档，解
 3. 询问用户确认后执行
 4. 报告美化结果
 
+### 场景7: 模板填写
+
+**用户说**：「帮我把项目名称填写到模板中」
+
+**处理步骤**：
+1. 调用 `wps_word_get_paragraphs` 获取文档段落结构，识别需要填写的位置
+2. 如需定位特定关键字，调用 `wps_word_find_in_document` 查找
+3. 调用 `wps_word_smart_fill_field` 智能填写模板字段：
+   - keyword: "项目名称"
+   - value: "XX信息化项目"
+   - fillMode: "auto"（自动判断填写模式）
+4. 如模板使用书签，调用 `wps_word_replace_bookmark_content` 替换书签内容
+5. 报告填写结果
+
+**模板填写原则**：
+- 优先使用 `wps_word_smart_fill_field` 而非 `findReplace`
+- smartFillField 会保留关键字和原有格式，仅填写内容
+- findReplace 会删除关键字本身，可能破坏模板结构
+
 ## 文档排版规范
 
 ### 字体规范
@@ -257,6 +277,10 @@ description: WPS 文字智能助手，通过自然语言操控 Word 文档，解
 |--------|------|-----------|
 | `insertText` | 插入文本 | `{text: "内容", position: "end"}` |
 | `findReplace` | 查找替换 | `{findText: "旧", replaceText: "新", replaceAll: true}` |
+| `getDocumentParagraphs` | 获取段落结构 | `{startParagraph: 1, endParagraph: 50}` |
+| `findInDocument` | 查找文本返回位置 | `{findText: "关键字", maxResults: 20}` |
+| `smartFillField` | 智能填写模板 | `{keyword: "项目名称", value: "XX项目", fillMode: "auto"}` |
+| `replaceBookmarkContent` | 替换书签内容 | `{name: "project_name", text: "新内容"}` |
 
 #### 格式设置
 | method | 功能 | params示例 |
