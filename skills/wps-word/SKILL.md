@@ -1,6 +1,6 @@
 ---
 name: wps-word
-description: WPS 文字智能助手，通过自然语言操控 Word 文档，解决排版、格式、内容编辑等痛点问题
+description: "WPS 文字智能助手，通过自然语言操控 Word 文档，解决排版、格式、内容编辑、模板填写等痛点问题。适用于：文档排版、格式设置、目录生成、表格插入、样式管理、模板填写。当用户提及 Word、文档、WPS 文字、排版、目录、样式、填写、模板、表单时使用此 skill。"
 ---
 
 # WPS 文字智能助手
@@ -20,8 +20,10 @@ description: WPS 文字智能助手，通过自然语言操控 Word 文档，解
 
 - **文本插入**：在指定位置插入文本
 - **查找替换**：批量查找和替换内容
+- **模板填写**：智能填写模板字段（下划线/冒号后/标签后/占位符）
 - **表格操作**：插入表格、设置表格样式
 - **图片处理**：插入图片、调整大小和位置
+- **书签操作**：获取书签、替换书签内容
 
 ### 3. 文档结构
 
@@ -168,10 +170,14 @@ description: WPS 文字智能助手，通过自然语言操控 Word 文档，解
 4. 如模板使用书签，调用 `wps_word_replace_bookmark_content` 替换书签内容
 5. 报告填写结果
 
-**模板填写原则**：
-- 优先使用 `wps_word_smart_fill_field` 而非 `findReplace`
-- smartFillField 会保留关键字和原有格式，仅填写内容
-- findReplace 会删除关键字本身，可能破坏模板结构
+**填写模式说明**：
+- `auto`（默认）：自动判断填写模式，推荐优先使用
+- `underline`：关键字后有下划线`___`，替换下划线部分为填写内容
+- `afterColon`：关键字后有`：`或`:`，在冒号后插入
+- `afterLabel`：关键字是标签，直接在关键字后插入
+- `placeholder`：关键字被`{}`/`【】`包裹，替换整个占位符
+
+**重要提示**：模板填写场景必须使用 `smartFillField`，不要使用 `findReplace`。`findReplace` 会删除关键字本身并可能破坏格式（丢失下划线、加粗等）。
 
 ## 文档排版规范
 
@@ -260,6 +266,15 @@ description: WPS 文字智能助手，通过自然语言操控 Word 文档，解
 | `wps_get_active_document` | 获取当前文档信息（名称、路径、段落数、字数） |
 | `wps_insert_text` | 在指定位置插入文本 |
 
+### 模板填写专用工具
+
+| MCP工具 | 功能描述 |
+|---------|---------|
+| `wps_word_get_paragraphs` | 获取文档段落结构（文本、样式、位置） |
+| `wps_word_find_in_document` | 查找文本返回位置信息（不替换） |
+| `wps_word_smart_fill_field` | 智能填写模板字段（自动判断填写模式） |
+| `wps_word_replace_bookmark_content` | 替换书签内容 |
+
 ### 高级工具（通过 wps_execute_method 调用）
 
 使用 `wps_execute_method` 工具，设置 `appType: "wps"`，调用以下方法：
@@ -276,11 +291,13 @@ description: WPS 文字智能助手，通过自然语言操控 Word 文档，解
 | method | 功能 | params示例 |
 |--------|------|-----------|
 | `insertText` | 插入文本 | `{text: "内容", position: "end"}` |
+| `insertText`(bookmark) | 在书签位置插入 | `{text: "内容", position: "bookmark:书签名"}` |
+| `insertText`(paragraph) | 在段落后插入 | `{text: "内容", position: "afterParagraph:3"}` |
 | `findReplace` | 查找替换 | `{findText: "旧", replaceText: "新", replaceAll: true}` |
 | `getDocumentParagraphs` | 获取段落结构 | `{startParagraph: 1, endParagraph: 50}` |
-| `findInDocument` | 查找文本返回位置 | `{findText: "关键字", maxResults: 20}` |
-| `smartFillField` | 智能填写模板 | `{keyword: "项目名称", value: "XX项目", fillMode: "auto"}` |
-| `replaceBookmarkContent` | 替换书签内容 | `{name: "project_name", text: "新内容"}` |
+| `findInDocument` | 查找返回位置 | `{findText: "关键字", maxResults: 20}` |
+| `smartFillField` | 智能填写字段 | `{keyword: "项目名称", value: "XX项目", fillMode: "auto"}` |
+| `replaceBookmarkContent` | 替换书签内容 | `{name: "书签名", text: "新内容"}` |
 
 #### 格式设置
 | method | 功能 | params示例 |
