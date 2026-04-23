@@ -177,6 +177,3 @@ schtasks /Delete /TN "OpenCodeServer" /F
 - [opencode-obsidian](https://github.com/mtymek/opencode-obsidian) — 转到 OpenCode 后本来想借鉴其方式直接调用官方 web 界面，但发现 WPS 内置 Chromium 103 不兼容官方 web 版（需 Chrome 130+）
 - [opencode](https://github.com/anomalyco/opencode) — 最后落脚的地方
 
-## License
-
-本项目基于 Kingsoft Office 原始 wpsjs 工具包开发，遵循其原始许可证。详见 [LICENSE](LICENSE)。
