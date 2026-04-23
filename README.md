@@ -24,7 +24,7 @@ opencode-wps/
 │   ├── ribbon.xml             # 功能区按钮定义
 │   └── manifest.xml           # 加载项清单
 ├── wps-office-mcp/            # WPS Office MCP 服务器
-│   └── src/                   # TypeScript 源码（86 Excel + 25 Word + 85 PPT 工具）
+│   └── src/                   # TypeScript 源码（90 Excel + 29 Word + 85 PPT 工具）
 ├── skills/                    # OpenCode Skills
 │   ├── wps-excel/             # Excel 操作技能
 │   ├── wps-word/              # Word 操作技能
@@ -92,11 +92,12 @@ node install-addons.js
 | 步骤 | 操作 | 说明 |
 |------|------|------|
 | 1 | 安装 WPS 插件 | 复制 opencode-wps 到 `%APPDATA%\kingsoft\wps\jsaddons\`，注册到 publish.xml/jsplugins.xml |
-| 2 | 编译 MCP 服务器 | 在 wps-office-mcp 目录执行 `npm install` + `npm run build` |
-| 3 | 配置 OpenCode MCP | 修改 `~/.config/opencode/opencode.json`，添加 wps-office MCP 服务器 |
-| 4 | 安装 Skills | 复制 4 个技能到 `~/.opencode/skills/` |
-| 5 | 清理废弃配置 | 删除旧的 `.claude/skills/`、`.claude/plugins/` 等目录 |
-| 6 | 注册开机自启 | 创建 Windows 计划任务 `OpenCodeServer`，用户登录时自动启动 `opencode serve`，并立即启动一次 |
+| 2 | 安装 MCP 依赖 | 在 wps-office-mcp 目录执行 `npm install` |
+| 3 | 编译 MCP 服务器 | 在 wps-office-mcp 目录执行 `npm run build` |
+| 4 | 配置 OpenCode MCP | 修改 `~/.config/opencode/opencode.json`，添加 wps-office MCP 服务器 |
+| 5 | 安装 Skills | 复制 4 个技能到 `~/.opencode/skills/` |
+| 6 | 清理废弃配置 | 删除旧的 `.claude/skills/`、`.claude/plugins/` 等目录 |
+| 7 | 注册开机自启 | 创建 Windows 计划任务 `OpenCodeServer`，用户登录时自动启动 `opencode serve`，并立即启动一次 |
 
 ### 4. 重启 WPS Office
 
@@ -155,8 +156,8 @@ schtasks /Delete /TN "OpenCodeServer" /F
                                 │ MCP
                     ┌───────────▼───────────┐
                     │  wps-office-mcp       │
-                    │  86 Excel 工具         │
-                    │  25 Word 工具          │
+                    │  90 Excel 工具         │
+                    │  29 Word 工具          │
                     │  85 PPT 工具           │
                     └───────────────────────┘
 ```
