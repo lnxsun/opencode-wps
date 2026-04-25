@@ -16,7 +16,7 @@ import { contentTools } from './content';
  * 所有Word相关的Tools
  * 包含：
  * - 格式化Tools: apply_style, set_font, generate_toc
- * - 内容Tools: insert_text, find_replace
+ * - 内容Tools: insert_text, find_replace, get_paragraphs, find_in_document, smart_fill_field, replace_bookmark_content
  */
 export const wordTools: RegisteredTool[] = [
   ...formatTools,
@@ -42,6 +42,14 @@ export {
   insertTextHandler,
   findReplaceDefinition,
   findReplaceHandler,
+  getParagraphsDefinition,
+  getParagraphsHandler,
+  findInDocumentDefinition,
+  findInDocumentHandler,
+  smartFillFieldDefinition,
+  smartFillFieldHandler,
+  replaceBookmarkContentDefinition,
+  replaceBookmarkContentHandler,
 } from './content';
 
 export default wordTools;
