@@ -53,6 +53,8 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:-apple-system,Blink
 .topbar-logo .icon-logo{width:18px;height:18px}
 .topbar-logo span{font-weight:700;font-size:14px;letter-spacing:-0.3px}
 .topbar-cwd{flex:1;font-size:11px;color:#888;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:Consolas,monospace}
+.topbar-cwd.clickable{cursor:pointer;padding:2px 6px;border-radius:4px}
+.topbar-cwd.clickable:hover{background:#f0f0f0;color:#333}
 .topbar-status{display:flex;align-items:center;gap:4px;flex-shrink:0}
 .status-dot{width:8px;height:8px;border-radius:50%;background:#ccc;flex-shrink:0}
 .status-dot.running{background:#4caf50}
@@ -141,6 +143,7 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:-apple-system,Blink
 .bb-btn.active{background:#f5f5f5;border-color:#ddd}
 .bb-btn .icon-model,.bb-btn svg{width:14px;height:14px;flex-shrink:0}
 .bb-btn .chevron{font-size:9px;color:#bbb;margin-left:1px}
+#bb-level{min-width:80px}
 
 /* ===== Dropdown ===== */
 .dropdown-backdrop{position:fixed;top:0;left:0;right:0;bottom:0;z-index:50}
@@ -153,6 +156,7 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:-apple-system,Blink
 .dd-item:hover{background:#f5f5f5}
 .dd-item.selected{font-weight:500}
 .dd-item .dd-check{color:#1a1a1a;font-size:14px;flex-shrink:0}
+.dd-item .dd-desc{display:block;font-size:11px;color:#888;font-weight:normal;margin-top:2px}
 .dd-item .dd-badge{font-size:10px;padding:1px 6px;border-radius:4px;background:#f0f0f0;color:#888;flex-shrink:0}
 .dd-item .dd-badge.free{background:#e8f5e9;color:#2e7d32}
 .dd-item-danger{color:#e53935}
@@ -185,7 +189,7 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:-apple-system,Blink
     <h3>OpenCode</h3>
     <p>Set the working directory and start the server</p>
     <div class="setup-cwd-row">
-      <input id="setup-cwd" type="text" placeholder="D:\code\my-project" spellcheck="false">
+      <input id="setup-cwd" type="text" placeholder="留空自动使用用户目录，或手动输入路径" spellcheck="false">
     </div>
     <button class="btn-primary" id="btn-start" onclick="startOpenCode()"><span class="icon-play"></span>Start Server</button>
     <div class="setup-status" id="setup-status"></div>
@@ -194,11 +198,14 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:-apple-system,Blink
   <!-- ===== Chat View ===== -->
   <div id="view-chat" class="hidden" style="display:flex;flex-direction:column;height:100%">
     <div class="topbar">
+      <button class="hamburger-btn" title="Menu" onclick="openSidebar()">
+        <div class="icon-hamburger"><span></span><span></span><span></span></div>
+      </button>
       <div class="topbar-logo">
         <div class="icon-logo"></div>
         <span>OpenCode</span>
       </div>
-      <div class="topbar-cwd" id="topbar-cwd" title="Working directory"></div>
+      <div class="topbar-cwd clickable" id="topbar-cwd" title="点击切换工作目录" onclick="openCwdModal()"></div>
       <div class="topbar-actions" style="display:flex;gap:4px;align-items:center">
         <button class="topbar-btn" title="New Session" onclick="newSession()" style="width:24px;height:24px;border:1px solid #e0e0e0;border-radius:6px;background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0"><span class="icon-plus"></span></button>
         <div class="topbar-status">
@@ -207,11 +214,6 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:-apple-system,Blink
           <button class="btn-stop" title="Stop server" onclick="stopOpenCode()"><span class="icon-stop"></span></button>
         </div>
       </div>
-    </div>
-    <div class="subheader">
-      <button class="hamburger-btn" title="Menu" onclick="openSidebar()">
-        <div class="icon-hamburger"><span></span><span></span><span></span></div>
-      </button>
     </div>
     <div class="session-header" id="session-header-area">
       <span class="session-title" id="session-title">WPS Office</span>
@@ -238,13 +240,58 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:-apple-system,Blink
       <button class="bb-btn" id="bb-mode" onclick="toggleModeDropdown(event)">
         <span id="mode-label">Build</span><span class="chevron">&#9662;</span>
       </button>
+      <button class="bb-btn" id="bb-provider" onclick="toggleProviderDropdown(event)">
+        <span id="provider-name">OpenCode</span><span class="chevron">&#9662;</span>
+      </button>
       <button class="bb-btn" id="bb-model" onclick="toggleModelDropdown(event)">
         <span class="icon-model"></span>
         <span id="model-name">AI Model</span><span class="chevron">&#9662;</span>
       </button>
+      <button class="bb-btn" id="bb-level" onclick="toggleLevelDropdown(event)">
+        <span id="level-label"> balanced</span><span class="chevron">&#9662;</span>
+      </button>
     </div>
   </div>
 </div>
+
+<!-- ===== CWD Modal ===== -->
+<div id="cwd-modal" class="modal hidden">
+  <div class="modal-content">
+    <div class="modal-header">
+      <span>切换工作目录</span>
+      <button class="modal-close" onclick="closeCwdModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <p class="cwd-tip">当前目录: <span id="modal-cwd-current"></span></p>
+      <input type="text" id="cwd-input" class="cwd-input" placeholder="输入新的工作目录" spellcheck="false">
+      <div id="cwd-history" style="margin-top:8px;max-height:120px;overflow-y:auto"></div>
+      <p class="cwd-hint">提示: 切换目录将重启服务</p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeCwdModal()">取消</button>
+      <button class="btn-primary" onclick="confirmCwdChange()">确定</button>
+    </div>
+  </div>
+</div>
+
+<style>
+.modal{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:1000}
+.modal-content{background:#fff;border-radius:12px;width:90%;max-width:400px;box-shadow:0 4px 20px rgba(0,0,0,0.15)}
+.modal-header{display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid #eee;font-weight:600}
+.modal-close{background:none;border:none;font-size:24px;cursor:pointer;color:#999;padding:0;line-height:1}
+.modal-close:hover{color:#333}
+.modal-body{padding:20px}
+.cwd-tip{font-size:13px;color:#666;margin-bottom:12px}
+.cwd-input{width:100%;border:1px solid #ddd;border-radius:8px;padding:10px 12px;font-size:13px;font-family:Consolas,monospace;box-sizing:border-box}
+.cwd-input:focus{border-color:#999;outline:none}
+.cwd-hint{font-size:11px;color:#999;margin-top:8px}
+.cwd-history-item{padding:8px 12px;border-radius:6px;font-size:12px;font-family:Consolas,monospace;cursor:pointer;margin-bottom:4px;background:#f5f5f5}
+.cwd-history-item:hover{background:#e8e8e8}
+.cwd-history-item.active{background:#e3f2fd;border:1px solid #2196f3}
+.modal-footer{display:flex;justify-content:flex-end;gap:8px;padding:16px 20px;border-top:1px solid #eee}
+.btn-cancel{padding:8px 16px;border:1px solid #ddd;border-radius:6px;background:#fff;cursor:pointer;font-size:13px}
+.btn-cancel:hover{background:#f5f5f5}
+</style>
 
 <script>
 // ============================================================
@@ -267,9 +314,12 @@ var CONNECTED = false
 var LAST_INJECTED_CONTEXT = ''
 var CURRENT_MODEL = ''
 var CURRENT_MODE = 'build'
+var CURRENT_LEVEL = 'balanced'
 var AVAILABLE_MODELS = []
 var SERVER_RUNNING = false
 var HEALTH_CHECK_TIMER = null
+var INPUT_HISTORY = []
+var INPUT_HISTORY_INDEX = -1
 
 var $messages = document.getElementById('messages')
 var $input = document.getElementById('input-box')
@@ -286,6 +336,8 @@ var $setupStatus = document.getElementById('setup-status')
 var $topbarCwd = document.getElementById('topbar-cwd')
 var $serverDot = document.getElementById('server-dot')
 var $serverLabel = document.getElementById('server-label')
+var $providerName = document.getElementById('provider-name')
+var CURRENT_PROVIDER = 'opencode'
 
 // --- Storage ---
 function getPS(key) { try { return window.Application.PluginStorage.getItem(key) || '' } catch(e) { return '' } }
@@ -309,38 +361,89 @@ function showChat() {
     $viewChat.classList.remove('hidden')
 }
 
-// --- Server start / stop ---
-function startOpenCode() {
-    var cwd = $setupCwd.value.replace(/\\/g, '\\\\').trim()
-    if (!cwd) { $setupStatus.textContent = 'Please enter a working directory'; return }
-    // 保存 CWD 到 PluginStorage
-    setPS('opencode_cwd', cwd)
-    PROJECT_DIR = cwd
-    $topbarCwd.textContent = cwd.replace(/\\\\/g, '\\')
-    $topbarCwd.title = cwd.replace(/\\\\/g, '\\')
+// --- CWD Modal ---
+function openCwdModal() {
+    if (SERVER_RUNNING) {
+        stopOpenCode()
+    }
+    var modal = document.getElementById('cwd-modal')
+    var currentCwd = document.getElementById('modal-cwd-current')
+    var cwdInput = document.getElementById('cwd-input')
+    currentCwd.textContent = PROJECT_DIR || '未设置'
+    cwdInput.value = PROJECT_DIR || ''
+    renderCwdHistory()
+    modal.classList.remove('hidden')
+    setTimeout(function() { cwdInput.focus(); cwdInput.select() }, 100)
+}
 
-    // 通过 main.js 命令通道启动 VBS
+var CWD_HISTORY = []
+function getCwdHistory() {
+    try {
+        var s = localStorage.getItem('opencode_cwd_history')
+        if (s) CWD_HISTORY = JSON.parse(s)
+    } catch(e) {}
+    return CWD_HISTORY
+}
+function addCwdHistory(cwd) {
+    if (!cwd) return
+    getCwdHistory()
+    var arr = CWD_HISTORY.filter(function(x) { return x !== cwd })
+    arr.unshift(cwd)
+    if (arr.length > 10) arr = arr.slice(0, 10)
+    CWD_HISTORY = arr
+    try { localStorage.setItem('opencode_cwd_history', JSON.stringify(arr)) } catch(e) {}
+}
+function renderCwdHistory() {
+    var container = document.getElementById('cwd-history')
+    if (!container) return
+    getCwdHistory()
+    if (CWD_HISTORY.length === 0) {
+        container.innerHTML = '<div style="color:#999;font-size:12px">暂无历史记录</div>'
+        return
+    }
+    var html = ''
+    for (var i = 0; i < CWD_HISTORY.length; i++) {
+        var c = CWD_HISTORY[i]
+        var sel = (c === PROJECT_DIR)
+        html += '<div class="cwd-history-item' + (sel ? ' active' : '') + '" onclick="selectCwdHistory(\'' + c.replace(/\\/g, '\\\\') + '\')">' + c + '</div>'
+    }
+    container.innerHTML = html
+}
+function selectCwdHistory(cwd) {
+    document.getElementById('cwd-input').value = cwd
+}
+
+function closeCwdModal() {
+    document.getElementById('cwd-modal').classList.add('hidden')
+}
+
+function confirmCwdChange() {
+    var newCwd = document.getElementById('cwd-input').value.replace(/\\/g, '\\\\').trim()
+    if (!newCwd) { alert('请输入工作目录'); return }
+    
+    // 保存到历史
+    addCwdHistory(newCwd)
+    
+    closeCwdModal()
+
+    // 如果当前有运行的服务器，先停止
+    if (SERVER_RUNNING) {
+        stopOpenCode()
+    }
+
+    // 设置新的 CWD 并启动
+    PROJECT_DIR = newCwd
+    setPS('opencode_cwd', newCwd)
+    setPS('opencode_start_cwd', newCwd)
+    $topbarCwd.textContent = newCwd.replace(/\\\\/g, '\\')
+    $topbarCwd.title = newCwd.replace(/\\\\/g, '\\')
+    $setupCwd.value = newCwd.replace(/\\\\/g, '\\')
+
+    // 直接启动服务
     $btnStart.disabled = true
     $btnStart.innerHTML = '<span class="spinner"></span> Starting...'
     $setupStatus.textContent = 'Starting OpenCode server...'
-
-    // 发送启动命令给 main.js
-    setPS('opencode_command', 'start:' + cwd.replace(/\\\\/g, '\\'))
-
-    // 先检查 launcher 是否可用
-    var launcherUrl = 'http://127.0.0.1:14097'
-    var launcherOk = false
-    var xhrLauncher = new XMLHttpRequest()
-    xhrLauncher.timeout = 3000
-    xhrLauncher.open('GET', launcherUrl + '/status', true)
-    xhrLauncher.onreadystatechange = function() {
-        if (xhrLauncher.readyState === 4 && xhrLauncher.status === 200) {
-            launcherOk = true
-        }
-    }
-    xhrLauncher.onerror = function() {}
-    xhrLauncher.ontimeout = function() {}
-    try { xhrLauncher.send() } catch(e) {}
+    setPS('opencode_command', 'start:' + newCwd.replace(/\\\\/g, '\\'))
 
     // 轮询等待服务就绪
     var retries = 0
@@ -356,12 +459,63 @@ function startOpenCode() {
             if (retries >= maxRetries) {
                 clearInterval(pollTimer)
                 $btnStart.disabled = false
-                $btnStart.textContent = 'Start Server'
-                if (!launcherOk) {
-                    $setupStatus.textContent = 'Launcher not running. Run: node launcher.js (in opencode-wps directory)'
-                } else {
-                    $setupStatus.textContent = 'Failed to start opencode. Check if opencode is installed.'
-                }
+                $btnStart.innerHTML = '<span class="icon-play"></span>Start Server'
+                $setupStatus.textContent = 'Failed to start. Check if opencode is installed.'
+            }
+        })
+    }, 1000)
+}
+
+// --- Server start / stop ---
+function startOpenCode() {
+    // 如果用户输入了目录就用用户输入的，否则用用户目录
+    var userInput = $setupCwd.value.replace(/\\/g, '\\\\').trim()
+    var cwd = userInput || 'C:\\Users\\' + 'Administrator'
+
+    // 保存 CWD 到历史
+    addCwdHistory(cwd)
+
+    // 保存 CWD 到 PluginStorage
+    setPS('opencode_cwd', cwd)
+    setPS('opencode_start_cwd', cwd)
+    PROJECT_DIR = cwd
+    $topbarCwd.textContent = cwd.replace(/\\\\/g, '\\')
+    $topbarCwd.title = cwd.replace(/\\\\/g, '\\')
+
+    $btnStart.disabled = true
+    $btnStart.innerHTML = '<span class="spinner"></span> Starting...'
+    $setupStatus.textContent = 'Starting OpenCode server...'
+
+    setPS('opencode_command', 'start:' + cwd.replace(/\\\\/g, '\\'))
+
+    var launcherUrl = 'http://127.0.0.1:14097'
+    var launcherOk = false
+    var xhrLauncher = new XMLHttpRequest()
+    xhrLauncher.timeout = 3000
+    xhrLauncher.open('GET', launcherUrl + '/status', true)
+    xhrLauncher.onreadystatechange = function() {
+        if (xhrLauncher.readyState === 4 && xhrLauncher.status === 200) launcherOk = true
+    }
+    xhrLauncher.onerror = function() {}
+    xhrLauncher.ontimeout = function() {}
+    try { xhrLauncher.send() } catch(e) {}
+
+    var retries = 0
+    var maxRetries = 30
+    var pollTimer = setInterval(function() {
+        fetchJSON('GET', '/global/health', null, function(data) {
+            if (data && data.healthy) {
+                clearInterval(pollTimer)
+                onServerConnected()
+            }
+        }, function() {
+            retries++
+            if (retries >= maxRetries) {
+                clearInterval(pollTimer)
+                $btnStart.disabled = false
+                $btnStart.innerHTML = '<span class="icon-play"></span>Start Server'
+                if (!launcherOk) $setupStatus.textContent = 'Launcher not running'
+                else $setupStatus.textContent = 'Failed to start. Check if opencode is installed.'
             }
         })
     }, 1000)
@@ -455,7 +609,69 @@ function toggleModeDropdown(e) {
 }
 function selectMode(mode) { CURRENT_MODE = mode; document.getElementById('mode-label').textContent = mode === 'build' ? 'Build' : 'Plan'; closeAllDropdowns() }
 
+// Provider dropdown
+function toggleProviderDropdown(e) {
+    e.stopPropagation()
+    var btn = document.getElementById('bb-provider')
+    var html = '<div class="dd-header">Select Provider</div>'
+    for (var i = 0; i < RECOMMENDED_PROVIDERS.length; i++) {
+        var p = RECOMMENDED_PROVIDERS[i]
+        var sel = (p.id === CURRENT_PROVIDER)
+        html += '<div class="dd-item' + (sel ? ' selected' : '') + '" onclick="selectProvider(\'' + p.id + '\')">'
+        html += '<span>' + p.name + '</span>'
+        if (sel) html += '<span class="dd-check">&#10003;</span>'
+        html += '</div>'
+    }
+    createDropdown(btn, html, 'bottom-up')
+}
+function selectProvider(id) {
+    CURRENT_PROVIDER = id
+    var p = RECOMMENDED_PROVIDERS.find(function(x) { return x.id === id })
+    $providerName.textContent = p ? p.name : id
+    closeAllDropdowns()
+    updateModelsForProvider()
+}
+function updateModelsForProvider() {
+    var p = RECOMMENDED_PROVIDERS.find(function(x) { return x.id === CURRENT_PROVIDER })
+    if (p && p.models) {
+        AVAILABLE_MODELS = p.models.slice()
+        if (AVAILABLE_MODELS.length > 0) {
+            CURRENT_MODEL = AVAILABLE_MODELS[0].id
+            $modelName.textContent = AVAILABLE_MODELS[0].name
+        }
+    }
+}
+
 // Model dropdown
+var AVAILABLE_LEVELS = ['balanced', 'high', 'low']
+
+function toggleLevelDropdown(e) {
+    e.stopPropagation()
+    var btn = document.getElementById('bb-level')
+    var html = '<div class="dd-header">Select Reasoning Level</div>'
+    var levels = [
+        { id: 'balanced', name: 'Balanced', desc: 'Good reasoning, good speed' },
+        { id: 'high', name: 'High', desc: 'Best reasoning, may be slower' },
+        { id: 'low', name: 'Low', desc: 'Faster response, less reasoning' }
+    ]
+    for (var i = 0; i < levels.length; i++) {
+        var l = levels[i]
+        var sel = (CURRENT_LEVEL === l.id)
+        html += '<div class="dd-item' + (sel ? ' selected' : '') + '" onclick="selectLevel(\'' + l.id + '\')">'
+        html += '<span>' + l.name + '</span><span class="dd-desc">' + l.desc + '</span>'
+        if (sel) html += '<span class="dd-check">&#10003;</span>'
+        html += '</div>'
+    }
+    createDropdown(btn, html, 'bottom-up')
+}
+
+function selectLevel(id) {
+    CURRENT_LEVEL = id
+    var labels = { balanced: ' balanced', high: ' high', low: ' low' }
+    document.getElementById('level-label').textContent = labels[id] || ' balanced'
+    closeAllDropdowns()
+}
+
 function toggleModelDropdown(e) {
     e.stopPropagation()
     var btn = document.getElementById('bb-model')
@@ -477,9 +693,40 @@ function toggleModelDropdown(e) {
     createDropdown(btn, html, 'bottom-up')
 }
 function selectModel(id) { CURRENT_MODEL = id; $modelName.textContent = id; closeAllDropdowns() }
+var RECOMMENDED_MODELS = [
+    { id: 'opencode/gpt-5-nano', name: 'GPT-5 Nano', providerID: 'opencode', free: true },
+    { id: 'opencode/minimax-m2.5-free', name: 'MiniMax M2.5 Free', providerID: 'opencode', free: true },
+    { id: 'opencode/big-pickle', name: 'Big Pickle', providerID: 'opencode', free: true },
+    { id: 'opencode/ling-2.6-flash-free', name: 'Ling 2.6 Flash Free', providerID: 'opencode', free: true },
+    { id: 'opencode/hy3-preview-free', name: 'Hy3 preview Free', providerID: 'opencode', free: true },
+    { id: 'opencode/nemotron-3-super-free', name: 'Nemotron 3 Super Free', providerID: 'opencode', free: true },
+    { id: 'opencode/gpt-5.1-codex', name: 'GPT-5.1 Codex (Zen)', providerID: 'opencode', free: false },
+    { id: 'opencode/gpt-5-codex', name: 'GPT-5 Codex (Go)', providerID: 'opencode', free: false }
+]
+var RECOMMENDED_PROVIDERS = [
+    { id: 'opencode', name: 'OpenCode', models: RECOMMENDED_MODELS },
+    { id: 'anthropic', name: 'Anthropic', models: [
+        { id: 'anthropic/claude-opus-4-1', name: 'Claude Opus 4.1' },
+        { id: 'anthropic/claude-sonnet-4-20250514', name: 'Claude Sonnet 4' },
+        { id: 'anthropic/claude-3-5-sonnet-20241022', name: 'Claude 3.5 Sonnet' }
+    ]},
+    { id: 'openai', name: 'OpenAI', models: [
+        { id: 'openai/gpt-4.1', name: 'GPT-4.1' },
+        { id: 'openai/gpt-4.1-mini', name: 'GPT-4.1 Mini' },
+        { id: 'openai/o3', name: 'GPT-4o' }
+    ]},
+    { id: 'github', name: 'GitHub Copilot', models: [
+        { id: 'github/copilot-speech', name: 'Copilot Speech' }
+    ]}
+]
 function fetchAvailableModels(cb) {
     fetchJSON('GET', '/global/config', null, function(cfg) {
-        AVAILABLE_MODELS = []
+        AVAILABLE_MODELS = RECOMMENDED_MODELS.slice()
+        var allProviders = {}
+        for (var i = 0; i < RECOMMENDED_MODELS.length; i++) {
+            var m = RECOMMENDED_MODELS[i]
+            if (!allProviders[m.providerID]) allProviders[m.providerID] = true
+        }
         if (!cfg) { if (cb) cb(); return }
         var providers = cfg.provider || {}
         for (var pid in providers) {
@@ -487,6 +734,7 @@ function fetchAvailableModels(cb) {
             if (p && p.models) {
                 for (var mid in p.models) {
                     AVAILABLE_MODELS.push({ id: mid, name: p.models[mid].name || mid, providerID: pid, free: false })
+                    allProviders[pid] = true
                 }
             }
         }
@@ -696,9 +944,14 @@ function addSystemMessage(text) { var el = document.createElement('div'); el.cla
 // --- Send ---
 function sendMessage() {
     var text = $input.value.trim(); if (!text || IS_BUSY || !SESSION_ID) return
-    addUserMessage(text); $input.value = ''; autoGrow($input); setStatus('busy')
+    addUserMessage(text)
+    if (INPUT_HISTORY.indexOf(text) === -1) INPUT_HISTORY.push(text)
+    INPUT_HISTORY_INDEX = -1
+    $input.value = ''; autoGrow($input); setStatus('busy')
     injectContext(function() {
-        postMessage('/session/' + SESSION_ID + '/message', { parts: [{ type: 'text', text: text }] }, function(s, t) { addSystemMessage('Error: ' + (t || 'status ' + s)); finalizeStreaming() })
+        var body = { parts: [{ type: 'text', text: text }] }
+        if (CURRENT_LEVEL && CURRENT_LEVEL !== 'balanced') body.level = CURRENT_LEVEL
+        postMessage('/session/' + SESSION_ID + '/message', body, function(s, t) { addSystemMessage('Error: ' + (t || 'status ' + s)); finalizeStreaming() })
     })
 }
 function injectContext(cb) {
@@ -730,7 +983,33 @@ function gatherWpsContext() {
 function abortMessage() { if (!SESSION_ID) return; fetchJSON('POST', '/session/' + SESSION_ID + '/abort', null, function() { addSystemMessage('Aborted'); finalizeStreaming() }) }
 
 // --- Input ---
-function onInputKey(e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage() }; setTimeout(updateSendButton, 0) }
+function onInputKey(e) {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage() }
+    else if (e.key === 'ArrowUp') {
+        e.preventDefault()
+        if (INPUT_HISTORY.length > 0) {
+            if (INPUT_HISTORY_INDEX < INPUT_HISTORY.length - 1) INPUT_HISTORY_INDEX++
+            if (INPUT_HISTORY_INDEX >= 0) {
+                $input.value = INPUT_HISTORY[INPUT_HISTORY.length - 1 - INPUT_HISTORY_INDEX]
+                autoGrow($input)
+            }
+        }
+    }
+    else if (e.key === 'ArrowDown') {
+        e.preventDefault()
+        if (INPUT_HISTORY_INDEX > 0) {
+            INPUT_HISTORY_INDEX--
+            $input.value = INPUT_HISTORY[INPUT_HISTORY.length - 1 - INPUT_HISTORY_INDEX]
+            autoGrow($input)
+        }
+        else if (INPUT_HISTORY_INDEX === 0) {
+            INPUT_HISTORY_INDEX = -1
+            $input.value = ''
+            autoGrow($input)
+        }
+    }
+    setTimeout(updateSendButton, 0)
+}
 function autoGrow(el) { el.style.height = 'auto'; el.style.height = Math.min(el.scrollHeight, 120) + 'px'; updateSendButton() }
 function updateSendButton() { $sendBtn.className = 'send-btn ' + ($input.value.trim().length > 0 && !IS_BUSY ? 'ready' : 'disabled') }
 function updateInputState() {

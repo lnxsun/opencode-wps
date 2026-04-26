@@ -145,16 +145,26 @@ function checkStatus() {
 }
 
 function dockOpenCodeWindow() {
+    var cwd = ''
+    var sessionId = ''
+    try { cwd = window.Application.PluginStorage.getItem('opencode_cwd') || '' } catch(e) {}
+    try { sessionId = window.Application.PluginStorage.getItem('opencode_session_id') || '' } catch(e) {}
+    if (!cwd) {
+        try { cwd = window.Application.PluginStorage.getItem('opencode_start_cwd') || '' } catch(e) {}
+    }
+    console.log('[OpenCode] dockOpenCodeWindow cwd: ' + cwd + ' session: ' + sessionId)
+
+    var normalized = cwd.replace(/\\\\/g, '\\')
     var xhr = new XMLHttpRequest()
     xhr.open('POST', LAUNCHER_API + '/dock', true)
     xhr.setRequestHeader('Content-Type', 'application/json')
     xhr.onreadystatechange = function() {
         if (xhr.readyState === 4) {
-            if (xhr.status === 200) console.log('[OpenCode] Web opened')
+            console.log('[OpenCode] Dock response: ' + xhr.status + ' ' + xhr.responseText)
         }
     }
     xhr.onerror = function() { console.log('[OpenCode] Dock error') }
-    xhr.send()
+    xhr.send(JSON.stringify({ cwd: normalized, session: sessionId }))
 }
 
 setInterval(function () {

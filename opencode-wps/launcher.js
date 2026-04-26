@@ -105,11 +105,29 @@ function findOpenCodeBin() {
     return 'opencode.exe';
 }
 
-function dockWindow(callback) {
+function dockWindow(callback, data) {
+    var cwd = data && data.cwd ? data.cwd : ''
+    var sessionId = data && data.session ? data.session : ''
+    
+    // 如果没有传cwd，使用launcher中存储的cwd
+    if (!cwd && opencodeCwd) {
+        cwd = opencodeCwd
+    }
+    
+    console.log('[launcher] dockWindow final cwd: ' + cwd + ' session: ' + sessionId)
+
     var scriptPath = path.join(__dirname, 'dock.ps1');
+    var edgeUrl = 'http://127.0.0.1:14096'
+
+    // 直接使用传入的 cwd，不做任何转换
+    if (cwd && cwd.length > 0) {
+        edgeUrl += '?cwd=' + encodeURIComponent(cwd)
+    }
+
+    console.log('[launcher] Final URL: ' + edgeUrl)
     var script = [
-        '# 通用方式: --app 模式',
-        ' & "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe" --app=http://127.0.0.1:14096'
+        '# Open OpenCode Web',
+        ' & "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe" --app=' + edgeUrl
     ].join('\n');
     fs.writeFileSync(scriptPath, script, 'utf8');
     exec('powershell -ExecutionPolicy Bypass -WindowStyle Hidden -File "' + scriptPath + '"', { timeout: 5000 }, function(err, stdout, stderr) {
@@ -150,8 +168,11 @@ var server = http.createServer(function(req, res) {
     }
 
     if (req.method === 'POST' && url === '/dock') {
-        dockWindow(function(result) {
-            sendJSON(res, result.success ? 200 : 400, result);
+        parseBody(req, function(body) {
+            fs.writeFileSync(path.join(__dirname, 'dock-debug.log'), JSON.stringify(body), 'utf8')
+            dockWindow(function(result) {
+                sendJSON(res, result.success ? 200 : 400, result);
+            }, body);
         });
         return;
     }

@@ -40,8 +40,18 @@ opencode-wps/
 如果你是一个 AI 助手，正在修改本项目：
 1. **修改 skills** → 改 `skills/` → 运行 `node install-addons.js` → git commit
 2. **修改 MCP** → 改 `wps-office-mcp/src/` → `npm run build` → git commit
-3. **不要**直接修改用户目录（`~/.opencode/`、`%APPDATA%\kingsoft\wps\jsaddons\`）
+3. **重要：永远不要修改以下目录**（它们是安装产物，不是源文件）：
+   - ❌ `~/.opencode/skills/` 或 `%USERPROFILE%\.opencode\skills\`
+   - ❌ `%APPDATA%\kingsoft\wps\jsaddons\`
+   - ❌ `~/.config/opencode/opencode.json`
 4. **每次修改后**检查：`git status` 确保修改已提交
+
+## 如何避免"改错目录"的问题
+
+当 AI 要修改文件时，先问自己：
+1. 这个文件在 `D:\code\opencode-wps\` 下吗？→ 是，继续
+2. 这个文件是被 git 跟踪的吗？→ 用 `git ls-files <path>` 检查
+3. 如果不在代码库但在用户目录 → 停止！这是安装产物，不是源文件
 
 ## 常见问题
 1. MCP 连不上 → `cd wps-office-mcp && npm install && npm run build`
