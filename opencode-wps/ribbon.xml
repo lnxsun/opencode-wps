@@ -4,6 +4,7 @@
             <tab id="wpsAddinTab" label="OpenCode AI">
                 <group id="grpMain" label="AI 助手">
                     <button id="btnShowTaskPane" label="打开面板" onAction="OnAction" getEnabled="OnGetEnabled" getImage="GetImage" visible="true" size="large"/>
+                    <button id="btnDockWindow" label="打开Web" onAction="OnAction" getEnabled="OnGetEnabled" getImage="GetImage" visible="true" size="large"/>
                 </group>
                 <group id="grpStatus" label="连接状态">
                     <button id="btnCheckStatus" label="连接状态" onAction="OnAction" getEnabled="OnGetEnabled" getImage="GetImage" visible="true" size="large"/>
