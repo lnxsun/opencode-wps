@@ -189,7 +189,7 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:-apple-system,Blink
     <h3>OpenCode</h3>
     <p>Set the working directory and start the server</p>
     <div class="setup-cwd-row">
-      <input id="setup-cwd" type="text" placeholder="留空自动使用用户目录，或手动输入路径" spellcheck="false">
+      <input id="setup-cwd" type="text" placeholder="点击选择或输入工作目录" spellcheck="false" onclick="openCwdModalFromSetup()">
     </div>
     <button class="btn-primary" id="btn-start" onclick="startOpenCode()"><span class="icon-play"></span>Start Server</button>
     <div class="setup-status" id="setup-status"></div>
@@ -356,6 +356,17 @@ function showSetup() {
     $btnStart.textContent = 'Start Server'
 }
 
+function openCwdModalFromSetup() {
+    var currentCwd = $setupCwd.value || getPS('opencode_cwd') || ''
+    var cwdInput = document.getElementById('cwd-input')
+    var modal = document.getElementById('cwd-modal')
+    document.getElementById('modal-cwd-current').textContent = currentCwd || '未设置'
+    cwdInput.value = currentCwd
+    renderCwdHistory()
+    modal.classList.remove('hidden')
+    setTimeout(function() { cwdInput.focus(); cwdInput.select() }, 100)
+}
+
 function showChat() {
     $viewSetup.classList.add('hidden')
     $viewChat.classList.remove('hidden')
@@ -379,7 +390,7 @@ function openCwdModal() {
 var CWD_HISTORY = []
 function getCwdHistory() {
     try {
-        var s = localStorage.getItem('opencode_cwd_history')
+        var s = getPS('opencode_cwd_history')
         if (s) CWD_HISTORY = JSON.parse(s)
     } catch(e) {}
     return CWD_HISTORY
@@ -391,7 +402,7 @@ function addCwdHistory(cwd) {
     arr.unshift(cwd)
     if (arr.length > 10) arr = arr.slice(0, 10)
     CWD_HISTORY = arr
-    try { localStorage.setItem('opencode_cwd_history', JSON.stringify(arr)) } catch(e) {}
+    try { setPS('opencode_cwd_history', JSON.stringify(arr)) } catch(e) {}
 }
 function renderCwdHistory() {
     var container = document.getElementById('cwd-history')

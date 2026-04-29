@@ -88,13 +88,8 @@ function stopOpenCode() {
 }
 
 function findOpenCodeBin() {
-    var homeDir = process.env.USERPROFILE || process.env.HOME;
-    var npmDir = path.join(homeDir, 'AppData', 'Roaming', 'npm');
     var paths = [
-        path.join(npmDir, 'node_modules', 'opencode-ai', 'node_modules', 'opencode-windows-x64-baseline', 'bin', 'opencode.exe'),
-        path.join(npmDir, 'node_modules', 'opencode-ai', 'node_modules', 'opencode-windows-x64', 'bin', 'opencode.exe'),
-        path.join(npmDir, 'opencode.cmd'),
-        path.join(npmDir, 'opencode')
+        path.join('C:\\Users\\Administrator\\.trae-cn\\sdks\\versions\\node\\current\\node_modules\\opencode-ai\\node_modules\\opencode-windows-x64\\bin', 'opencode.exe')
     ];
     for (var i = 0; i < paths.length; i++) {
         if (fs.existsSync(paths[i])) {
