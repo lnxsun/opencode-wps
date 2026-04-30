@@ -118,6 +118,12 @@ function GetImage(control) {
     return ''
 }
 
+function GetImageSize(control) {
+    if (!control || !control.id) return 16
+    if (control.id === 'btnShowTaskPane') return 32
+    return 16
+}
+
 function OnGetEnabled(control) { return true }
 function OnGetVisible(control) { return true }
 function OnGetLabel(control) { return "" }
