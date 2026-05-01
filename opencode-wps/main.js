@@ -146,6 +146,49 @@ function OnAddinLoad(ribbonUI) {
     return true
 }
 
+// --- CWD 功能 ---
+function OnGetCwd(control) {
+    try {
+        var cwd = window.Application.PluginStorage.getItem('opencode_cwd') || '';
+        return cwd;
+    } catch (e) {
+        return '';
+    }
+}
+
+function OnCwdChange(control) {
+    var newCwd = control.Text;
+    if (newCwd && newCwd.length > 0) {
+        try {
+            window.Application.PluginStorage.setItem('opencode_cwd', newCwd);
+            console.log('[OpenCode] CWD 已更新: ' + newCwd);
+        } catch (e) {
+            console.error('[OpenCode] 保存 CWD 失败: ' + e.message);
+        }
+    }
+}
+
+function OnBrowseCwd() {
+    try {
+        var fd = window.Application.FileDialog(1);
+        if (fd) {
+            fd.Title = '选择工作目录';
+            if (fd.Show()) {
+                var path = fd.SelectedItems(1);
+                if (path) {
+                    window.Application.PluginStorage.setItem('opencode_cwd', path);
+                    if (window.Application.ribbonUI) {
+                        window.Application.ribbonUI.Invalidate();
+                    }
+                    console.log('[OpenCode] 已选择目录: ' + path);
+                }
+            }
+        }
+    } catch (e) {
+        console.error('[OpenCode] 浏览目录失败: ' + e.message);
+    }
+}
+
 function OnAction(control) {
     var eleId = control.Id
     switch (eleId) {
@@ -164,6 +207,10 @@ function OnAction(control) {
             break
         case "btnCheckStatus":
             checkStatus()
+            break
+        case "btnBrowseCwd":
+            OnBrowseCwd()
+            break
             break
     }
     return true
