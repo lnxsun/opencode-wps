@@ -62,3 +62,7 @@ coverage/
 
 # 计划任务临时 XML
 _opencode_task.xml
+
+# wpsjs 发布产物
+opencode-wps/wps-addon-build/
+opencode-wps/wps-addon-publish/
