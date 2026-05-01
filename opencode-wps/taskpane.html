@@ -1336,26 +1336,48 @@ function scrollToBottom() { setTimeout(function() { $messages.scrollTop = $messa
 
 // ============================================================
 // 启动流程：检查服务是否已在运行 → 是则直接进 chat；否则显示 setup
+// 同时检查 launcher 状态
 // ============================================================
 (function init() {
     var lastCwd = getPS('opencode_cwd')
     if (lastCwd) $setupCwd.value = lastCwd.replace(/\\\\/g, '\\')
 
-    // 先检查 opencode 是否已在运行
-    fetchJSON('GET', '/global/health', null, function(data) {
-        if (data && data.healthy) {
-            // 服务已运行，直接进 chat
-            PROJECT_DIR = lastCwd || ''
-            $topbarCwd.textContent = PROJECT_DIR.replace(/\\\\/g, '\\')
-            $topbarCwd.title = PROJECT_DIR.replace(/\\\\/g, '\\')
-            onServerConnected()
-        } else {
-            // 服务未运行，显示 setup
-            showSetup()
-        }
-    }, function() {
-        // 连接失败，显示 setup
-        showSetup()
+    // 并行检查 launcher 和 opencode 服务
+    var checkLauncher = function(cb) {
+        var xhr = new XMLHttpRequest()
+        xhr.timeout = 3000
+        xhr.open('GET', 'http://127.0.0.1:14097/status', true)
+        xhr.onload = function() { cb(xhr.status === 200) }
+        xhr.onerror = function() { cb(false) }
+        xhr.ontimeout = function() { cb(false) }
+        try { xhr.send() } catch(e) { cb(false) }
+    }
+
+    var checkOpenCode = function(cb) {
+        fetchJSON('GET', '/global/health', null, function(data) {
+            cb(data && data.healthy)
+        }, function() { cb(false) })
+    }
+
+    // 先检查 launcher 和 opencode 状态
+    checkLauncher(function(launcherOk) {
+        checkOpenCode(function(opencodeOk) {
+            if (opencodeOk) {
+                // 服务已运行，直接进 chat
+                PROJECT_DIR = lastCwd || ''
+                $topbarCwd.textContent = PROJECT_DIR.replace(/\\\\/g, '\\')
+                $topbarCwd.title = PROJECT_DIR.replace(/\\\\/g, '\\')
+                onServerConnected()
+            } else if (launcherOk) {
+                // launcher 在运行但 opencode 没启动，显示 setup
+                updateServerStatus(false)
+                showSetup()
+            } else {
+                // 都未运行，显示 setup
+                updateServerStatus(false)
+                showSetup()
+            }
+        })
     })
 })()
 </script>
