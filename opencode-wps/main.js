@@ -15,6 +15,61 @@ var WPS_Enum = {
     msoCTPDockPositionRight: 2
 }
 
+// --- 全局状态封装 ---
+var AppState = {
+    port: 14096,
+    host: '127.0.0.1',
+    apiBase: 'http://127.0.0.1:14096',
+    launcherApi: 'http://127.0.0.1:14097',
+    state: 'stopped',
+    error: '',
+
+    getApiBase: function() {
+        return 'http://' + this.host + ':' + this.port;
+    },
+
+    getLauncherApi: function() {
+        return this.launcherApi;
+    },
+
+    setState: function(state, error) {
+        this.state = state;
+        this.error = error || '';
+        // 同步到全局变量（兼容旧代码）
+        OPENCODE_STATE = state;
+        OPENCODE_ERROR = error || '';
+        OPENCODE_API_BASE = this.getApiBase();
+    }
+};
+
+// --- WPS 就绪检查 ---
+function checkWpsReady() {
+    try {
+        if (!window.WPS || !window.WPS.Application) {
+            console.error('[WPS] WPS 未就绪');
+            return false;
+        }
+        return true;
+    } catch (e) {
+        console.error('[WPS] 检查失败: ' + e.message);
+        return false;
+    }
+}
+
+function checkDocument() {
+    try {
+        var doc = window.WPS && window.WPS.Application && window.WPS.Application.ActiveDocument;
+        if (!doc) {
+            console.warn('[WPS] 请先打开文档');
+            return null;
+        }
+        return doc;
+    } catch (e) {
+        console.error('[WPS] 文档检查失败: ' + e.message);
+        return null;
+    }
+}
+
 function GetUrlPath() {
     var e = document.location.toString()
     return -1 != (e = decodeURI(e)).indexOf("/") && (e = e.substring(0, e.lastIndexOf("/"))), e

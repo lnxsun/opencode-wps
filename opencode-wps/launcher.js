@@ -69,9 +69,21 @@ function startOpenCode(cwd, port) {
         opencodeProcess.on('exit', function(code) {
             console.log('[launcher] Exited: ' + code);
             opencodeProcess = null;
+            // 清理 PID 文件
+            var pidFile = path.join(__dirname, 'opencode.pid');
+            try { fs.unlinkSync(pidFile); } catch (e) {}
         });
 
         console.log('[launcher] Started PID: ' + opencodeProcess.pid);
+
+        // 保存 PID 到文件
+        var pidFile = path.join(__dirname, 'opencode.pid');
+        try {
+            fs.writeFileSync(pidFile, String(opencodeProcess.pid));
+        } catch (e) {
+            console.log('[launcher] Failed to write PID file: ' + e.message);
+        }
+
         return { success: true, pid: opencodeProcess.pid };
     } catch(e) {
         return { success: false, error: e.message };
@@ -79,36 +91,113 @@ function startOpenCode(cwd, port) {
 }
 
 function stopOpenCode() {
-    if (opencodeProcess) {
-        try { opencodeProcess.kill(); } catch(e) {}
-        opencodeProcess = null;
+    // 1. 首先尝试终止子进程
+    if (opencodeProcess && !opencodeProcess.killed) {
+        try {
+            opencodeProcess.kill();
+            opencodeProcess = null;
+            console.log('[launcher] Killed child process');
+            return { success: true };
+        } catch (e) {
+            console.log('[launcher] Failed to kill child: ' + e.message);
+        }
     }
-    exec('taskkill /IM opencode.exe /F', function() {});
+
+    // 2. 如果子进程不存在，尝试从 PID 文件读取并精确终止
+    var pidFile = path.join(__dirname, 'opencode.pid');
+    if (fs.existsSync(pidFile)) {
+        try {
+            var pid = parseInt(fs.readFileSync(pidFile, 'utf-8').trim());
+            if (pid && pid > 0) {
+                process.kill(pid);
+                fs.unlinkSync(pidFile);
+                console.log('[launcher] Killed process by PID: ' + pid);
+                return { success: true };
+            }
+        } catch (e) {
+            console.log('[launcher] PID file error: ' + e.message);
+        }
+    }
+
+    // 3. 最后才使用 taskkill，但要更精确（只杀本进程树的）
+    // 注释掉暴力 taskkill，改为记录警告
+    // exec('taskkill /IM opencode.exe /F', function() {});
+    console.log('[launcher] No process to stop or already stopped');
     return { success: true };
 }
 
 function findOpenCodeBin() {
-    var paths = [
-        path.join('C:\\Users\\Administrator\\.trae-cn\\sdks\\versions\\node\\current\\node_modules\\opencode-ai\\node_modules\\opencode-windows-x64\\bin', 'opencode.exe')
-    ];
-    for (var i = 0; i < paths.length; i++) {
-        if (fs.existsSync(paths[i])) {
-            console.log('[launcher] Found: ' + paths[i]);
-            return paths[i];
+    // 1. 优先从配置文件读取
+    var configPath = path.join(process.env.APPDATA || process.env.USERPROFILE, 'opencode', 'config.json');
+    if (fs.existsSync(configPath)) {
+        try {
+            var config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+            if (config.opencodePath) {
+                if (config.opencodePath === 'opencode' || fs.existsSync(config.opencodePath)) {
+                    console.log('[launcher] Using config path: ' + config.opencodePath);
+                    return config.opencodePath;
+                }
+            }
+        } catch (e) {
+            console.log('[launcher] Config read error: ' + e.message);
         }
     }
-    return 'opencode.exe';
+
+    // 2. 尝试常见安装路径
+    var commonPaths = [
+        path.join(process.env.USERPROFILE || 'C:\\Users\\Administrator', '.trae-cn', 'bin', 'opencode.exe'),
+        path.join(process.env.LOCALAPPDATA || 'C:\\Users\\Administrator\\AppData\\Local', 'Programs', 'opencode', 'opencode.exe'),
+        'C:\\Program Files\\opencode\\opencode.exe',
+        'C:\\Program Files (x86)\\opencode\\opencode.exe'
+    ];
+    for (var i = 0; i < commonPaths.length; i++) {
+        if (fs.existsSync(commonPaths[i])) {
+            console.log('[launcher] Found: ' + commonPaths[i]);
+            return commonPaths[i];
+        }
+    }
+
+    // 3. 回退到 PATH 中的 opencode
+    console.log('[launcher] Falling back to PATH');
+    return 'opencode';
+}
+
+function validateCwd(cwd) {
+    if (!cwd || typeof cwd !== 'string') {
+        return { valid: false, error: 'cwd 不能为空' };
+    }
+    // 防止路径遍历
+    if (cwd.includes('..')) {
+        return { valid: false, error: '无效的工作目录：不允许路径遍历' };
+    }
+    // 检查非法字符
+    if (/[<>"|?*]/.test(cwd)) {
+        return { valid: false, error: '无效的工作目录：包含非法字符' };
+    }
+    // 规范化路径
+    var resolved = path.resolve(cwd);
+    return { valid: true, resolved: resolved };
 }
 
 function dockWindow(callback, data) {
     var cwd = data && data.cwd ? data.cwd : ''
     var sessionId = data && data.session ? data.session : ''
-    
+
     // 如果没有传cwd，使用launcher中存储的cwd
     if (!cwd && opencodeCwd) {
         cwd = opencodeCwd
     }
-    
+
+    // 验证 cwd
+    if (cwd) {
+        var validation = validateCwd(cwd);
+        if (!validation.valid) {
+            console.log('[launcher] Cwd validation failed: ' + validation.error);
+            callback({ success: false, error: validation.error });
+            return;
+        }
+    }
+
     console.log('[launcher] dockWindow final cwd: ' + cwd + ' session: ' + sessionId)
 
     var scriptPath = path.join(__dirname, 'dock.ps1');

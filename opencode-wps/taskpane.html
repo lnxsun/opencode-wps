@@ -306,7 +306,7 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:-apple-system,Blink
 // Flow: Setup (choose CWD + start) → Chat (with status bar)
 // ============================================================
 
-var API_BASE = 'http://127.0.0.1:14096'
+var API_BASE = 'http://127.0.0.1:14096'  // 将在初始化后更新为 CONFIG.apiUrl
 var SESSION_ID = ''
 var PROJECT_DIR = ''
 var IS_BUSY = false
@@ -353,6 +353,60 @@ var CURRENT_PROVIDER = 'opencode'
 // --- Storage ---
 function getPS(key) { try { return window.Application.PluginStorage.getItem(key) || '' } catch(e) { return '' } }
 function setPS(key, val) { try { window.Application.PluginStorage.setItem(key, val) } catch(e) {} }
+
+// --- 安全函数 ---
+function safeInput(str) {
+    if (!str || typeof str !== 'string') return '';
+    return str.replace(/[<>&"']/g, function(c) {
+        var map = { '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;', "'": '&#39;' };
+        return map[c];
+    });
+}
+
+// --- 配置持久化 ---
+var CONFIG = {
+    get apiUrl() { return getPS('opencode_api_url') || 'http://127.0.0.1:14096'; },
+    set apiUrl(val) { setPS('opencode_api_url', val); },
+    get cwd() { return getPS('opencode_cwd') || ''; },
+    set cwd(val) { setPS('opencode_cwd', val); },
+    get agent() { return getPS('opencode_agent') || 'wps-expert'; },
+    set agent(val) { setPS('opencode_agent', val); }
+};
+
+// --- 常量定义 ---
+var CONSTANTS = {
+    API_DEFAULT_URL: 'http://127.0.0.1:14096',
+    API_TIMEOUT: 30000,
+    MAX_RETRIES: 3,
+    SSE_RECONNECT_DELAY: 3000,
+    MAX_MESSAGE_LENGTH: 10000,
+    MAX_HISTORY: 100,
+    TOAST_DURATION: 3000,
+    DEFAULT_SESSION_NAME: '新对话'
+};
+
+// --- 初始化配置 ---
+(function() {
+    API_BASE = CONFIG.apiUrl;
+    PROJECT_DIR = CONFIG.cwd;
+    CURRENT_AGENT = CONFIG.agent;
+})();
+
+// --- 全局异常捕获 ---
+var ERROR_LOGS = [];
+function logError(context, data) {
+    var log = { time: new Date().toISOString(), context: context, data: data };
+    console.error('[ERROR]', log);
+    ERROR_LOGS.unshift(log);
+    if (ERROR_LOGS.length > 50) ERROR_LOGS.pop();
+}
+window.onerror = function(msg, url, line, col, error) {
+    logError('Global', { msg: msg, url: url, line: line, col: col, error: error ? error.message : '' });
+    return true;
+};
+window.onunhandledrejection = function(event) {
+    logError('UnhandledPromise', { reason: event.reason ? event.reason.message : String(event.reason) });
+};
 
 // --- View switching ---
 function showSetup() {
@@ -459,6 +513,7 @@ function confirmCwdChange() {
     // 设置新的 CWD 并启动
     PROJECT_DIR = newCwd
     setPS('opencode_cwd', newCwd)
+    CONFIG.cwd = newCwd
     setPS('opencode_start_cwd', newCwd)
     $topbarCwd.textContent = newCwd.replace(/\\\\/g, '\\')
     $topbarCwd.title = newCwd.replace(/\\\\/g, '\\')
@@ -930,13 +985,65 @@ function switchSession(id) { closeSidebar(); SESSION_ID = id; setPS('opencode_se
 function setStatus(s) { IS_BUSY = (s === 'busy'); $statusDot.className = 'dot ' + (IS_BUSY ? 'busy' : 'idle'); updateInputState() }
 
 // --- Fetch ---
+function fetchWithRetry(method, path, body, onSuccess, onError, timeout, maxRetries) {
+    maxRetries = maxRetries || CONSTANTS.MAX_RETRIES || 3;
+    var attempts = 0;
+    var xhr = new XMLHttpRequest();
+    var timeoutId;
+
+    function doRequest() {
+        attempts++;
+        xhr = new XMLHttpRequest();
+        xhr.timeout = timeout || 15000;
+
+        xhr.onreadystatechange = function() {
+            if (xhr.readyState === 4) {
+                clearTimeout(timeoutId);
+                if (xhr.status >= 200 && xhr.status < 300) {
+                    try { onSuccess(JSON.parse(xhr.responseText)) } catch(e) { onSuccess(null) }
+                } else if (xhr.status > 0) {
+                    if (attempts < maxRetries) {
+                        console.log('[fetch] Retry ' + attempts + '/' + maxRetries + ' for ' + path);
+                        setTimeout(doRequest, 1000 * attempts);
+                    } else if (onError) {
+                        onError(xhr.status, xhr.responseText);
+                    }
+                }
+            }
+        };
+
+        xhr.onerror = function() {
+            clearTimeout(timeoutId);
+            if (attempts < maxRetries) {
+                console.log('[fetch] Network error, retry ' + attempts + '/' + maxRetries);
+                setTimeout(doRequest, 1000 * attempts);
+            } else if (onError) {
+                onError(0, 'Network error');
+            }
+        };
+
+        xhr.ontimeout = function() {
+            clearTimeout(timeoutId);
+            if (attempts < maxRetries) {
+                console.log('[fetch] Timeout, retry ' + attempts + '/' + maxRetries);
+                setTimeout(doRequest, 1000 * attempts);
+            } else if (onError) {
+                onError(0, 'Timeout');
+            }
+        };
+
+        xhr.open(method, API_BASE + path, true);
+        xhr.setRequestHeader('Content-Type', 'application/json');
+        if (body) xhr.send(JSON.stringify(body)); else xhr.send();
+
+        timeoutId = setTimeout(function() { xhr.abort(); }, timeout || 15000);
+    }
+
+    doRequest();
+}
+
 function fetchJSON(method, path, body, onSuccess, onError, timeout) {
-    var xhr = new XMLHttpRequest(); xhr.timeout = timeout || 15000
-    xhr.onreadystatechange = function() { if (xhr.readyState === 4) { if (xhr.status >= 200 && xhr.status < 300) { try { onSuccess(JSON.parse(xhr.responseText)) } catch(e) { onSuccess(null) } } else if (xhr.status > 0 && onError) { onError(xhr.status, xhr.responseText) } } }
-    xhr.onerror = function() { if (onError) onError(0, 'Network error') }
-    xhr.ontimeout = function() { if (onError) onError(0, 'Timeout') }
-    xhr.open(method, API_BASE + path, true); xhr.setRequestHeader('Content-Type', 'application/json')
-    if (body) xhr.send(JSON.stringify(body)); else xhr.send()
+    fetchWithRetry(method, path, body, onSuccess, onError, timeout, CONSTANTS.MAX_RETRIES);
 }
 function postMessage(path, body, onError) {
     var xhr = new XMLHttpRequest(); xhr.timeout = 300000
@@ -979,13 +1086,41 @@ function renderHistoryMessage(msg) {
 }
 
 // --- SSE ---
+var sseReconnectTimer = null;
 function connectSSE() {
     if (SSE) { SSE.close(); SSE = null }
     try {
         SSE = new EventSource(API_BASE + '/global/event')
-        SSE.onmessage = function(ev) { try { handleSSEEvent(JSON.parse(ev.data)) } catch(e) {} }
-        SSE.onerror = function() { setTimeout(function() { if (CONNECTED) connectSSE() }, 3000) }
-    } catch(e) {}
+
+        SSE.onopen = function() {
+            console.log('[SSE] Connected');
+            CONNECTED = true;
+            updateConnectionStatus();
+            if (sseReconnectTimer) { clearTimeout(sseReconnectTimer); sseReconnectTimer = null; }
+        };
+
+        SSE.onmessage = function(ev) {
+            try { handleSSEEvent(JSON.parse(ev.data)) } catch(e) { logError('SSE message', e); }
+        };
+
+        SSE.onerror = function() {
+            console.log('[SSE] Connection error, will reconnect...');
+            CONNECTED = false;
+            updateConnectionStatus();
+            if (SSE) { SSE.close(); SSE = null; }
+            // 自动重连
+            if (!sseReconnectTimer) {
+                var delay = CONSTANTS.SSE_RECONNECT_DELAY || 3000;
+                sseReconnectTimer = setTimeout(function() {
+                    sseReconnectTimer = null;
+                    if (SESSION_ID) {
+                        console.log('[SSE] Reconnecting...');
+                        connectSSE();
+                    }
+                }, delay);
+            }
+        };
+    } catch(e) { logError('SSE init', e); }
 }
 function handleSSEEvent(data) {
     if (!data || !data.payload) return
