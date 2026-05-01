@@ -20,34 +20,34 @@ OpenCode WPS 将 OpenCode AI 的能力集成到 WPS Office 中，通过侧边栏
 
 ```
 opencode-wps/
-├── opencode-wps/              # 第 1 层：WPS JS 插件（前台 UI + 后台 Launcher 服务管理）
+├── opencode-wps/              # 第 1 层：WPS JS 插件（前台 Chat 窗口 + 后台 Launcher）
 │   ├── main.js                # Ribbon 回调、状态管理、OpenCode 连接
 │   ├── taskpane.html          # Chat UI（SSE 流式对话、Markdown 渲染、会话管理、Agent 选择）
 │   ├── launcher.js            # Launcher 进程（自动启动 opencode serve，监听 14097）
 │   ├── ribbon.xml             # 功能区按钮定义
 │   └── manifest.xml           # 加载项清单
-├── wps-office-mcp/            # 第 2 层：MCP 服务器（COM 桥接 → WPS API，约 200 个工具）
-│   └── src/                   # TypeScript 源码
+├── agents/                    # 第 2 层：Agents（安装到 ~/.config/opencode/agents/）
+│   ├── wps-expert.md          # WPS 助手主 agent
+│   ├── wps-word.md            # Word 文档处理专家
+│   ├── wps-excel.md           # Excel 数据处理专家
+│   └── wps-ppt.md             # PPT 演示制作专家
 ├── skills/                    # 第 3 层：Skills（安装到 ~/.opencode/skills/）
 │   ├── wps-excel/             # Excel 操作技能
 │   ├── wps-word/              # Word 操作技能
 │   ├── wps-ppt/               # PPT 操作技能
 │   └── wps-office/            # WPS 通用技能
-├── agents/                    # 第 4 层：Agents（安装到 ~/.config/opencode/agents/）
-│   ├── wps-expert.md          # WPS 助手主 agent
-│   ├── wps-word.md            # Word 文档处理专家
-│   ├── wps-excel.md           # Excel 数据处理专家
-│   └── wps-ppt.md             # PPT 演示制作专家
+├── wps-office-mcp/            # 第 4 层：MCP 服务器（COM 桥接 → WPS API，约 200 个工具）
+│   └── src/                   # TypeScript 源码
 ├── install-addons.js          # 一键安装脚本
 ├── package.json               # 项目依赖
 └── README.md
 ```
 
-**4 层说明（从上到下）：**
-- **第 1 层 WPS JS 插件** — 任务窗格 Chat 窗口（前台）+ Launcher 进程管理（后台）
-- **第 2 层 MCP (COM 桥接)** — 通过 PowerShell 调用 WPS COM 接口，约 200 个工具
-- **第 3 层 Skills** — 4 个领域技能，AI 调用的能力集
-- **第 4 层 Agents** — 角色定义，通过 Chat 窗口的 Agent 选择实现功能聚焦
+**4 层说明（从上到下，使用流程）：**
+- **第 1 层 WPS JS 插件** — 用户可见的 Chat 窗口 + Launcher 服务进程管理
+- **第 2 层 Agents** — 角色定义，通过 Agent 选择实现功能聚焦
+- **第 3 层 Skills** — 领域技能，AI 调用的能力集
+- **第 4 层 MCP (COM 桥接)** — 通过 PowerShell 调用 WPS COM 接口，约 200 个工具
 ```
 
 ### 组件说明
