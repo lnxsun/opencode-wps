@@ -71,12 +71,8 @@ function checkDocument() {
 }
 
 function GetUrlPath() {
-    try {
-        var pathname = new URL(document.location.href).pathname;
-        return pathname.replace(/\/[^\/]*$/, '') || '/';
-    } catch (e) {
-        return '/';
-    }
+    var pluginPath = 'C:\\Users\\Administrator\\AppData\\Roaming\\kingsoft\\wps\\jsaddons\\opencode-wps_';
+    return pluginPath.replace(/\\/g, '/');
 }
 
 function setOpenCodeState(state, error) {
