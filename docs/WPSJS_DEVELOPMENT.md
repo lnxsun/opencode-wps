@@ -367,4 +367,57 @@ install-addons.js 会自动完成：
 - authaddin.json 更新（关键：启用插件）
 - MCP 服务器编译
 - Skills/Agents 安装
+
+---
+
+## 十二、WPS 内置浏览器兼容性
+
+### 浏览器版本限制
+
+WPS Office 内置的 Chromium 版本停留在 **Chrome 103**（2022年），这意味着：
+
+| 特性 | 支持情况 |
+|------|----------|
+| ES6 (let/const, arrow functions) | ✅ 支持 |
+| ES6+ (async/await, class) | ✅ 支持 |
+| ES2017+ (dynamic import) | ⚠️ 部分支持 |
+| Modern APIs (fetch, ES Modules) | ⚠️ 有限支持 |
+
+### 代码风格要求
+
+为确保最大兼容性，项目采用 **ES5 语法**：
+
+```javascript
+// ✅ 推荐：ES5 语法（兼容 WPS 内置浏览器）
+var API_BASE = 'http://127.0.0.1:14096';
+function fetchJSON(method, path, body, onSuccess, onError) { }
+
+// ❌ 避免：箭头函数（在某些旧版本可能有问题）
+const fetchJSON = (method, path) => { };
+
+// ❌ 避免：async/await（优先使用回调风格）
+async function fetchJSON() { }
+```
+
+### 开发规范
+
+1. **使用 `var`** 而非 `let/const`
+2. **使用 `function`** 而非箭头函数
+3. **使用回调** 而非 async/await
+4. **使用 `XMLHttpRequest`** 而非 `fetch`（更稳定）
+5. **避免模板字符串** - 使用字符串拼接
+
+### 原因说明
+
+- WPS 内置浏览器内核较旧，新语法可能导致解析错误
+- callback 模式比 async/await 在旧浏览器中更可靠
+- XMLHttpRequest 在 WPS 环境中经过验证，兼容性更好
+
+### 未来考虑
+
+如果 WPS 升级内置浏览器内核（需 Chrome 110+），可以考虑：
+- 迁移到 ES6+ 语法
+- 使用 fetch API
+- 使用 async/await
+- 升级后需在真机上测试
 - Launcher 开机自启注册

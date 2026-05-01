@@ -10,6 +10,7 @@
 |------|------|
 | [DEVELOPMENT_GUIDE.md](./DEVELOPMENT_GUIDE.md) | 开发指南、代码规范、提交规范、FAQ |
 | [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) | 问题排查与避坑指南 |
+| [SECURITY.md](./SECURITY.md) | 安全模型与注意事项 |
 
 ---
 
@@ -39,6 +40,7 @@
 docs/
 ├── DEVELOPMENT_GUIDE.md    # 开发指南（贡献指南）
 ├── TROUBLESHOOTING.md      # 问题排查与避坑指南
+├── SECURITY.md            # 安全模型与注意事项
 ├── OPENCODE_API.md         # OpenCode API
 ├── WPS_COM_API.md          # WPS COM API
 ├── WPS_COM_PS1.md          # wps-com.ps1 解析
