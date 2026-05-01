@@ -48,18 +48,27 @@ function startOpenCode(cwd, port) {
     var opencodeBin = findOpenCodeBin();
     console.log('[launcher] Starting with: ' + opencodeBin);
 
+    var opencodeCmd = opencodeBin.endsWith('.ps1') 
+        ? ['-ExecutionPolicy', 'Bypass', '-File', opencodeBin]
+        : [opencodeBin];
+    var opencodeArgs = opencodeBin.endsWith('.ps1')
+        ? ['serve', '--port', String(port || 14096), '--hostname', '127.0.0.1', '--cors', 'file://']
+        : ['serve', '--port', String(port || 14096), '--hostname', '127.0.0.1', '--cors', 'file://'];
+    
     try {
-        opencodeProcess = spawn(opencodeBin, [
-            'serve',
-            '--port', String(port || 14096),
-            '--hostname', '127.0.0.1',
-            '--cors', 'file://'
-        ], {
-            cwd: cwd,
-            stdio: 'ignore',
-            detached: false,
-            windowsHide: true
-        });
+        opencodeProcess = spawn(
+            opencodeBin.endsWith('.ps1') ? 'powershell.exe' : opencodeBin,
+            opencodeBin.endsWith('.ps1') 
+                ? ['-ExecutionPolicy', 'Bypass', '-File', opencodeBin, ...opencodeArgs]
+                : opencodeArgs,
+            {
+                cwd: cwd,
+                stdio: 'ignore',
+                detached: false,
+                windowsHide: true,
+                shell: true
+            }
+        );
 
         opencodeProcess.on('error', function(err) {
             console.log('[launcher] Error: ' + err.message);
