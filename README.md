@@ -11,6 +11,8 @@ OpenCode WPS 将 OpenCode AI 的能力集成到 WPS Office 中，通过侧边栏
 - **WPS 内嵌 AI 对话** — 侧边栏 Chat UI，支持 SSE 流式输出、Markdown 渲染
 - **多会话管理** — 创建、重命名、切换、删除对话会话
 - **MCP 工具集成** — 通过 WPS Office MCP 服务器，AI 可以直接操作文档（读/写/格式化）
+- **WPS 专用 Agents** — 自定义 wps-expert 主 agent 和 wps-word/wps-excel/wps-ppt 子 agents
+- **Agent 选择** — 底部工具栏支持切换不同 agent，消息自动传递 agent 参数
 - **一键安装** — 运行 `node install-addons.js` 自动完成全部组件安装
 - **开机自启** — 通过 Windows 计划任务自动启动 OpenCode 服务，无需手动操作
 
@@ -116,6 +118,26 @@ node install-addons.js
 - **发送消息** — 在输入框输入问题，按 Enter 或点击发送
 - **SSE 流式输出** — AI 回复实时流式显示，支持 Markdown 渲染（代码块、表格、列表等）
 - **会话管理** — 点击会话列表切换对话，支持创建、重命名、删除会话
+- **Agent 选择** — 点击底部工具栏的 Agent 按钮，选择不同的 AI 助手
+
+### WPS Agents
+
+项目内置了专门的 WPS Office 智能助手：
+
+| Agent | 类型 | 说明 |
+|-------|------|------|
+| **wps-expert** | 主 agent | WPS Office 智能助手，综合处理 Word/Excel/PPT |
+| **wps-word** | 子 agent | Word 文档处理专家（可用 `@wps-word` 调用）|
+| **wps-excel** | 子 agent | Excel 数据处理专家（可用 `@wps-excel` 调用）|
+| **wps-ppt** | 子 agent | PPT 演示文稿专家（可用 `@wps-ppt` 调用）|
+
+**使用方式**：
+1. 点击底部 **Agent** 按钮选择主 agent（默认 wps-expert）
+2. 在消息中使用 `@wps-word`、`@wps-excel`、`@wps-ppt` 调用子 agents 处理特定任务
+
+**自定义 Agents**：
+- Agents 定义位置：`~/.config/opencode/agents/`
+- 修改后重启 OpenCode 服务生效
 
 ### OpenCode 服务管理
 
