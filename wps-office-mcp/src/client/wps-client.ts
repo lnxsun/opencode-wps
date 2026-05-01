@@ -137,7 +137,8 @@ async function execWpsActionWithRetry(action: string, params: Record<string, unk
       return await execWpsAction(action, params);
     } catch (error) {
       lastError = error as Error;
-      log.warn(`WPS call failed, attempt ${attempt}/${maxRetries}`, { action, error: error.message });
+      const errMsg = error instanceof Error ? error.message : String(error);
+      log.warn(`WPS call failed, attempt ${attempt}/${maxRetries}`, { action, error: errMsg });
 
       if (attempt < maxRetries) {
         // 等待后重试
