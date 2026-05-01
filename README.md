@@ -32,10 +32,6 @@ opencode-wps/
 │   ├── wps-word/              # Word 操作技能
 │   ├── wps-ppt/               # PPT 操作技能
 │   └── wps-office/            # WPS 通用技能
-├── agents/                    # 自定义 Agents 说明（实际文件在 ~/.config/opencode/agents/）
-│   └── README.md             # ⚠️ Agents 定义在用户目录，不在此目录
-├── wps-opencode-addon/        # COM 桥接加载项（已合并，仅保留供参考）
-├── wps-opencode-assistant/    # 旧版助手加载项（已合并，仅保留供参考）
 ├── install-addons.js          # 一键安装脚本
 ├── package.json               # 项目依赖
 └── README.md
