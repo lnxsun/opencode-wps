@@ -74,6 +74,54 @@ node tests/launcher.test.js
 - 通过 GitHub Issues 报告 bug
 - 通过 GitHub Discussions 提问
 
+## 提交规范
+
+### Commit 格式（Conventional Commits）
+
+```
+<type>(<scope>): <subject>
+
+<body>
+
+<footer>
+```
+
+### 类型说明
+
+| type | 说明 |
+|------|------|
+| feat | 新功能 |
+| fix | Bug 修复 |
+| docs | 文档更新 |
+| style | 代码格式调整 |
+| refactor | 重构（无功能变化） |
+| test | 测试相关 |
+| chore | 构建/工具更新 |
+
+### 示例
+
+```bash
+git commit -m "feat(agent): 添加 Agent 选择功能"
+git commit -m "fix(security): 修复 XSS 漏洞"
+git commit -m "docs: 更新 README"
+```
+
+## 常见问题
+
+### 插件不显示
+- 检查 WPS 版本是否 >= 12.1.0
+- 重启 WPS Office
+- 运行 `node install-addons.js` 重新安装
+
+### MCP 连接失败
+- 检查 OpenCode 服务是否启动
+- 检查端口 14096 是否被占用
+- 查看 `~/.config/opencode/opencode.json` 配置
+
+### 服务启动失败
+- 检查 Launcher 是否运行：`schtasks /Query /TN "OpenCodeLauncher"`
+- 手动启动：`schtasks /Run /TN "OpenCodeLauncher"`
+
 ## 许可证
 
 MIT License

@@ -994,11 +994,12 @@ function setStatus(s) { IS_BUSY = (s === 'busy'); $statusDot.className = 'dot ' 
 function fetchWithRetry(method, path, body, onSuccess, onError, timeout, maxRetries) {
     maxRetries = maxRetries || CONSTANTS.MAX_RETRIES || 3;
     var attempts = 0;
-    var xhr = new XMLHttpRequest();
+    var xhr;
     var timeoutId;
 
     function doRequest() {
         attempts++;
+        if (xhr) xhr.abort();
         xhr = new XMLHttpRequest();
         xhr.timeout = timeout || 15000;
 

@@ -131,6 +131,7 @@ const COM_TIMEOUT = 5000;
 
 /**
  * 带超时和重试的WPS调用
+ * 注：COM 操作无法真正取消，此实现确保超时后不再等待并快速失败
  */
 async function execWpsActionWithRetry(action: string, params: Record<string, unknown> = {}, maxRetries: number = 3): Promise<unknown> {
   let lastError: Error | null = null;
@@ -138,15 +139,27 @@ async function execWpsActionWithRetry(action: string, params: Record<string, unk
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
       // 使用 Promise.race 实现超时
+      // 注意：无法真正取消 COM 调用，但可确保不会无限等待
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('COM 调用超时（' + COM_TIMEOUT + 'ms）')), COM_TIMEOUT);
+      });
+
       const result = await Promise.race([
         execWpsAction(action, params),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('COM 调用超时')), COM_TIMEOUT))
+        timeoutPromise
       ]);
+
       return result;
     } catch (error) {
       lastError = error as Error;
       const errMsg = error instanceof Error ? error.message : String(error);
-      log.warn(`WPS call failed, attempt ${attempt}/${maxRetries}`, { action, error: errMsg });
+
+      // 超时是快速失败的友好错误，不记录为严重警告
+      if (errMsg.includes('超时')) {
+        log.info(`WPS call timeout, attempt ${attempt}/${maxRetries}`, { action });
+      } else {
+        log.warn(`WPS call failed, attempt ${attempt}/${maxRetries}`, { action, error: errMsg });
+      }
 
       if (attempt < maxRetries) {
         // 等待后重试（指数退避）

@@ -1,5 +1,9 @@
 # OpenCode WPS
 
+[![CI](https://github.com/lnxsun/opencode-wps/actions/workflows/ci.yml/badge.svg)](https://github.com/lnxsun/opencode-wps/actions)
+[![Version](https://img.shields.io/github/v/release/lnxsun/opencode-wps)](https://github.com/lnxsun/opencode-wps/releases)
+[![License](https://img.shields.io/github/license/lnxsun/opencode-wps)](LICENSE)
+
 [OpenCode](https://github.com/anomalyco/opencode) AI 助手的 WPS Office 插件，让你在 WPS 文字、表格、演示中直接与 AI 对话，获取智能辅助。
 
 ## 项目简介

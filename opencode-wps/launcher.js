@@ -172,7 +172,8 @@ function findOpenCodeBin() {
     }
 
     // 3. 回退到 PATH 中的 opencode
-    console.log('[launcher] Falling back to PATH');
+    console.log('[launcher] ⚠️ 未找到 OpenCode，将从 PATH 查找');
+    console.log('[launcher] 提示: 请确保 opencode 已安装或运行 install-addons.js');
     return 'opencode';
 }
 
