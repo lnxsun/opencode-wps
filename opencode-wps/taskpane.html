@@ -388,7 +388,18 @@ var CONSTANTS = {
 // --- 初始化配置 ---
 (function() {
     API_BASE = CONFIG.apiUrl;
-    PROJECT_DIR = CONFIG.cwd;
+
+    // 优先从 URL 参数读取 CWD（从功能区传入）
+    var urlParams = new URLSearchParams(window.location.search);
+    var urlCwd = urlParams.get('cwd');
+    if (urlCwd) {
+        PROJECT_DIR = decodeURIComponent(urlCwd);
+        CONFIG.cwd = PROJECT_DIR;
+        setPS('opencode_cwd', PROJECT_DIR);
+    } else {
+        PROJECT_DIR = CONFIG.cwd;
+    }
+
     CURRENT_AGENT = CONFIG.agent;
 
     // 开发者模式：直接从源目录读取 Skills/Agents
@@ -1339,7 +1350,7 @@ function scrollToBottom() { setTimeout(function() { $messages.scrollTop = $messa
 // ============================================================
 (function init() {
     var lastCwd = getPS('opencode_cwd')
-    if (lastCwd) $setupCwd.value = lastCwd.replace(/\\/g, '\\')
+    if (lastCwd) $setupCwd.value = lastCwd.replace(/\\\\/g, '\\')
 
     // 先检查 opencode 是否已在运行
     fetchJSON('GET', '/global/health', null, function(data) {
@@ -1350,28 +1361,11 @@ function scrollToBottom() { setTimeout(function() { $messages.scrollTop = $messa
             $topbarCwd.title = PROJECT_DIR.replace(/\\\\/g, '\\')
             onServerConnected()
         } else {
-            // 服务未运行，检查是否有 CWD，如果有则自动启动
-            if (lastCwd && lastCwd.length > 0) {
-                console.log('[Init] 发现 CWD，自动启动服务: ' + lastCwd);
-                PROJECT_DIR = lastCwd;
-                $topbarCwd.textContent = PROJECT_DIR.replace(/\\\\/g, '\\');
-                $topbarCwd.title = PROJECT_DIR.replace(/\\\\/g, '\\');
-                startOpenCode();
-            } else {
-                showSetup();
-            }
+            // 服务未运行，显示 setup
+            showSetup()
         }
     }, function() {
-        // 连接失败，检查是否有 CWD
-        if (lastCwd && lastCwd.length > 0) {
-            console.log('[Init] 连接失败但有 CWD，自动启动服务: ' + lastCwd);
-            PROJECT_DIR = lastCwd;
-            $topbarCwd.textContent = PROJECT_DIR.replace(/\\\\/g, '\\');
-            $topbarCwd.title = PROJECT_DIR.replace(/\\\\/g, '\\');
-            startOpenCode();
-        } else {
-            showSetup();
-        }
+        // 连接失败，显示 setup
         showSetup()
     })
 })()

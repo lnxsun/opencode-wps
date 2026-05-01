@@ -147,14 +147,24 @@ function OnAddinLoad(ribbonUI) {
 }
 
 // --- CWD 功能 ---
-function OnGetCwdLabel(control) {
+function OnGetCwd(control) {
     try {
-        var cwd = window.Application.PluginStorage.getItem('opencode_cwd') || '点击选择文件夹';
-        // 只在太长的路径时截断
-        if (cwd.length > 50) cwd = '...' + cwd.substring(cwd.length - 47);
+        var cwd = window.Application.PluginStorage.getItem('opencode_cwd') || '';
         return cwd;
     } catch (e) {
-        return '点击选择文件夹';
+        return '';
+    }
+}
+
+function OnCwdChange(control) {
+    var newCwd = control.Text;
+    if (newCwd && newCwd.length > 0) {
+        try {
+            window.Application.PluginStorage.setItem('opencode_cwd', newCwd);
+            console.log('[OpenCode] CWD 已更新: ' + newCwd);
+        } catch (e) {
+            console.error('[OpenCode] 保存 CWD 失败: ' + e.message);
+        }
     }
 }
 
@@ -185,12 +195,18 @@ function OnAction(control) {
     switch (eleId) {
         case "btnShowTaskPane":
             var tsId = window.Application.PluginStorage.getItem("taskpane_id")
+            var cwd = window.Application.PluginStorage.getItem("opencode_cwd") || ''
+            var url = GetUrlPath() + "/taskpane.html"
+            if (cwd) {
+                url += (url.indexOf('?') >= 0 ? '&' : '?') + 'cwd=' + encodeURIComponent(cwd)
+            }
             if (!tsId) {
-                var tskpane = window.Application.CreateTaskPane(GetUrlPath() + "/taskpane.html")
+                var tskpane = window.Application.CreateTaskPane(url)
                 window.Application.PluginStorage.setItem("taskpane_id", tskpane.ID)
                 tskpane.Visible = true
             } else {
-                window.Application.GetTaskPane(tsId).Visible = !window.Application.GetTaskPane(tsId).Visible
+                var existingPane = window.Application.GetTaskPane(tsId)
+                existingPane.Visible = !existingPane.Visible
             }
             break
         case "btnDockWindow":
