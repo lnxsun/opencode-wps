@@ -170,7 +170,8 @@ function OnCwdChange(control) {
 
 function OnBrowseCwd() {
     try {
-        var fd = window.Application.FileDialog(1);
+        // msoFileDialogFolderPicker = 4 (选择文件夹)
+        var fd = window.Application.FileDialog(4);
         if (fd) {
             fd.Title = '选择工作目录';
             if (fd.Show()) {
