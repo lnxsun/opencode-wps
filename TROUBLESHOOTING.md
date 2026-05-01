@@ -171,7 +171,54 @@ Get-Content "$env:APPDATA\kingsoft\wps\jsaddons\authaddin.json"
 
 ---
 
-## 七、教训总结
+## 七、WPS 内置浏览器限制（重要）
+
+### 为什么不能直接用官方 OpenCode 页面
+
+WPS 加载项的内置浏览器是基于 **Chromium 103/104**（2022 年版本），不是最新的 Chrome 浏览器。这导致了大量限制：
+
+### 已知的限制
+
+| 限制类型 | 具体问题 | 影响 |
+|---------|---------|------|
+| **WebGL 不支持** | `getContext('webgl')` 返回 null | 无法使用 3D 图表、Canvas 高级效果 |
+| **新版 API 不支持** | 如 `URL.canParse()`、`Array.at()` 等 | 部分现代 JS 方法报错 |
+| **PWA 不支持** | 无 Service Worker、Manifest | 无法安装为桌面应用 |
+| **Clipboard API 限制** | 写剪贴板需要用户授权 | 自动粘贴功能受限 |
+| **LocalStorage 限制** | 存储空间小，隐私模式可能禁用 | 缓存/状态持久化不可靠 |
+| **Fetch/CORS 限制** | 跨域请求更严格 | 调用外部 API 可能失败 |
+| **ES Module 限制** | 部分场景下 module 加载失败 | 模块化代码可能不工作 |
+| **调试困难** | F12 开发者工具功能有限 | 问题排查困难 |
+
+### 版本信息示例
+
+```
+User-Agent: Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/104.0.5112.102 Safari/537.36 WpsOfficeApp/12.1.0.16250
+```
+
+### 解决方案
+
+1. **不要直接 iframe 嵌入 opencode.ai**
+   - 官方页面依赖大量新特性，会白屏或功能异常
+
+2. **自己实现 UI**
+   - 在 taskpane.html 中编写简化版 UI
+   - 通过 API 调用 OpenCode 服务
+   - 参考本项目的 taskpane.html 实现
+
+3. **兼容写法**
+   - 使用 ES5 语法
+   - 避免箭头函数（可选）
+   - 避免 Optional Chaining (`?.`) 和 Nullish Coalescing (`??`)
+   - 使用 polyfill 处理 Promise 等
+
+4. **测试不同 WPS 版本**
+   - 不同版本的 Chromium 内核可能有差异
+   - 在目标 WPS 版本上测试
+
+---
+
+## 八、教训总结
 
 1. **配置必须统一管理**：3 个配置文件（authaddin.json、publish.xml、jsplugins.xml）必须通过 install-addons.js 统一更新，不能只改一个
 
@@ -182,3 +229,5 @@ Get-Content "$env:APPDATA\kingsoft\wps\jsaddons\authaddin.json"
 4. **改完必须测**：每次修改后必须执行完整验证清单，不能只改代码不验证
 
 5. **紧急修复**：如果插件禁用，手动改 authaddin.json 是最快方案
+
+6. **UI 不能复用**：WPS 内置浏览器太旧，不能直接嵌入官方页面，必须自己实现简化版 UI
