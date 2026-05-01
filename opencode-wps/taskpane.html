@@ -390,6 +390,12 @@ var CONSTANTS = {
     API_BASE = CONFIG.apiUrl;
     PROJECT_DIR = CONFIG.cwd;
     CURRENT_AGENT = CONFIG.agent;
+
+    // 开发者模式：直接从源目录读取 Skills/Agents
+    var devMode = getPS('opencode_dev_mode') === 'true';
+    if (devMode) {
+        console.log('[DevMode] 开发者模式已启用，将从源目录读取 Skills/Agents');
+    }
 })();
 
 // --- 全局异常捕获 ---
