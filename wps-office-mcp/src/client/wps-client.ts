@@ -127,6 +127,29 @@ async function execWpsAction(action: string, params: Record<string, unknown> = {
 }
 
 /**
+ * 带重试的WPS调用
+ */
+async function execWpsActionWithRetry(action: string, params: Record<string, unknown> = {}, maxRetries: number = 3): Promise<unknown> {
+  let lastError: Error | null = null;
+
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      return await execWpsAction(action, params);
+    } catch (error) {
+      lastError = error as Error;
+      log.warn(`WPS call failed, attempt ${attempt}/${maxRetries}`, { action, error: error.message });
+
+      if (attempt < maxRetries) {
+        // 等待后重试
+        await new Promise(resolve => setTimeout(resolve, 500 * attempt));
+      }
+    }
+  }
+
+  throw lastError || new Error('WPS call failed after retries');
+}
+
+/**
  * WPS客户端类 - 跨平台通信
  * Windows: PowerShell COM桥接
  * Mac: HTTP调用WPS加载项
@@ -148,7 +171,7 @@ export class WpsClient {
     logRequest(action, params);
 
     try {
-      const result = await execWpsAction(action, params) as WpsApiResponse<T>;
+      const result = await execWpsActionWithRetry(action, params, 3) as WpsApiResponse<T>;
       const duration = Date.now() - startTime;
       logResponse(action, result.success, duration);
 
