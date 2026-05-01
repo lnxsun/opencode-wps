@@ -52,7 +52,9 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:-apple-system,Blink
 .topbar-logo svg{width:18px;height:18px;flex-shrink:0}
 .topbar-logo .icon-logo{width:18px;height:18px}
 .topbar-logo span{font-weight:700;font-size:14px;letter-spacing:-0.3px}
-.topbar-cwd{flex:1;font-size:11px;color:#888;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:Consolas,monospace}
+.topbar-cwd{flex:1;font-size:11px;color:#6b7280;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:Consolas,monospace;background:#f3f4f6;padding:4px 10px;border-radius:6px;border:1px solid #e5e7eb;min-width:100px}
+.topbar-cwd.clickable{cursor:pointer}
+.topbar-cwd.clickable:hover{background:#e5e7eb;border-color:#d1d5db;color:#374151}
 .topbar-status{display:flex;align-items:center;gap:4px;flex-shrink:0}
 .status-dot{width:8px;height:8px;border-radius:50%;background:#ccc;flex-shrink:0}
 .status-dot.running{background:#4caf50}
@@ -65,28 +67,33 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:-apple-system,Blink
 .btn-stop span{vertical-align:middle}
 
 /* ===== Sub header: hamburger ===== */
-.subheader{padding:6px 12px;border-bottom:1px solid #f0f0f0;flex-shrink:0}
+.subheader{padding:8px 12px;border-bottom:1px solid #f0f0f0;flex-shrink:0;background:#fff}
 .hamburger-btn{width:28px;height:28px;border:none;background:none;cursor:pointer;border-radius:6px;display:flex;align-items:center;justify-content:center;color:#666}
 .hamburger-btn:hover{background:#f5f5f5}
 .hamburger-btn .icon-hamburger{width:16px;height:16px}
 
 /* ===== Session header ===== */
-.session-header{display:flex;align-items:center;padding:10px 12px;flex-shrink:0}
-.session-title{flex:1;font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.session-header{display:flex;align-items:center;padding:12px 16px;flex-shrink:0;background:#fff;border-bottom:1px solid #f0f0f0;gap:8px}
+.session-title{flex:1;font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#1a1a1a}
 .session-status{width:16px;height:16px;display:flex;align-items:center;justify-content:center;margin:0 6px;flex-shrink:0}
-.session-status .dot{width:8px;height:8px;border-radius:50%;background:#ccc}
+.session-status .dot{width:8px;height:8px;border-radius:50%;background:#9ca3af}
 .session-status .dot.busy{background:#f5a623;animation:pulse-dot 1.2s ease-in-out infinite}
-.session-status .dot.idle{background:#ccc}
-.session-menu{width:28px;height:28px;border:none;background:none;cursor:pointer;border-radius:6px;display:flex;align-items:center;justify-content:center;color:#999;font-size:16px;letter-spacing:1px}
-.session-menu:hover{background:#f5f5f5;color:#333}
+.session-status .dot.idle{background:#9ca3af}
+.session-menu{width:28px;height:28px;border:none;background:none;cursor:pointer;border-radius:6px;display:flex;align-items:center;justify-content:center;color:#9ca3af;font-size:16px;letter-spacing:1px}
+.session-menu:hover{background:#f5f5f5;color:#666}
 
 /* ===== Messages ===== */
-.messages{flex:1;overflow-y:auto;padding:0 12px 12px 12px;display:flex;flex-direction:column;gap:16px}
+.messages{flex:1;overflow-y:auto;padding:16px 12px 12px 12px;display:flex;flex-direction:column;gap:12px;background:#f8f9fa}
 .messages::-webkit-scrollbar{width:4px}
 .messages::-webkit-scrollbar-thumb{background:#ddd;border-radius:2px}
 
-.msg-user{align-self:flex-end;max-width:88%;background:#f2f2f2;color:#1a1a1a;padding:10px 16px;border-radius:18px;border-bottom-right-radius:4px;font-size:14px;line-height:1.6;word-wrap:break-word;overflow-wrap:break-word}
-.msg-assistant{align-self:flex-start;max-width:100%;color:#1a1a1a;font-size:14px;line-height:1.7;word-wrap:break-word;overflow-wrap:break-word;padding:0 2px}
+.msg-user{align-self:flex-end;max-width:85%;background:#2563eb;color:#fff;padding:10px 16px;border-radius:20px;border-bottom-right-radius:6px;font-size:14px;line-height:1.5;word-wrap:break-word;overflow-wrap:break-word;box-shadow:0 1px 2px rgba(0,0,0,0.08)}
+.msg-user code{background:rgba(255,255,255,0.2);padding:1px 5px;border-radius:4px;font-size:13px}
+.msg-user pre{background:rgba(255,255,255,0.15);padding:10px 12px;border-radius:10px;overflow-x:auto;margin:8px 0;font-size:12.5px;line-height:1.5}
+.msg-user pre code{background:none;padding:0}
+
+.msg-assistant{align-self:flex-start;max-width:100%;color:#1a1a1a;font-size:14px;line-height:1.7;word-wrap:break-word;overflow-wrap:break-word;padding:4px 0}
+.msg-assistant .msg-bubble{background:#fff;padding:12px 16px;border-radius:16px;border-bottom-left-radius:4px;box-shadow:0 1px 3px rgba(0,0,0,0.06),0 1px 2px rgba(0,0,0,0.04)}
 .msg-system{align-self:center;font-size:12px;color:#999;padding:4px 12px}
 
 /* Markdown in assistant */
@@ -116,46 +123,48 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:-apple-system,Blink
 @keyframes cursor-blink{0%,100%{opacity:1}50%{opacity:0}}
 
 /* ===== Input area ===== */
-.input-area{padding:10px 12px 6px 12px;flex-shrink:0;background:#fff}
-.input-wrapper{border:1px solid #e5e5e5;border-radius:12px;padding:0;overflow:hidden;transition:border-color 0.15s}
-.input-wrapper:focus-within{border-color:#ccc}
-.input-box{width:100%;border:none;outline:none;padding:10px 14px 4px 14px;font-family:inherit;font-size:14px;line-height:1.5;resize:none;min-height:40px;max-height:120px;color:#1a1a1a;background:transparent}
+.input-area{padding:12px 16px 10px 16px;flex-shrink:0;background:#fff;border-top:1px solid #f0f0f0}
+.input-wrapper{border:1px solid #e5e5e5;border-radius:16px;padding:0;overflow:hidden;transition:border-color 0.15s,box-shadow 0.15s;background:#fafafa}
+.input-wrapper:focus-within{border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,0.1);background:#fff}
+.input-box{width:100%;border:none;outline:none;padding:12px 16px 6px 16px;font-family:inherit;font-size:14px;line-height:1.5;resize:none;min-height:44px;max-height:120px;color:#1a1a1a;background:transparent}
 .input-box::placeholder{color:#bbb}
-.input-toolbar{display:flex;align-items:center;justify-content:space-between;padding:4px 8px 6px 8px}
+.input-toolbar{display:flex;align-items:center;justify-content:space-between;padding:2px 8px 6px 8px}
 .input-toolbar-left{display:flex;align-items:center;gap:4px}
-.plus-btn{width:28px;height:28px;border:none;background:none;cursor:pointer;border-radius:6px;display:flex;align-items:center;justify-content:center;color:#bbb;font-size:18px}
-.plus-btn:hover{background:#f5f5f5;color:#888}
-.send-btn{width:32px;height:32px;border:none;border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all 0.15s}
-.send-btn.ready{background:#1a1a1a;color:#fff}
-.send-btn.ready:hover{background:#333}
-.send-btn.disabled{background:#f0f0f0;color:#ccc;cursor:default}
-.send-btn span{vertical-align:middle}
+.plus-btn{width:28px;height:28px;border:none;background:none;cursor:pointer;border-radius:6px;display:flex;align-items:center;justify-content:center;color:#9ca3af;font-size:18px}
+.plus-btn:hover{background:#f5f5f5;color:#666}
+.send-btn{width:36px;height:36px;border:none;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all 0.2s;margin-right:2px}
+.send-btn.ready{background:#2563eb;color:#fff;box-shadow:0 2px 4px rgba(37,99,235,0.3)}
+.send-btn.ready:hover{background:#1d4ed8;transform:scale(1.05)}
+.send-btn.disabled{background:#e5e7eb;color:#9ca3af;cursor:default}
+.send-btn span{vertical-align:middle;border-style:solid;border-width:5px 0 5px 8px;border-color:transparent transparent transparent currentColor;margin-left:2px}
 .stop-btn{width:32px;height:32px;border:1px solid #e0e0e0;border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;background:#fff;flex-shrink:0}
 .stop-btn:hover{background:#f5f5f5;border-color:#ccc}
 .stop-btn .stop-icon{width:12px;height:12px;background:#1a1a1a;border-radius:2px}
 
 /* ===== Bottom bar ===== */
-.bottombar{display:flex;align-items:center;padding:4px 12px 8px 12px;gap:4px;flex-shrink:0;border-top:1px solid #f5f5f5;position:relative}
-.bb-btn{display:flex;align-items:center;gap:4px;font-size:12px;color:#888;cursor:pointer;padding:4px 8px;border:1px solid transparent;border-radius:6px;background:none;white-space:nowrap;position:relative}
-.bb-btn:hover{background:#f5f5f5;border-color:#e8e8e8}
-.bb-btn.active{background:#f5f5f5;border-color:#ddd}
+.bottombar{display:flex;align-items:center;padding:8px 16px 10px 16px;gap:6px;flex-shrink:0;border-top:1px solid #f0f0f0;position:relative;background:#fff}
+.bb-btn{display:flex;align-items:center;gap:4px;font-size:12px;color:#6b7280;cursor:pointer;padding:5px 10px;border:1px solid #e5e7eb;border-radius:20px;background:#fff;white-space:nowrap;position:relative;transition:all 0.15s}
+.bb-btn:hover{border-color:#d1d5db;background:#f9fafb;color:#374151}
+.bb-btn.active{background:#f3f4f6;border-color:#d1d5db}
 .bb-btn .icon-model,.bb-btn svg{width:14px;height:14px;flex-shrink:0}
-.bb-btn .chevron{font-size:9px;color:#bbb;margin-left:1px}
+.bb-btn .chevron{font-size:9px;color:#9ca3af;margin-left:1px}
+#bb-level{min-width:80px}
 
 /* ===== Dropdown ===== */
 .dropdown-backdrop{position:fixed;top:0;left:0;right:0;bottom:0;z-index:50}
-.dropdown{position:absolute;background:#fff;border:1px solid #e8e8e8;border-radius:10px;box-shadow:0 4px 24px rgba(0,0,0,0.12);z-index:51;min-width:160px;padding:6px 0;max-height:400px;overflow-y:auto}
-.dropdown.bottom-up{bottom:100%;margin-bottom:6px}
-.dropdown.top-down{top:100%;margin-top:6px}
+.dropdown{position:absolute;background:#fff;border:1px solid #e5e7eb;border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,0.1),0 1px 3px rgba(0,0,0,0.05);z-index:51;min-width:180px;padding:6px 0;max-height:400px;overflow-y:auto}
+.dropdown.bottom-up{bottom:100%;margin-bottom:8px}
+.dropdown.top-down{top:100%;margin-top:8px}
 .dd-header{padding:10px 16px 6px 16px;font-size:13px;font-weight:600;color:#1a1a1a}
 .dd-divider{height:1px;background:#f0f0f0;margin:6px 0}
-.dd-item{display:flex;align-items:center;justify-content:space-between;padding:8px 16px;font-size:13px;color:#1a1a1a;cursor:pointer;gap:8px}
-.dd-item:hover{background:#f5f5f5}
-.dd-item.selected{font-weight:500}
-.dd-item .dd-check{color:#1a1a1a;font-size:14px;flex-shrink:0}
-.dd-item .dd-badge{font-size:10px;padding:1px 6px;border-radius:4px;background:#f0f0f0;color:#888;flex-shrink:0}
-.dd-item .dd-badge.free{background:#e8f5e9;color:#2e7d32}
-.dd-item-danger{color:#e53935}
+.dd-item{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;font-size:13px;color:#374151;cursor:pointer;gap:8px;transition:background 0.1s}
+.dd-item:hover{background:#f3f4f6}
+.dd-item.selected{font-weight:500;color:#1a1a1a}
+.dd-item .dd-check{color:#2563eb;font-size:14px;flex-shrink:0}
+.dd-item .dd-desc{display:block;font-size:11px;color:#9ca3af;font-weight:normal;margin-top:2px}
+.dd-item .dd-badge{font-size:10px;padding:2px 8px;border-radius:12px;background:#f3f4f6;color:#6b7280;flex-shrink:0}
+.dd-item .dd-badge.free{background:#dcfce7;color:#16a34a}
+.dd-item-danger{color:#dc2626}
 .dd-item-danger:hover{background:#fef2f2}
 
 /* Sidebar */
@@ -185,7 +194,7 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:-apple-system,Blink
     <h3>OpenCode</h3>
     <p>Set the working directory and start the server</p>
     <div class="setup-cwd-row">
-      <input id="setup-cwd" type="text" placeholder="D:\code\my-project" spellcheck="false">
+      <input id="setup-cwd" type="text" placeholder="点击选择或输入工作目录" spellcheck="false" onclick="openCwdModalFromSetup()">
     </div>
     <button class="btn-primary" id="btn-start" onclick="startOpenCode()"><span class="icon-play"></span>Start Server</button>
     <div class="setup-status" id="setup-status"></div>
@@ -194,11 +203,13 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:-apple-system,Blink
   <!-- ===== Chat View ===== -->
   <div id="view-chat" class="hidden" style="display:flex;flex-direction:column;height:100%">
     <div class="topbar">
+      <button class="hamburger-btn" title="Menu" onclick="openSidebar()">
+        <div class="icon-hamburger"><span></span><span></span><span></span></div>
+      </button>
       <div class="topbar-logo">
-        <div class="icon-logo"></div>
         <span>OpenCode</span>
       </div>
-      <div class="topbar-cwd" id="topbar-cwd" title="Working directory"></div>
+      <div class="topbar-cwd clickable" id="topbar-cwd" title="点击切换工作目录" onclick="openCwdModal()"></div>
       <div class="topbar-actions" style="display:flex;gap:4px;align-items:center">
         <button class="topbar-btn" title="New Session" onclick="newSession()" style="width:24px;height:24px;border:1px solid #e0e0e0;border-radius:6px;background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0"><span class="icon-plus"></span></button>
         <div class="topbar-status">
@@ -207,11 +218,6 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:-apple-system,Blink
           <button class="btn-stop" title="Stop server" onclick="stopOpenCode()"><span class="icon-stop"></span></button>
         </div>
       </div>
-    </div>
-    <div class="subheader">
-      <button class="hamburger-btn" title="Menu" onclick="openSidebar()">
-        <div class="icon-hamburger"><span></span><span></span><span></span></div>
-      </button>
     </div>
     <div class="session-header" id="session-header-area">
       <span class="session-title" id="session-title">WPS Office</span>
@@ -235,16 +241,64 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:-apple-system,Blink
       </div>
     </div>
     <div class="bottombar" id="bottombar">
+      <button class="bb-btn" id="bb-agent" onclick="toggleAgentDropdown(event)">
+        <span id="agent-name">Agent</span><span class="chevron">&#9662;</span>
+      </button>
       <button class="bb-btn" id="bb-mode" onclick="toggleModeDropdown(event)">
         <span id="mode-label">Build</span><span class="chevron">&#9662;</span>
+      </button>
+      <button class="bb-btn" id="bb-provider" onclick="toggleProviderDropdown(event)">
+        <span id="provider-name">OpenCode</span><span class="chevron">&#9662;</span>
       </button>
       <button class="bb-btn" id="bb-model" onclick="toggleModelDropdown(event)">
         <span class="icon-model"></span>
         <span id="model-name">AI Model</span><span class="chevron">&#9662;</span>
       </button>
+      <button class="bb-btn" id="bb-level" onclick="toggleLevelDropdown(event)">
+        <span id="level-label"> balanced</span><span class="chevron">&#9662;</span>
+      </button>
     </div>
   </div>
 </div>
+
+<!-- ===== CWD Modal ===== -->
+<div id="cwd-modal" class="modal hidden">
+  <div class="modal-content">
+    <div class="modal-header">
+      <span>切换工作目录</span>
+      <button class="modal-close" onclick="closeCwdModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <p class="cwd-tip">当前目录: <span id="modal-cwd-current"></span></p>
+      <input type="text" id="cwd-input" class="cwd-input" placeholder="输入新的工作目录" spellcheck="false">
+      <div id="cwd-history" style="margin-top:8px;max-height:120px;overflow-y:auto"></div>
+      <p class="cwd-hint">提示: 切换目录将重启服务</p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeCwdModal()">取消</button>
+      <button class="btn-primary" onclick="confirmCwdChange()">确定</button>
+    </div>
+  </div>
+</div>
+
+<style>
+.modal{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:1000}
+.modal-content{background:#fff;border-radius:12px;width:90%;max-width:400px;box-shadow:0 4px 20px rgba(0,0,0,0.15)}
+.modal-header{display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid #eee;font-weight:600}
+.modal-close{background:none;border:none;font-size:24px;cursor:pointer;color:#999;padding:0;line-height:1}
+.modal-close:hover{color:#333}
+.modal-body{padding:20px}
+.cwd-tip{font-size:13px;color:#666;margin-bottom:12px}
+.cwd-input{width:100%;border:1px solid #ddd;border-radius:8px;padding:10px 12px;font-size:13px;font-family:Consolas,monospace;box-sizing:border-box}
+.cwd-input:focus{border-color:#999;outline:none}
+.cwd-hint{font-size:11px;color:#999;margin-top:8px}
+.cwd-history-item{padding:8px 12px;border-radius:6px;font-size:12px;font-family:Consolas,monospace;cursor:pointer;margin-bottom:4px;background:#f5f5f5}
+.cwd-history-item:hover{background:#e8e8e8}
+.cwd-history-item.active{background:#e3f2fd;border:1px solid #2196f3}
+.modal-footer{display:flex;justify-content:flex-end;gap:8px;padding:16px 20px;border-top:1px solid #eee}
+.btn-cancel{padding:8px 16px;border:1px solid #ddd;border-radius:6px;background:#fff;cursor:pointer;font-size:13px}
+.btn-cancel:hover{background:#f5f5f5}
+</style>
 
 <script>
 // ============================================================
@@ -267,9 +321,15 @@ var CONNECTED = false
 var LAST_INJECTED_CONTEXT = ''
 var CURRENT_MODEL = ''
 var CURRENT_MODE = 'build'
+var CURRENT_LEVEL = 'balanced'
 var AVAILABLE_MODELS = []
+var AVAILABLE_AGENTS = []
+var CURRENT_AGENT = 'wps-expert'
+var DEFAULT_AGENT = 'wps-expert'
 var SERVER_RUNNING = false
 var HEALTH_CHECK_TIMER = null
+var INPUT_HISTORY = []
+var INPUT_HISTORY_INDEX = -1
 
 var $messages = document.getElementById('messages')
 var $input = document.getElementById('input-box')
@@ -286,6 +346,9 @@ var $setupStatus = document.getElementById('setup-status')
 var $topbarCwd = document.getElementById('topbar-cwd')
 var $serverDot = document.getElementById('server-dot')
 var $serverLabel = document.getElementById('server-label')
+var $providerName = document.getElementById('provider-name')
+var $agentName = document.getElementById('agent-name')
+var CURRENT_PROVIDER = 'opencode'
 
 // --- Storage ---
 function getPS(key) { try { return window.Application.PluginStorage.getItem(key) || '' } catch(e) { return '' } }
@@ -304,43 +367,108 @@ function showSetup() {
     $btnStart.textContent = 'Start Server'
 }
 
+function openCwdModalFromSetup() {
+    var currentCwd = $setupCwd.value || getPS('opencode_cwd') || ''
+    var cwdInput = document.getElementById('cwd-input')
+    var modal = document.getElementById('cwd-modal')
+    document.getElementById('modal-cwd-current').textContent = currentCwd || '未设置'
+    cwdInput.value = currentCwd
+    renderCwdHistory()
+    modal.classList.remove('hidden')
+    setTimeout(function() { cwdInput.focus(); cwdInput.select() }, 100)
+}
+
 function showChat() {
     $viewSetup.classList.add('hidden')
     $viewChat.classList.remove('hidden')
+    // 更新 topbar cwd 显示
+    var cwd = PROJECT_DIR || getPS('opencode_cwd') || ''
+    $topbarCwd.textContent = cwd || '点击切换工作目录'
 }
 
-// --- Server start / stop ---
-function startOpenCode() {
-    var cwd = $setupCwd.value.replace(/\\/g, '\\\\').trim()
-    if (!cwd) { $setupStatus.textContent = 'Please enter a working directory'; return }
-    // 保存 CWD 到 PluginStorage
-    setPS('opencode_cwd', cwd)
-    PROJECT_DIR = cwd
-    $topbarCwd.textContent = cwd.replace(/\\\\/g, '\\')
-    $topbarCwd.title = cwd.replace(/\\\\/g, '\\')
+// --- CWD Modal ---
+function openCwdModal() {
+    if (SERVER_RUNNING) {
+        stopOpenCode()
+    }
+    var modal = document.getElementById('cwd-modal')
+    var currentCwd = document.getElementById('modal-cwd-current')
+    var cwdInput = document.getElementById('cwd-input')
+    currentCwd.textContent = PROJECT_DIR || '未设置'
+    cwdInput.value = PROJECT_DIR || ''
+    renderCwdHistory()
+    modal.classList.remove('hidden')
+    setTimeout(function() { cwdInput.focus(); cwdInput.select() }, 100)
+}
 
-    // 通过 main.js 命令通道启动 VBS
+var CWD_HISTORY = []
+function getCwdHistory() {
+    try {
+        var s = getPS('opencode_cwd_history')
+        if (s) CWD_HISTORY = JSON.parse(s)
+    } catch(e) {}
+    return CWD_HISTORY
+}
+function addCwdHistory(cwd) {
+    if (!cwd) return
+    getCwdHistory()
+    var arr = CWD_HISTORY.filter(function(x) { return x !== cwd })
+    arr.unshift(cwd)
+    if (arr.length > 10) arr = arr.slice(0, 10)
+    CWD_HISTORY = arr
+    try { setPS('opencode_cwd_history', JSON.stringify(arr)) } catch(e) {}
+}
+function renderCwdHistory() {
+    var container = document.getElementById('cwd-history')
+    if (!container) return
+    getCwdHistory()
+    if (CWD_HISTORY.length === 0) {
+        container.innerHTML = '<div style="color:#999;font-size:12px">暂无历史记录</div>'
+        return
+    }
+    var html = ''
+    for (var i = 0; i < CWD_HISTORY.length; i++) {
+        var c = CWD_HISTORY[i]
+        var sel = (c === PROJECT_DIR)
+        html += '<div class="cwd-history-item' + (sel ? ' active' : '') + '" onclick="selectCwdHistory(\'' + c.replace(/\\/g, '\\\\') + '\')">' + c + '</div>'
+    }
+    container.innerHTML = html
+}
+function selectCwdHistory(cwd) {
+    document.getElementById('cwd-input').value = cwd
+}
+
+function closeCwdModal() {
+    document.getElementById('cwd-modal').classList.add('hidden')
+}
+
+function confirmCwdChange() {
+    var newCwd = document.getElementById('cwd-input').value.replace(/\\/g, '\\\\').trim()
+    if (!newCwd) { alert('请输入工作目录'); return }
+    
+    // 保存到历史
+    addCwdHistory(newCwd)
+    
+    closeCwdModal()
+
+    // 如果当前有运行的服务器，先停止
+    if (SERVER_RUNNING) {
+        stopOpenCode()
+    }
+
+    // 设置新的 CWD 并启动
+    PROJECT_DIR = newCwd
+    setPS('opencode_cwd', newCwd)
+    setPS('opencode_start_cwd', newCwd)
+    $topbarCwd.textContent = newCwd.replace(/\\\\/g, '\\')
+    $topbarCwd.title = newCwd.replace(/\\\\/g, '\\')
+    $setupCwd.value = newCwd.replace(/\\\\/g, '\\')
+
+    // 直接启动服务
     $btnStart.disabled = true
     $btnStart.innerHTML = '<span class="spinner"></span> Starting...'
     $setupStatus.textContent = 'Starting OpenCode server...'
-
-    // 发送启动命令给 main.js
-    setPS('opencode_command', 'start:' + cwd.replace(/\\\\/g, '\\'))
-
-    // 先检查 launcher 是否可用
-    var launcherUrl = 'http://127.0.0.1:14097'
-    var launcherOk = false
-    var xhrLauncher = new XMLHttpRequest()
-    xhrLauncher.timeout = 3000
-    xhrLauncher.open('GET', launcherUrl + '/status', true)
-    xhrLauncher.onreadystatechange = function() {
-        if (xhrLauncher.readyState === 4 && xhrLauncher.status === 200) {
-            launcherOk = true
-        }
-    }
-    xhrLauncher.onerror = function() {}
-    xhrLauncher.ontimeout = function() {}
-    try { xhrLauncher.send() } catch(e) {}
+    setPS('opencode_command', 'start:' + newCwd.replace(/\\\\/g, '\\'))
 
     // 轮询等待服务就绪
     var retries = 0
@@ -356,12 +484,63 @@ function startOpenCode() {
             if (retries >= maxRetries) {
                 clearInterval(pollTimer)
                 $btnStart.disabled = false
-                $btnStart.textContent = 'Start Server'
-                if (!launcherOk) {
-                    $setupStatus.textContent = 'Launcher not running. Run: node launcher.js (in opencode-wps directory)'
-                } else {
-                    $setupStatus.textContent = 'Failed to start opencode. Check if opencode is installed.'
-                }
+                $btnStart.innerHTML = '<span class="icon-play"></span>Start Server'
+                $setupStatus.textContent = 'Failed to start. Check if opencode is installed.'
+            }
+        })
+    }, 1000)
+}
+
+// --- Server start / stop ---
+function startOpenCode() {
+    // 如果用户输入了目录就用用户输入的，否则用用户目录
+    var userInput = $setupCwd.value.replace(/\\/g, '\\\\').trim()
+    var cwd = userInput || 'C:\\Users\\' + 'Administrator'
+
+    // 保存 CWD 到历史
+    addCwdHistory(cwd)
+
+    // 保存 CWD 到 PluginStorage
+    setPS('opencode_cwd', cwd)
+    setPS('opencode_start_cwd', cwd)
+    PROJECT_DIR = cwd
+    $topbarCwd.textContent = cwd.replace(/\\\\/g, '\\')
+    $topbarCwd.title = cwd.replace(/\\\\/g, '\\')
+
+    $btnStart.disabled = true
+    $btnStart.innerHTML = '<span class="spinner"></span> Starting...'
+    $setupStatus.textContent = 'Starting OpenCode server...'
+
+    setPS('opencode_command', 'start:' + cwd.replace(/\\\\/g, '\\'))
+
+    var launcherUrl = 'http://127.0.0.1:14097'
+    var launcherOk = false
+    var xhrLauncher = new XMLHttpRequest()
+    xhrLauncher.timeout = 3000
+    xhrLauncher.open('GET', launcherUrl + '/status', true)
+    xhrLauncher.onreadystatechange = function() {
+        if (xhrLauncher.readyState === 4 && xhrLauncher.status === 200) launcherOk = true
+    }
+    xhrLauncher.onerror = function() {}
+    xhrLauncher.ontimeout = function() {}
+    try { xhrLauncher.send() } catch(e) {}
+
+    var retries = 0
+    var maxRetries = 30
+    var pollTimer = setInterval(function() {
+        fetchJSON('GET', '/global/health', null, function(data) {
+            if (data && data.healthy) {
+                clearInterval(pollTimer)
+                onServerConnected()
+            }
+        }, function() {
+            retries++
+            if (retries >= maxRetries) {
+                clearInterval(pollTimer)
+                $btnStart.disabled = false
+                $btnStart.innerHTML = '<span class="icon-play"></span>Start Server'
+                if (!launcherOk) $setupStatus.textContent = 'Launcher not running'
+                else $setupStatus.textContent = 'Failed to start. Check if opencode is installed.'
             }
         })
     }, 1000)
@@ -383,6 +562,10 @@ function onServerConnected() {
     updateServerStatus(true)
     showChat()
     fetchAvailableModels(function() { $modelName.textContent = CURRENT_MODEL || 'AI Model' })
+    fetchAvailableAgents(function() { 
+        var displayName = CURRENT_AGENT || 'Agent'
+        $agentName.textContent = displayName
+    })
     var sid = getPS('opencode_session_id')
     if (sid) { SESSION_ID = sid; loadSessionMessages(sid) } else { createNewSession(function() { connectSSE() }); return }
     connectSSE()
@@ -455,7 +638,69 @@ function toggleModeDropdown(e) {
 }
 function selectMode(mode) { CURRENT_MODE = mode; document.getElementById('mode-label').textContent = mode === 'build' ? 'Build' : 'Plan'; closeAllDropdowns() }
 
+// Provider dropdown
+function toggleProviderDropdown(e) {
+    e.stopPropagation()
+    var btn = document.getElementById('bb-provider')
+    var html = '<div class="dd-header">Select Provider</div>'
+    for (var i = 0; i < RECOMMENDED_PROVIDERS.length; i++) {
+        var p = RECOMMENDED_PROVIDERS[i]
+        var sel = (p.id === CURRENT_PROVIDER)
+        html += '<div class="dd-item' + (sel ? ' selected' : '') + '" onclick="selectProvider(\'' + p.id + '\')">'
+        html += '<span>' + p.name + '</span>'
+        if (sel) html += '<span class="dd-check">&#10003;</span>'
+        html += '</div>'
+    }
+    createDropdown(btn, html, 'bottom-up')
+}
+function selectProvider(id) {
+    CURRENT_PROVIDER = id
+    var p = RECOMMENDED_PROVIDERS.find(function(x) { return x.id === id })
+    $providerName.textContent = p ? p.name : id
+    closeAllDropdowns()
+    updateModelsForProvider()
+}
+function updateModelsForProvider() {
+    var p = RECOMMENDED_PROVIDERS.find(function(x) { return x.id === CURRENT_PROVIDER })
+    if (p && p.models) {
+        AVAILABLE_MODELS = p.models.slice()
+        if (AVAILABLE_MODELS.length > 0) {
+            CURRENT_MODEL = AVAILABLE_MODELS[0].id
+            $modelName.textContent = AVAILABLE_MODELS[0].name
+        }
+    }
+}
+
 // Model dropdown
+var AVAILABLE_LEVELS = ['balanced', 'high', 'low']
+
+function toggleLevelDropdown(e) {
+    e.stopPropagation()
+    var btn = document.getElementById('bb-level')
+    var html = '<div class="dd-header">Select Reasoning Level</div>'
+    var levels = [
+        { id: 'balanced', name: 'Balanced', desc: 'Good reasoning, good speed' },
+        { id: 'high', name: 'High', desc: 'Best reasoning, may be slower' },
+        { id: 'low', name: 'Low', desc: 'Faster response, less reasoning' }
+    ]
+    for (var i = 0; i < levels.length; i++) {
+        var l = levels[i]
+        var sel = (CURRENT_LEVEL === l.id)
+        html += '<div class="dd-item' + (sel ? ' selected' : '') + '" onclick="selectLevel(\'' + l.id + '\')">'
+        html += '<span>' + l.name + '</span><span class="dd-desc">' + l.desc + '</span>'
+        if (sel) html += '<span class="dd-check">&#10003;</span>'
+        html += '</div>'
+    }
+    createDropdown(btn, html, 'bottom-up')
+}
+
+function selectLevel(id) {
+    CURRENT_LEVEL = id
+    var labels = { balanced: ' balanced', high: ' high', low: ' low' }
+    document.getElementById('level-label').textContent = labels[id] || ' balanced'
+    closeAllDropdowns()
+}
+
 function toggleModelDropdown(e) {
     e.stopPropagation()
     var btn = document.getElementById('bb-model')
@@ -477,9 +722,40 @@ function toggleModelDropdown(e) {
     createDropdown(btn, html, 'bottom-up')
 }
 function selectModel(id) { CURRENT_MODEL = id; $modelName.textContent = id; closeAllDropdowns() }
+var RECOMMENDED_MODELS = [
+    { id: 'opencode/gpt-5-nano', name: 'GPT-5 Nano', providerID: 'opencode', free: true },
+    { id: 'opencode/minimax-m2.5-free', name: 'MiniMax M2.5 Free', providerID: 'opencode', free: true },
+    { id: 'opencode/big-pickle', name: 'Big Pickle', providerID: 'opencode', free: true },
+    { id: 'opencode/ling-2.6-flash-free', name: 'Ling 2.6 Flash Free', providerID: 'opencode', free: true },
+    { id: 'opencode/hy3-preview-free', name: 'Hy3 preview Free', providerID: 'opencode', free: true },
+    { id: 'opencode/nemotron-3-super-free', name: 'Nemotron 3 Super Free', providerID: 'opencode', free: true },
+    { id: 'opencode/gpt-5.1-codex', name: 'GPT-5.1 Codex (Zen)', providerID: 'opencode', free: false },
+    { id: 'opencode/gpt-5-codex', name: 'GPT-5 Codex (Go)', providerID: 'opencode', free: false }
+]
+var RECOMMENDED_PROVIDERS = [
+    { id: 'opencode', name: 'OpenCode', models: RECOMMENDED_MODELS },
+    { id: 'anthropic', name: 'Anthropic', models: [
+        { id: 'anthropic/claude-opus-4-1', name: 'Claude Opus 4.1' },
+        { id: 'anthropic/claude-sonnet-4-20250514', name: 'Claude Sonnet 4' },
+        { id: 'anthropic/claude-3-5-sonnet-20241022', name: 'Claude 3.5 Sonnet' }
+    ]},
+    { id: 'openai', name: 'OpenAI', models: [
+        { id: 'openai/gpt-4.1', name: 'GPT-4.1' },
+        { id: 'openai/gpt-4.1-mini', name: 'GPT-4.1 Mini' },
+        { id: 'openai/o3', name: 'GPT-4o' }
+    ]},
+    { id: 'github', name: 'GitHub Copilot', models: [
+        { id: 'github/copilot-speech', name: 'Copilot Speech' }
+    ]}
+]
 function fetchAvailableModels(cb) {
     fetchJSON('GET', '/global/config', null, function(cfg) {
-        AVAILABLE_MODELS = []
+        AVAILABLE_MODELS = RECOMMENDED_MODELS.slice()
+        var allProviders = {}
+        for (var i = 0; i < RECOMMENDED_MODELS.length; i++) {
+            var m = RECOMMENDED_MODELS[i]
+            if (!allProviders[m.providerID]) allProviders[m.providerID] = true
+        }
         if (!cfg) { if (cb) cb(); return }
         var providers = cfg.provider || {}
         for (var pid in providers) {
@@ -487,6 +763,7 @@ function fetchAvailableModels(cb) {
             if (p && p.models) {
                 for (var mid in p.models) {
                     AVAILABLE_MODELS.push({ id: mid, name: p.models[mid].name || mid, providerID: pid, free: false })
+                    allProviders[pid] = true
                 }
             }
         }
@@ -494,6 +771,90 @@ function fetchAvailableModels(cb) {
         if (cb) cb()
     })
 }
+
+function fetchAvailableAgents(cb) {
+    var xhr = new XMLHttpRequest()
+    xhr.timeout = 10000
+    xhr.onreadystatechange = function() {
+        if (xhr.readyState === 4) {
+            if (xhr.status >= 200 && xhr.status < 300) {
+                try {
+                    var agents = JSON.parse(xhr.responseText)
+                    if (agents && agents.data) {
+                        AVAILABLE_AGENTS = agents.data
+                        console.log('[Agent] Loaded:', AVAILABLE_AGENTS.length, 'agents')
+                        if (AVAILABLE_AGENTS.length > 0 && !CURRENT_AGENT) {
+                            for (var i = 0; i < AVAILABLE_AGENTS.length; i++) {
+                                if (AVAILABLE_AGENTS[i].name === DEFAULT_AGENT) {
+                                    CURRENT_AGENT = DEFAULT_AGENT
+                                    break
+                                }
+                            }
+                            if (!CURRENT_AGENT) CURRENT_AGENT = AVAILABLE_AGENTS[0].name
+                        }
+                    }
+                } catch(e) {
+                    console.log('[Agent] Parse error:', e)
+                }
+            } else {
+                console.log('[Agent] HTTP error:', xhr.status)
+            }
+            if (cb) cb()
+        }
+    }
+    xhr.onerror = function() { console.log('[Agent] Network error'); if (cb) cb() }
+    xhr.ontimeout = function() { console.log('[Agent] Timeout'); if (cb) cb() }
+    xhr.open('GET', API_BASE + '/agent', true)
+    xhr.send()
+}
+
+function toggleAgentDropdown(e) {
+    e.stopPropagation()
+    var btn = document.getElementById('bb-agent')
+    createDropdown(btn, '<div class="dd-header">Loading...</div>', 'bottom-up')
+    
+    var xhr = new XMLHttpRequest()
+    xhr.timeout = 10000
+    xhr.onreadystatechange = function() {
+        if (xhr.readyState === 4 && xhr.status === 200) {
+            try {
+                var resp = JSON.parse(xhr.responseText)
+                var agents = resp.data || resp || []
+                closeAllDropdowns()
+                
+                var html = '<div class="dd-header">Select Agent (' + agents.length + ')</div>'
+                if (agents.length === 0) {
+                    html += '<div class="dd-item"><span style="color:#999">No agents found</span></div>'
+                } else {
+                    for (var i = 0; i < agents.length; i++) {
+                        var a = agents[i]
+                        var name = a.name || a.id || 'unknown'
+                        var sel = (name === CURRENT_AGENT)
+                        html += '<div class="dd-item' + (sel ? ' selected' : '') + '" onclick="selectAgent(\'' + escapeAttr(name) + '\')">'
+                        html += '<span>' + escapeHtml(name) + '</span>'
+                        if (sel) html += '<span class="dd-check">&#10003;</span>'
+                        html += '</div>'
+                    }
+                }
+                createDropdown(btn, html, 'bottom-up')
+            } catch(e) {
+                closeAllDropdowns()
+                createDropdown(btn, '<div class="dd-header">Error: parse failed</div>', 'bottom-up')
+            }
+        } else if (xhr.readyState === 4) {
+            closeAllDropdowns()
+            var errMsg = xhr.status === 0 ? 'Network error' : 'HTTP ' + xhr.status
+            createDropdown(btn, '<div class="dd-header">' + errMsg + '</div>', 'bottom-up')
+        }
+    }
+    xhr.onerror = function() {
+        closeAllDropdowns()
+        createDropdown(btn, '<div class="dd-header">Network error</div>', 'bottom-up')
+    }
+    xhr.open('GET', API_BASE + '/agent', true)
+    xhr.send()
+}
+function selectAgent(id) { CURRENT_AGENT = id; $agentName.textContent = id; closeAllDropdowns() }
 
 // Session menu
 function toggleSessionMenu(e) {
@@ -696,9 +1057,15 @@ function addSystemMessage(text) { var el = document.createElement('div'); el.cla
 // --- Send ---
 function sendMessage() {
     var text = $input.value.trim(); if (!text || IS_BUSY || !SESSION_ID) return
-    addUserMessage(text); $input.value = ''; autoGrow($input); setStatus('busy')
+    addUserMessage(text)
+    if (INPUT_HISTORY.indexOf(text) === -1) INPUT_HISTORY.push(text)
+    INPUT_HISTORY_INDEX = -1
+    $input.value = ''; autoGrow($input); setStatus('busy')
     injectContext(function() {
-        postMessage('/session/' + SESSION_ID + '/message', { parts: [{ type: 'text', text: text }] }, function(s, t) { addSystemMessage('Error: ' + (t || 'status ' + s)); finalizeStreaming() })
+        var body = { parts: [{ type: 'text', text: text }] }
+        if (CURRENT_LEVEL && CURRENT_LEVEL !== 'balanced') body.level = CURRENT_LEVEL
+        if (CURRENT_AGENT) body.agent = CURRENT_AGENT
+        postMessage('/session/' + SESSION_ID + '/message', body, function(s, t) { addSystemMessage('Error: ' + (t || 'status ' + s)); finalizeStreaming() })
     })
 }
 function injectContext(cb) {
@@ -730,7 +1097,33 @@ function gatherWpsContext() {
 function abortMessage() { if (!SESSION_ID) return; fetchJSON('POST', '/session/' + SESSION_ID + '/abort', null, function() { addSystemMessage('Aborted'); finalizeStreaming() }) }
 
 // --- Input ---
-function onInputKey(e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage() }; setTimeout(updateSendButton, 0) }
+function onInputKey(e) {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage() }
+    else if (e.key === 'ArrowUp') {
+        e.preventDefault()
+        if (INPUT_HISTORY.length > 0) {
+            if (INPUT_HISTORY_INDEX < INPUT_HISTORY.length - 1) INPUT_HISTORY_INDEX++
+            if (INPUT_HISTORY_INDEX >= 0) {
+                $input.value = INPUT_HISTORY[INPUT_HISTORY.length - 1 - INPUT_HISTORY_INDEX]
+                autoGrow($input)
+            }
+        }
+    }
+    else if (e.key === 'ArrowDown') {
+        e.preventDefault()
+        if (INPUT_HISTORY_INDEX > 0) {
+            INPUT_HISTORY_INDEX--
+            $input.value = INPUT_HISTORY[INPUT_HISTORY.length - 1 - INPUT_HISTORY_INDEX]
+            autoGrow($input)
+        }
+        else if (INPUT_HISTORY_INDEX === 0) {
+            INPUT_HISTORY_INDEX = -1
+            $input.value = ''
+            autoGrow($input)
+        }
+    }
+    setTimeout(updateSendButton, 0)
+}
 function autoGrow(el) { el.style.height = 'auto'; el.style.height = Math.min(el.scrollHeight, 120) + 'px'; updateSendButton() }
 function updateSendButton() { $sendBtn.className = 'send-btn ' + ($input.value.trim().length > 0 && !IS_BUSY ? 'ready' : 'disabled') }
 function updateInputState() {
