@@ -147,24 +147,14 @@ function OnAddinLoad(ribbonUI) {
 }
 
 // --- CWD 功能 ---
-function OnGetCwd(control) {
+function OnGetCwdLabel(control) {
     try {
-        var cwd = window.Application.PluginStorage.getItem('opencode_cwd') || '';
+        var cwd = window.Application.PluginStorage.getItem('opencode_cwd') || '未设置';
+        // 截断显示
+        if (cwd.length > 40) cwd = cwd.substring(0, 37) + '...';
         return cwd;
     } catch (e) {
-        return '';
-    }
-}
-
-function OnCwdChange(control) {
-    var newCwd = control.Text;
-    if (newCwd && newCwd.length > 0) {
-        try {
-            window.Application.PluginStorage.setItem('opencode_cwd', newCwd);
-            console.log('[OpenCode] CWD 已更新: ' + newCwd);
-        } catch (e) {
-            console.error('[OpenCode] 保存 CWD 失败: ' + e.message);
-        }
+        return '未设置';
     }
 }
 

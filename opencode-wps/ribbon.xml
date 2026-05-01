@@ -3,8 +3,8 @@
         <tabs>
             <tab id="wpsAddinTab" label="OpenCode AI">
                 <group id="grpCwd" label="工作目录">
-                    <editBox id="editCwd" label="CWD:" getText="OnGetCwd" onChange="OnCwdChange" sizeString="30" />
-                    <button id="btnBrowseCwd" label="浏览" imageMso="FileSearch" onAction="OnAction" getEnabled="OnGetEnabled" visible="true" />
+                    <labelControl id="lblCwd" getLabel="OnGetCwdLabel" />
+                    <button id="btnBrowseCwd" label="选择文件夹" imageMso="FileSearch" onAction="OnAction" getEnabled="OnGetEnabled" visible="true" />
                 </group>
                 <group id="grpMain" label="AI 助手">
                     <button id="btnShowTaskPane" label="打开面板" imageMso="GoTo" onAction="OnAction" getEnabled="OnGetEnabled" getImageSize="GetImageSize" visible="true" size="large"/>
