@@ -22,16 +22,18 @@ OpenCode WPS 将 OpenCode AI 的能力集成到 WPS Office 中，通过侧边栏
 opencode-wps/
 ├── opencode-wps/              # WPS JS 加载项（核心插件）
 │   ├── main.js                # Ribbon 回调、状态管理、OpenCode 连接
-│   ├── taskpane.html          # Chat UI（SSE 流式对话、Markdown 渲染、会话管理）
+│   ├── taskpane.html          # Chat UI（SSE 流式对话、Markdown 渲染、会话管理、Agent 选择）
 │   ├── ribbon.xml             # 功能区按钮定义
 │   └── manifest.xml           # 加载项清单
 ├── wps-office-mcp/            # WPS Office MCP 服务器
-│   └── src/                   # TypeScript 源码（90 Excel + 29 Word + 85 PPT 工具）
-├── skills/                    # OpenCode Skills
+│   └── src/                   # TypeScript 源码（约 200 个工具）
+├── skills/                    # OpenCode Skills（安装到 ~/.opencode/skills/）
 │   ├── wps-excel/             # Excel 操作技能
 │   ├── wps-word/              # Word 操作技能
 │   ├── wps-ppt/               # PPT 操作技能
 │   └── wps-office/            # WPS 通用技能
+├── agents/                    # 自定义 Agents 说明（实际文件在 ~/.config/opencode/agents/）
+│   └── README.md             # ⚠️ Agents 定义在用户目录，不在此目录
 ├── wps-opencode-addon/        # COM 桥接加载项（已合并，仅保留供参考）
 ├── wps-opencode-assistant/    # 旧版助手加载项（已合并，仅保留供参考）
 ├── install-addons.js          # 一键安装脚本
@@ -43,9 +45,10 @@ opencode-wps/
 
 | 组件 | 说明 |
 |------|------|
-| **opencode-wps** | WPS JS 加载项，在 WPS 功能区添加 "OpenCode AI" 标签页，提供侧边栏 Chat UI |
-| **wps-office-mcp** | MCP (Model Context Protocol) 服务器，让 AI 通过 MCP 协议直接操作 WPS 文档 |
-| **skills** | OpenCode 技能定义，指导 AI 如何使用 WPS 相关工具 |
+| **opencode-wps** | WPS JS 加载项，在 WPS 功能区添加 "OpenCode AI" 标签页，提供侧边栏 Chat UI（含 Agent 选择） |
+| **wps-office-mcp** | MCP (Model Context Protocol) 服务器，让 AI 通过 MCP 协议直接操作 WPS 文档（约 200 个工具） |
+| **skills** | OpenCode 技能定义，安装到 `~/.opencode/skills/`，指导 AI 如何使用 WPS 相关工具 |
+| **agents** | 自定义 WPS Agents（wps-expert 主 agent + wps-word/wps-excel/wps-ppt 子 agents），定义在 `~/.config/opencode/agents/` |
 | **install-addons.js** | 一键安装脚本，自动完成所有组件的安装和配置 |
 
 ## 项目历史
