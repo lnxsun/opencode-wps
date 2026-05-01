@@ -14,7 +14,7 @@ OpenCode WPS 将 OpenCode AI 的能力集成到 WPS Office 中，通过侧边栏
 - **WPS 专用 Agents** — 自定义 wps-expert 主 agent 和 wps-word/wps-excel/wps-ppt 子 agents
 - **Agent 选择** — 底部工具栏支持切换不同 agent，消息自动传递 agent 参数
 - **一键安装** — 运行 `node install-addons.js` 自动完成全部组件安装
-- **开机自启** — 通过 Windows 计划任务自动启动 OpenCode 服务，无需手动操作
+- **开机自启** — 通过 Launcher 进程自动管理 OpenCode 服务（监听 14097 端口），用户登录时自动启动
 
 ## 项目组成
 
@@ -88,7 +88,7 @@ npm install
 node install-addons.js
 ```
 
-安装脚本会自动完成以下 6 个步骤：
+安装脚本会自动完成以下 7 个步骤：
 
 | 步骤 | 操作 | 说明 |
 |------|------|------|
@@ -97,8 +97,8 @@ node install-addons.js
 | 3 | 编译 MCP 服务器 | 在 wps-office-mcp 目录执行 `npm run build` |
 | 4 | 配置 OpenCode MCP | 修改 `~/.config/opencode/opencode.json`，添加 wps-office MCP 服务器 |
 | 5 | 安装 Skills | 复制 4 个技能到 `~/.opencode/skills/` |
-| 6 | 清理废弃配置 | 删除旧的 `.claude/skills/`、`.claude/plugins/` 等目录 |
-| 7 | 注册开机自启 | 创建 Windows 计划任务 `OpenCodeServer`，用户登录时自动启动 `opencode serve`，并立即启动一次 |
+| 6 | 安装 Agents | 复制自定义 agents 到 `~/.config/opencode/agents/` 和 `~/.opencode/agents/` |
+| 7 | 注册 Launcher | 注册 Launcher 进程实现开机自启，监听 14097 端口管理服务 |
 
 ### 4. 重启 WPS Office
 
@@ -140,17 +140,13 @@ node install-addons.js
 
 ### OpenCode 服务管理
 
-OpenCode 服务通过 Windows 计划任务管理，无需手动操作：
+OpenCode 服务通过 Launcher 进程管理（监听 `127.0.0.1:14097`），无需手动操作：
 
 ```bash
-# 查看服务状态
-schtasks /Query /TN "OpenCodeServer"
-
-# 手动启动服务（无需重启电脑）
-schtasks /Run /TN "OpenCodeServer"
-
-# 删除计划任务
-schtasks /Delete /TN "OpenCodeServer" /F
+# 通过 Launcher API 管理服务
+# 查看状态：GET http://127.0.0.1:14097/status
+# 启动服务：POST http://127.0.0.1:14097/start (body: {"cwd": "目录"})
+# 停止服务：POST http://127.0.0.1:14097/stop
 ```
 
 服务默认监听 `127.0.0.1:14096`，WPS 插件会自动检测并连接。

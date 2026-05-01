@@ -37,6 +37,11 @@ const mcpServer = {
 const skillsSrcDir = path.resolve(rootDir, 'skills');
 const opencodeSkillsDir = path.join(homeDir, '.opencode', 'skills');
 
+// ===== 4. Agents =====
+const agentsSrcDir = path.resolve(rootDir, 'agents');
+const opencodeAgentsDir = path.join(homeDir, '.config', 'opencode', 'agents');
+const opencodeAgentsProjectDir = path.join(homeDir, '.opencode', 'agents');
+
 // ===== 4. OpenCode 全局配置 =====
 const opencodeConfigDir = path.join(homeDir, '.config', 'opencode');
 const opencodeConfigPath = path.join(opencodeConfigDir, 'opencode.json');
@@ -266,9 +271,43 @@ if (fsEx.existsSync(skillsSrcDir)) {
 }
 
 // ============================================================
-// 第 5 步: 清理废弃配置
+// 第 5 步: 安装 Agents 到 OpenCode
 // ============================================================
-console.log('\n【第 5 步】清理废弃配置');
+console.log('\n【第 5 步】安装 OpenCode Agents');
+
+if (fsEx.existsSync(agentsSrcDir)) {
+    const agentFiles = fs.readdirSync(agentsSrcDir).filter(name => name.endsWith('.md'));
+
+    if (agentFiles.length > 0) {
+        // 安装到全局 agents 目录
+        fsEx.ensureDirSync(opencodeAgentsDir);
+        agentFiles.forEach(file => {
+            const src = path.join(agentsSrcDir, file);
+            const dest = path.join(opencodeAgentsDir, file);
+            fsEx.copySync(src, dest, { overwrite: true });
+            console.log('  已安装: ' + file);
+        });
+        console.log('  全局 Agents 目录: ' + opencodeAgentsDir);
+
+        // 安装到项目 agents 目录
+        fsEx.ensureDirSync(opencodeAgentsProjectDir);
+        agentFiles.forEach(file => {
+            const src = path.join(agentsSrcDir, file);
+            const dest = path.join(opencodeAgentsProjectDir, file);
+            fsEx.copySync(src, dest, { overwrite: true });
+        });
+        console.log('  项目 Agents 目录: ' + opencodeAgentsProjectDir);
+    } else {
+        console.log('  [跳过] 未找到有效的 agents');
+    }
+} else {
+    console.log('  [跳过] Agents 源目录不存在: ' + agentsSrcDir);
+}
+
+// ============================================================
+// 第 6 步: 清理废弃配置
+// ============================================================
+console.log('\n【第 6 步】清理废弃配置');
 
 staleClaudeDirs.forEach(dir => {
     try {
@@ -296,9 +335,9 @@ stalePluginDirs.forEach(dir => {
 });
 
 // ============================================================
-// 第 6 步: 注册 launcher 开机自启 + 立即启动
+// 第 7 步: 注册 launcher 开机自启 + 立即启动
 // ============================================================
-console.log('\n【第 6 步】注册 launcher 开机自启');
+console.log('\n【第 7 步】注册 launcher 开机自启');
 
 const launcherPath = path.join(jsaddonsDir, 'opencode-wps_', 'launcher.js');
 
@@ -379,7 +418,8 @@ console.log('  1. WPS 插件 (opencode-wps) → jsaddons');
 console.log('  2. MCP 服务器 → ' + mcpServer.src);
 console.log('  3. OpenCode MCP 配置 → opencode.json');
 console.log('  4. Skills → ~/.opencode/skills/');
-console.log('  5. launcher 进程管理 → http://127.0.0.1:14097');
+console.log('  5. Agents → ~/.config/opencode/agents/ 和 ~/.opencode/agents/');
+console.log('  6. launcher 进程管理 → http://127.0.0.1:14097');
 console.log('');
 console.log('后续步骤:');
 console.log('  - 重启 WPS Office 以加载插件');
