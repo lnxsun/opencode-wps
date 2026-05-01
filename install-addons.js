@@ -203,6 +203,34 @@ jsLines.push('</jsplugins>');
 fs.writeFileSync(jspluginsXmlPath, jsLines.join('\n') + '\n', 'utf-8');
 console.log('  已更新 jsplugins.xml');
 
+// 更新 authaddin.json（真正的启用开关）
+const authaddinJsonPath = path.join(jsaddonsDir, 'authaddin.json');
+const OPENCODE_KEY = '6b7a57516c426c6551796e326633317a';
+const OPENCODE_MD5 = '434c5765474f626a50724b30326674625070697a765758543735495461733635556e3432425f47532d33303d';
+
+if (fsEx.existsSync(authaddinJsonPath)) {
+    try {
+        const authContent = fs.readFileSync(authaddinJsonPath, 'utf-8');
+        const authData = JSON.parse(authContent.replace(/^\uFEFF/, ''));
+        
+        // 遍历所有应用类型（wps, et, wpp）
+        ['wps', 'et', 'wpp'].forEach(appType => {
+            if (authData[appType] && authData[appType][OPENCODE_KEY]) {
+                authData[appType][OPENCODE_KEY].enable = true;
+                console.log('  已启用 ' + appType + ' 插件');
+            }
+        });
+        
+        fs.writeFileSync(authaddinJsonPath, JSON.stringify(authData, null, 4) + '\n', 'utf-8');
+        console.log('  已更新 authaddin.json');
+    } catch (e) {
+        console.log('  [警告] 更新 authaddin.json 失败: ' + e.message);
+        console.log('  请手动修改 authaddin.json 中 opencode-wps 的 enable 为 true');
+    }
+} else {
+    console.log('  [警告] authaddin.json 不存在，跳过');
+}
+
 // ============================================================
 // 第 2 步: 编译 MCP 服务器
 // ============================================================

@@ -19,24 +19,13 @@ WPS 插件配置分散在 **3 个文件** 中：
 
 ### 如何避坑
 
-1. **install-addons.js 必须同时更新 authaddin.json**
-   ```javascript
-   // 找到 opencode-wps 的 key: 6b7a57516c426c6551796e326633317a
-   // 设置 "enable": true
-   ```
+**自动方案：**
+运行 `node install-addons.js` 会自动更新 `authaddin.json` 中的 `enable` 为 `true`。
 
-2. **检查配置的命令**
-   ```powershell
-   # 查看真正的开关状态
-   Get-Content "$env:APPDATA\kingsoft\wps\jsaddons\authaddin.json"
-   # 搜索 opencode-wps 那一段，确认 enable 是 true 还是 false
-   ```
-
-3. **修复命令**（如果手动紧急修复）
-   - 编辑 `authaddin.json`
-   - 找到 key `6b7a57516c426c6551796e326633317a`
-   - 把 `"enable": false` 改为 `"enable": true`
-   - 不需要重启 WPS，重新打开"加载项"窗口即可
+**手动检查：**
+```powershell
+# 查看当前状态
+Get-Content "$env:APPDATA\kingsoft\wps\jsaddons\authaddin.json"
 
 ---
 
@@ -220,7 +209,7 @@ User-Agent: Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like
 
 ## 八、教训总结
 
-1. **配置必须统一管理**：3 个配置文件（authaddin.json、publish.xml、jsplugins.xml）必须通过 install-addons.js 统一更新，不能只改一个
+1. **配置必须统一管理**：3 个配置文件（authaddin.json、publish.xml、jsplugins.xml）现在通过 install-addons.js 统一更新
 
 2. **环境兼容性**：WPS taskpane 不是普通浏览器，document.location 不可用
 
@@ -228,6 +217,6 @@ User-Agent: Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like
 
 4. **改完必须测**：每次修改后必须执行完整验证清单，不能只改代码不验证
 
-5. **紧急修复**：如果插件禁用，手动改 authaddin.json 是最快方案
+5. **UI 不能复用**：WPS 内置浏览器太旧，不能直接嵌入官方页面，必须自己实现简化版 UI
 
-6. **UI 不能复用**：WPS 内置浏览器太旧，不能直接嵌入官方页面，必须自己实现简化版 UI
+6. **install-addons.js 是核心**：开发调试和日常使用都通过此脚本，无需 wpsjs publish
