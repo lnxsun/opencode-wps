@@ -1339,7 +1339,7 @@ function scrollToBottom() { setTimeout(function() { $messages.scrollTop = $messa
 // ============================================================
 (function init() {
     var lastCwd = getPS('opencode_cwd')
-    if (lastCwd) $setupCwd.value = lastCwd.replace(/\\\\/g, '\\')
+    if (lastCwd) $setupCwd.value = lastCwd.replace(/\\/g, '\\')
 
     // 先检查 opencode 是否已在运行
     fetchJSON('GET', '/global/health', null, function(data) {
@@ -1350,11 +1350,28 @@ function scrollToBottom() { setTimeout(function() { $messages.scrollTop = $messa
             $topbarCwd.title = PROJECT_DIR.replace(/\\\\/g, '\\')
             onServerConnected()
         } else {
-            // 服务未运行，显示 setup
-            showSetup()
+            // 服务未运行，检查是否有 CWD，如果有则自动启动
+            if (lastCwd && lastCwd.length > 0) {
+                console.log('[Init] 发现 CWD，自动启动服务: ' + lastCwd);
+                PROJECT_DIR = lastCwd;
+                $topbarCwd.textContent = PROJECT_DIR.replace(/\\\\/g, '\\');
+                $topbarCwd.title = PROJECT_DIR.replace(/\\\\/g, '\\');
+                startOpenCode();
+            } else {
+                showSetup();
+            }
         }
     }, function() {
-        // 连接失败，显示 setup
+        // 连接失败，检查是否有 CWD
+        if (lastCwd && lastCwd.length > 0) {
+            console.log('[Init] 连接失败但有 CWD，自动启动服务: ' + lastCwd);
+            PROJECT_DIR = lastCwd;
+            $topbarCwd.textContent = PROJECT_DIR.replace(/\\\\/g, '\\');
+            $topbarCwd.title = PROJECT_DIR.replace(/\\\\/g, '\\');
+            startOpenCode();
+        } else {
+            showSetup();
+        }
         showSetup()
     })
 })()
