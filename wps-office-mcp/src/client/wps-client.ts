@@ -141,7 +141,7 @@ async function execWpsActionWithRetry(action: string, params: Record<string, unk
       // 使用 Promise.race 实现超时
       // 注意：无法真正取消 COM 调用，但可确保不会无限等待
       const timeoutPromise = new Promise((_, reject) => {
-        const timeoutId = setTimeout(() => reject(new Error('COM 调用超时（' + COM_TIMEOUT + 'ms）')), COM_TIMEOUT);
+        setTimeout(() => reject(new Error('COM 调用超时（' + COM_TIMEOUT + 'ms）')), COM_TIMEOUT);
       });
 
       const result = await Promise.race([
