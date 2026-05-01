@@ -146,67 +146,17 @@ function OnAddinLoad(ribbonUI) {
     return true
 }
 
-// --- CWD 功能 ---
-function OnGetCwd(control) {
-    try {
-        var cwd = window.Application.PluginStorage.getItem('opencode_cwd') || '';
-        return cwd;
-    } catch (e) {
-        return '';
-    }
-}
-
-function OnCwdChange(control) {
-    var newCwd = control.Text;
-    if (newCwd && newCwd.length > 0) {
-        try {
-            window.Application.PluginStorage.setItem('opencode_cwd', newCwd);
-            console.log('[OpenCode] CWD 已更新: ' + newCwd);
-        } catch (e) {
-            console.error('[OpenCode] 保存 CWD 失败: ' + e.message);
-        }
-    }
-}
-
-function OnBrowseCwd() {
-    try {
-        // msoFileDialogFolderPicker = 4 (选择文件夹)
-        var fd = window.Application.FileDialog(4);
-        if (fd) {
-            fd.Title = '选择工作目录';
-            if (fd.Show()) {
-                var path = fd.SelectedItems(1);
-                if (path) {
-                    window.Application.PluginStorage.setItem('opencode_cwd', path);
-                    if (window.Application.ribbonUI) {
-                        window.Application.ribbonUI.Invalidate();
-                    }
-                    console.log('[OpenCode] 已选择目录: ' + path);
-                }
-            }
-        }
-    } catch (e) {
-        console.error('[OpenCode] 浏览目录失败: ' + e.message);
-    }
-}
-
 function OnAction(control) {
     var eleId = control.Id
     switch (eleId) {
         case "btnShowTaskPane":
             var tsId = window.Application.PluginStorage.getItem("taskpane_id")
-            var cwd = window.Application.PluginStorage.getItem("opencode_cwd") || ''
-            var url = GetUrlPath() + "/taskpane.html"
-            if (cwd) {
-                url += (url.indexOf('?') >= 0 ? '&' : '?') + 'cwd=' + encodeURIComponent(cwd)
-            }
             if (!tsId) {
-                var tskpane = window.Application.CreateTaskPane(url)
+                var tskpane = window.Application.CreateTaskPane(GetUrlPath() + "/taskpane.html")
                 window.Application.PluginStorage.setItem("taskpane_id", tskpane.ID)
                 tskpane.Visible = true
             } else {
-                var existingPane = window.Application.GetTaskPane(tsId)
-                existingPane.Visible = !existingPane.Visible
+                window.Application.GetTaskPane(tsId).Visible = !window.Application.GetTaskPane(tsId).Visible
             }
             break
         case "btnDockWindow":
@@ -214,10 +164,6 @@ function OnAction(control) {
             break
         case "btnCheckStatus":
             checkStatus()
-            break
-        case "btnBrowseCwd":
-            OnBrowseCwd()
-            break
             break
     }
     return true
@@ -284,6 +230,108 @@ function dockOpenCodeWindow() {
     }
     xhr.onerror = function() { console.log('[OpenCode] Dock error') }
     xhr.send(JSON.stringify({ cwd: normalized, session: sessionId }))
+}
+
+// --- 功能区启动器回调 ---
+
+function getPS(key) {
+    try { return window.Application.PluginStorage.getItem(key) || '' } catch(e) { return '' }
+}
+function setPS(key, val) { try { window.Application.PluginStorage.setItem(key, val) } catch(e) {} }
+
+function OnSelectCwd(control) {
+    try {
+        // 使用 WPS 文件对话框（2 = msoFileDialogFolder）
+        var dialog = window.Application.FileDialog(2);
+        dialog.Title = "选择工作目录";
+        dialog.ButtonCaption = "选择";
+
+        if (dialog.Show() === -1) {
+            var selectedPath = dialog.SelectedItems(1);
+            if (selectedPath) {
+                // 保存 CWD
+                setPS('opencode_cwd', selectedPath);
+                console.log('[Launcher] CWD selected: ' + selectedPath);
+                alert('已选择工作目录：' + selectedPath);
+            }
+        }
+    } catch (e) {
+        console.error('[Launcher] 选择目录失败: ' + e.message);
+        alert('选择目录失败: ' + e.message);
+    }
+}
+
+function OnOpenPanel(control) {
+    var cwd = getPS('opencode_cwd');
+    if (!cwd) {
+        alert('请先选择工作目录');
+        return;
+    }
+
+    // 1. 启动服务
+    console.log('[Launcher] 启动服务，cwd: ' + cwd);
+    startOpenCodeServer(cwd);
+
+    // 2. 打开任务窗格
+    try {
+        var taskpanePath = getScriptPath('taskpane.html');
+        window.Application.TaskPanes.Add(window.WPS.Constants.ctoRight, taskpanePath);
+        console.log('[Launcher] 已打开任务窗格');
+    } catch (e) {
+        console.error('[Launcher] 打开任务窗格失败: ' + e.message);
+    }
+}
+
+function OnOpenWeb(control) {
+    var cwd = getPS('opencode_cwd');
+    if (!cwd) {
+        alert('请先选择工作目录');
+        return;
+    }
+
+    // 1. 启动服务
+    console.log('[Launcher] 启动服务，cwd: ' + cwd);
+    startOpenCodeServer(cwd);
+
+    // 2. 打开浏览器（通过 Launcher 的 /dock 接口）
+    var normalized = cwd.replace(/\\/g, '\\\\');
+    var xhr = new XMLHttpRequest();
+    xhr.timeout = 10000;
+    xhr.open('POST', LAUNCHER_API + '/dock', true);
+    xhr.setRequestHeader('Content-Type', 'application/json');
+    xhr.onreadystatechange = function() {
+        if (xhr.readyState === 4) {
+            if (xhr.status === 200) {
+                console.log('[Launcher] 已打开浏览器');
+            } else {
+                console.log('[Launcher] 打开浏览器失败: ' + xhr.status);
+            }
+        }
+    };
+    xhr.onerror = function() { console.log('[Launcher] 打开浏览器请求失败'); };
+    xhr.send(JSON.stringify({ cwd: normalized }));
+}
+
+function OnStopService(control) {
+    console.log('[Launcher] 停止服务');
+    stopOpenCodeServer();
+}
+
+// 获取脚本路径
+function getScriptPath(htmlFile) {
+    var loc = document.location.toString();
+    var path = loc.substring(0, loc.lastIndexOf('/'));
+    return path + '/' + htmlFile;
+}
+
+// Ribbon 按钮状态回调
+function OnGetCwdSelected(control) {
+    var cwd = getPS('opencode_cwd');
+    return cwd && cwd.length > 0;
+}
+
+function OnGetServiceRunning(control) {
+    return OPENCODE_STATE === 'running';
 }
 
 setInterval(function () {

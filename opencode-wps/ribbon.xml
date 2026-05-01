@@ -2,16 +2,19 @@
     <ribbon startFromScratch="false">
         <tabs>
             <tab id="wpsAddinTab" label="OpenCode AI">
-                <group id="grpCwd" label="工作目录">
-                    <labelControl id="lblCwd" getLabel="OnGetCwdLabel" />
-                    <button id="btnBrowseCwd" label="选择文件夹" imageMso="FileSearch" onAction="OnAction" getEnabled="OnGetEnabled" visible="true" />
-                </group>
                 <group id="grpMain" label="AI 助手">
                     <button id="btnShowTaskPane" label="打开面板" imageMso="GoTo" onAction="OnAction" getEnabled="OnGetEnabled" getImageSize="GetImageSize" visible="true" size="large"/>
                     <button id="btnDockWindow" label="打开Web" imageMso="HyperlinkInsert" onAction="OnAction" getEnabled="OnGetEnabled" visible="true" size="large"/>
                 </group>
                 <group id="grpStatus" label="连接状态">
                     <button id="btnCheckStatus" label="连接状态" imageMso="Info" onAction="OnAction" getEnabled="OnGetEnabled" visible="true" size="large"/>
+                </group>
+                <group id="grpLauncher" label="启动器">
+                    <button id="btnSelectCwd" label="选择目录" imageMso="FolderOpen" onAction="OnSelectCwd" visible="true" size="normal"/>
+                    <button id="btnOpenPanel2" label="打开面板" imageMso="GoTo" onAction="OnOpenPanel" getEnabled="OnGetCwdSelected" visible="true" size="normal"/>
+                    <button id="btnOpenWeb2" label="打开Web" imageMso="Web" onAction="OnOpenWeb" getEnabled="OnGetCwdSelected" visible="true" size="normal"/>
+                    <separator id="sepLauncher"/>
+                    <button id="btnStopService2" label="停止服务" imageMso="StopSpeaking" onAction="OnStopService" getEnabled="OnGetServiceRunning" visible="true" size="normal"/>
                 </group>
             </tab>
         </tabs>
