@@ -126,20 +126,34 @@ function stopOpenCode() {
     return { success: true };
 }
 
-function findOpenCodeBin() {
-    // 1. 优先从配置文件读取
+function loadOpenCodeConfig() {
     var configPath = path.join(process.env.APPDATA || process.env.USERPROFILE, 'opencode', 'config.json');
-    if (fs.existsSync(configPath)) {
-        try {
-            var config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
-            if (config.opencodePath) {
-                if (config.opencodePath === 'opencode' || fs.existsSync(config.opencodePath)) {
-                    console.log('[launcher] Using config path: ' + config.opencodePath);
-                    return config.opencodePath;
-                }
-            }
-        } catch (e) {
-            console.log('[launcher] Config read error: ' + e.message);
+    var defaultConfig = { opencodePath: 'opencode' };
+
+    if (!fs.existsSync(configPath)) {
+        console.log('[launcher] 配置文件不存在，使用默认值（请运行 install-addons.js）');
+        return defaultConfig;
+    }
+
+    try {
+        var config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+        if (config && typeof config === 'object') {
+            return config;
+        }
+    } catch (e) {
+        console.error('[launcher] 配置文件解析失败，使用默认值: ' + e.message);
+    }
+
+    return defaultConfig;
+}
+
+function findOpenCodeBin() {
+    // 1. 从配置读取（有防御性检查）
+    var config = loadOpenCodeConfig();
+    if (config.opencodePath) {
+        if (config.opencodePath === 'opencode' || fs.existsSync(config.opencodePath)) {
+            console.log('[launcher] Using config path: ' + config.opencodePath);
+            return config.opencodePath;
         }
     }
 

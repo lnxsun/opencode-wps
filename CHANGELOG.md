@@ -2,24 +2,35 @@
 
 All notable changes to this project will be documented in this file.
 
+The format is based on [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
 ## [Unreleased]
 
 ### Added
 - Agent 选择功能（wps-expert/wps-word/wps-excel/wps-ppt）
 - 4 层架构文档（JS插件 → Agents → Skills → MCP）
+- 测试套件（security.test.js, utils.test.js, launcher.test.js）
+- CONTRIBUTING.md 贡献指南
+- Agent Skill 调用优先级指引
 
-### Security (整改中)
+### Changed
+- 安装脚本输出更详细的状态信息
+
+### Security
 - XSS 防护：safeInput 函数
 - 配置持久化：CONFIG 对象
 - Launcher 路径安全：配置文件读取、cwd 验证
 - 进程管理优化：PID 文件精确终止
+- 配置防御性检查：loadOpenCodeConfig 函数
+- spawn 参数数组化（安全改进）
 
-### Robustness (整改中)
-- 全局异常捕获：window.onerror, onunhandledrejection
+### Fixed
+- GetUrlPath 简化为 URL API
 - 网络请求重试：fetchWithRetry
 - SSE 自动重连：connectSSE 增强
 - WPS 就绪检查：checkWpsReady, checkDocument
-- MCP COM 重试：execWpsActionWithRetry
+- MCP COM 重试+超时：execWpsActionWithRetry
 - 全局变量封装：AppState 单例
 
 ---

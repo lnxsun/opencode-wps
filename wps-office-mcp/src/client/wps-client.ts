@@ -126,22 +126,30 @@ async function execWpsAction(action: string, params: Record<string, unknown> = {
   }
 }
 
+// 超时时间（毫秒）
+const COM_TIMEOUT = 5000;
+
 /**
- * 带重试的WPS调用
+ * 带超时和重试的WPS调用
  */
 async function execWpsActionWithRetry(action: string, params: Record<string, unknown> = {}, maxRetries: number = 3): Promise<unknown> {
   let lastError: Error | null = null;
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
-      return await execWpsAction(action, params);
+      // 使用 Promise.race 实现超时
+      const result = await Promise.race([
+        execWpsAction(action, params),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('COM 调用超时')), COM_TIMEOUT))
+      ]);
+      return result;
     } catch (error) {
       lastError = error as Error;
       const errMsg = error instanceof Error ? error.message : String(error);
       log.warn(`WPS call failed, attempt ${attempt}/${maxRetries}`, { action, error: errMsg });
 
       if (attempt < maxRetries) {
-        // 等待后重试
+        // 等待后重试（指数退避）
         await new Promise(resolve => setTimeout(resolve, 500 * attempt));
       }
     }

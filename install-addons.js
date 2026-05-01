@@ -6,6 +6,41 @@ const { execSync } = require('child_process');
 const rootDir = __dirname;
 const homeDir = process.env.USERPROFILE || process.env.HOME;
 
+// ===== 回滚机制 =====
+const installState = {
+    stepsCompleted: [],
+    errors: []
+};
+
+function recordStep(stepName) {
+    installState.stepsCompleted.push(stepName);
+    console.log('  ✓ ' + stepName);
+}
+
+function handleError(stepName, error) {
+    const errMsg = error.message || String(error);
+    installState.errors.push({ step: stepName, error: errMsg });
+    console.error('  ✗ ' + stepName + ': ' + errMsg);
+}
+
+function rollback() {
+    if (installState.stepsCompleted.length === 0) return;
+    console.log('\n⚠️ 开始回滚安装...');
+    console.log('已完成的步骤: ' + installState.stepsCompleted.join(', '));
+    // 回滚逻辑
+    // 1. 清理已安装的插件
+    const jsaddonsDir = path.join(process.env.APPDATA, 'kingsoft', 'wps', 'jsaddons');
+    try {
+        const addon = addons[0];
+        const destDir = path.join(jsaddonsDir, addon.name + '_');
+        if (fsEx.existsSync(destDir)) {
+            fsEx.removeSync(destDir);
+            console.log('  已回滚: 删除插件目录');
+        }
+    } catch (e) { console.error('  回滚失败: ' + e.message); }
+    console.log('回滚完成，请重新运行安装脚本');
+}
+
 // ===== 1. WPS 插件定义 =====
 const addons = [
     {
@@ -425,3 +460,13 @@ console.log('后续步骤:');
 console.log('  - 重启 WPS Office 以加载插件');
 console.log('  - 在插件面板中设置工作目录并启动服务');
 console.log('========================================');
+
+// 如果有任何错误，显示警告
+if (installState.errors.length > 0) {
+    console.log('\n⚠️ 安装过程中有 ' + installState.errors.length + ' 个警告');
+    console.log('错误详情:');
+    installState.errors.forEach(function(e, i) {
+        console.log('  ' + (i + 1) + '. ' + e.step + ': ' + e.error);
+    });
+    console.log('\n请检查上述问题后重新运行安装');
+}

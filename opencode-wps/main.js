@@ -71,8 +71,12 @@ function checkDocument() {
 }
 
 function GetUrlPath() {
-    var e = document.location.toString()
-    return -1 != (e = decodeURI(e)).indexOf("/") && (e = e.substring(0, e.lastIndexOf("/"))), e
+    try {
+        var pathname = new URL(document.location.href).pathname;
+        return pathname.replace(/\/[^\/]*$/, '') || '/';
+    } catch (e) {
+        return '/';
+    }
 }
 
 function setOpenCodeState(state, error) {
