@@ -16,39 +16,38 @@ OpenCode WPS 将 OpenCode AI 的能力集成到 WPS Office 中，通过侧边栏
 - **一键安装** — 运行 `node install-addons.js` 自动完成全部组件安装
 - **开机自启** — 通过 Launcher 进程自动管理 OpenCode 服务（监听 14097 端口），用户登录时自动启动
 
-## 项目组成（5 层架构）
+## 项目组成（4 层架构）
 
 ```
 opencode-wps/
-├── opencode-wps/              # 第 2 层：WPS JS 加载项（核心插件）
+├── opencode-wps/              # 第 1 层：WPS JS 插件（前台 UI + 后台 Launcher 服务管理）
 │   ├── main.js                # Ribbon 回调、状态管理、OpenCode 连接
 │   ├── taskpane.html          # Chat UI（SSE 流式对话、Markdown 渲染、会话管理、Agent 选择）
+│   ├── launcher.js            # Launcher 进程（自动启动 opencode serve，监听 14097）
 │   ├── ribbon.xml             # 功能区按钮定义
 │   └── manifest.xml           # 加载项清单
-├── wps-office-mcp/            # 第 3 层：WPS Office MCP 服务器
-│   └── src/                   # TypeScript 源码（约 200 个工具）
-├── skills/                    # 第 4 层：OpenCode Skills（安装到 ~/.opencode/skills/）
+├── wps-office-mcp/            # 第 2 层：MCP 服务器（COM 桥接 → WPS API，约 200 个工具）
+│   └── src/                   # TypeScript 源码
+├── skills/                    # 第 3 层：Skills（安装到 ~/.opencode/skills/）
 │   ├── wps-excel/             # Excel 操作技能
 │   ├── wps-word/              # Word 操作技能
 │   ├── wps-ppt/               # PPT 操作技能
 │   └── wps-office/            # WPS 通用技能
-├── agents/                    # 第 5 层：OpenCode Agents（安装到 ~/.config/opencode/agents/）
+├── agents/                    # 第 4 层：Agents（安装到 ~/.config/opencode/agents/）
 │   ├── wps-expert.md          # WPS 助手主 agent
 │   ├── wps-word.md            # Word 文档处理专家
 │   ├── wps-excel.md           # Excel 数据处理专家
 │   └── wps-ppt.md             # PPT 演示制作专家
-├── launcher.js                # 第 1 层：Launcher 进程（服务管理，监听 14097 端口）
 ├── install-addons.js          # 一键安装脚本
 ├── package.json               # 项目依赖
 └── README.md
 ```
 
-**5 层说明：**
-- **第 1 层 Launcher** — 服务进程管理，自动启动 OpenCode 服务
-- **第 2 层 WPS JS 插件** — 嵌入 WPS 的加载项，负责 UI 和 HTTP 通信
-- **第 3 层 COM 桥接 (MCP)** — WPS Office COM 桥接，约 200 个工具操作文档
-- **第 4 层 Skills** — 领域技能，AI 调用的能力集
-- **第 5 层 Agents** — 角色定义，AI 的行为模式和专业知识
+**4 层说明（从上到下）：**
+- **第 1 层 WPS JS 插件** — 任务窗格 Chat 窗口（前台）+ Launcher 进程管理（后台）
+- **第 2 层 MCP (COM 桥接)** — 通过 PowerShell 调用 WPS COM 接口，约 200 个工具
+- **第 3 层 Skills** — 4 个领域技能，AI 调用的能力集
+- **第 4 层 Agents** — 角色定义，通过 Chat 窗口的 Agent 选择实现功能聚焦
 ```
 
 ### 组件说明
