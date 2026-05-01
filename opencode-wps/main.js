@@ -149,12 +149,12 @@ function OnAddinLoad(ribbonUI) {
 // --- CWD 功能 ---
 function OnGetCwdLabel(control) {
     try {
-        var cwd = window.Application.PluginStorage.getItem('opencode_cwd') || '未设置';
-        // 截断显示
-        if (cwd.length > 40) cwd = cwd.substring(0, 37) + '...';
+        var cwd = window.Application.PluginStorage.getItem('opencode_cwd') || '点击选择文件夹';
+        // 只在太长的路径时截断
+        if (cwd.length > 50) cwd = '...' + cwd.substring(cwd.length - 47);
         return cwd;
     } catch (e) {
-        return '未设置';
+        return '点击选择文件夹';
     }
 }
 
