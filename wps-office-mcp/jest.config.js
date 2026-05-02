@@ -36,14 +36,16 @@ module.exports = {
   coverageReporters: ['text', 'lcov', 'html'],
 
   // 覆盖率阈值 - 最低要求，达不到就报错
+  // 2026-05-01 根据 DeepSeek review 建议提高阈值
+  // 目标：从 branches:5%/functions:20% 提升至 branches:60%/functions:70%
   // 注：由于utils/logger.ts和utils/error.ts被mock了，实际覆盖率会偏低
   // 后续可以通过添加更多测试来提高覆盖率
   coverageThreshold: {
     global: {
-      branches: 5,
-      functions: 20,
-      lines: 40,
-      statements: 40
+      branches: 60,
+      functions: 70,
+      lines: 70,
+      statements: 70
     }
   },
 
