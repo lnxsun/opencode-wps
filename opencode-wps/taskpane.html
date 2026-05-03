@@ -195,7 +195,7 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:-apple-system,Blink
     <h3>OpenCode</h3>
     <p>Set the working directory and start the server</p>
     <div class="setup-cwd-row">
-      <input id="setup-cwd" type="text" placeholder="点击选择工作目录" spellcheck="false" onclick="openCwdModalFromSetup()">
+      <input id="setup-cwd" type="text" placeholder="点击选择工作目录" spellcheck="false" onclick="selectFolderViaFile()">
     </div>
     <button class="btn-primary" id="btn-start" onclick="startOpenCode()"><span class="icon-play"></span>Start Server</button>
     <div class="setup-status" id="setup-status"></div>
@@ -272,7 +272,7 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:-apple-system,Blink
     </div>
     <div class="modal-body">
       <p class="cwd-tip">当前目录: <span id="modal-cwd-current"></span></p>
-      <input type="text" id="cwd-input" class="cwd-input" placeholder="点击选择工作目录" spellcheck="false" onclick="openCwdBrowse()">
+      <input type="text" id="cwd-input" class="cwd-input" placeholder="点击选择工作目录" spellcheck="false" onclick="selectFolderViaFile()">
       <div id="cwd-history" style="margin-top:8px;max-height:120px;overflow-y:auto"></div>
       <p class="cwd-hint">提示: 切换目录将重启服务</p>
     </div>
@@ -438,6 +438,32 @@ function openCwdModalFromSetup() {
     renderCwdHistory()
     modal.classList.remove('hidden')
     setTimeout(function() { cwdInput.focus(); cwdInput.select() }, 100)
+}
+
+// 通过选择文件来获取目录
+function selectFolderViaFile() {
+    var fileInput = document.createElement('input')
+    fileInput.type = 'file'
+    fileInput.accept = '*'
+    fileInput.onchange = function(e) {
+        var file = e.target.files[0]
+        if (file) {
+            // file.path 在某些浏览器可用，否则用 webkitRelativePath
+            var folderPath = file.path || file.webkitRelativePath
+            if (!folderPath || folderPath.indexOf('/') > -1) {
+                folderPath = file.name
+            }
+            // 去掉文件名，只保留目录
+            var idx = folderPath.lastIndexOf('\\')
+            if (idx > -1) {
+                folderPath = folderPath.substring(0, idx)
+            } else if (folderPath.indexOf('/') > -1) {
+                folderPath = folderPath.substring(0, folderPath.lastIndexOf('/'))
+            }
+            document.getElementById('cwd-input').value = folderPath
+        }
+    }
+    fileInput.click()
 }
 
 function showChat() {
