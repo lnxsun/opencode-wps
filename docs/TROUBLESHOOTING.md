@@ -221,3 +221,89 @@ User-Agent: Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like
 5. **UI 不能复用**：WPS 内置浏览器太旧，不能直接嵌入官方页面，必须自己实现简化版 UI
 
 6. **install-addons.js 是核心**：开发调试和日常使用都通过此脚本，无需 wpsjs publish
+
+---
+
+## 九、关闭 OpenCode 进程的最佳实践
+
+### 问题背景
+在 Launcher 中需要停止 OpenCode 服务进程。尝试过多种方式都不成功，最终找到最优解。
+
+### 尝试过的失败方案
+
+1. **读取 PID 文件然后 kill**
+   - 理论上应该读取 `opencode.pid` 获取进程 PID，然后调用 `taskkill /PID xxx`
+   - 问题：PID 文件路径难以确定，且 WPS 环境下文件访问受限
+
+2. **通过 API 停止服务**
+   - 尝试调用 OpenCode 的 shutdown API
+   - 问题：OpenCode 服务本身没有提供可靠的停止接口
+
+3. **查找进程标题**
+   - 尝试通过窗口标题找到进程
+   - 问题：命令行窗口可能被隐藏或标题变化
+
+### 最终方案（简单粗暴但有效）
+
+```javascript
+// 使用 taskkill 根据进程名直接终止
+execSync('taskkill /IM opencode.exe /F /T', { stdio: 'ignore' });
+```
+
+**说明**：
+- `/IM opencode.exe` - 指定要终止的进程名
+- `/F` - 强制终止
+- `/T` - 同时终止子进程
+
+**缺点**：会终止系统上所有名为 `opencode.exe` 的进程，不够精确。
+
+**优点**：经过 2 天尝试其他方式都不成功后，这是唯一可行且稳定的方法。
+
+---
+
+## 十、WPS FileDialog 获取选中文件夹路径
+
+### 问题背景
+使用 WPS 的 `Application.FileDialog` 让用户选择文件夹后，无法获取用户实际选择的路径。
+
+### 尝试过的失败方案
+
+1. **使用 InitialFileName**
+   - 期望：`fd.InitialFileName` 能在用户选择后更新为选中路径
+   - 问题：InitialFileName 只是设置初始值，选择后不会更新
+
+2. **使用 msoFileDialogOpen**
+   - 用文件选择对话框，用户选文件后取所在目录
+   - 问题：用户想选文件夹，而且 SelectedItems 获取不到值
+
+3. **使用 SelectedItems**
+   - 正确应该用 `fd.SelectedItems.Item(1)` 获取选中项
+   - 问题：WPS 环境下可能报"未找到成员"错误
+
+### 最终方案
+
+```javascript
+// 使用文件夹选择器
+var fd = window.Application.FileDialog(window.Application.Enum.msoFileDialogFolderPicker)
+fd.Title = '选择工作目录'
+fd.InitialFileName = defaultPath || 'C:\\'
+
+var result = fd.Show()
+if (result === -1) {
+    // 用户确认选择
+    var folderPath = fd.SelectedItems.Item(1)
+    if (folderPath) {
+        document.getElementById('cwd-input').value = folderPath
+    }
+} else if (result === 0) {
+    // 用户取消选择，清空输入框
+    document.getElementById('cwd-input').value = ''
+}
+```
+
+**关键点**：
+- `msoFileDialogFolderPicker` - 直接选择文件夹，不是选文件
+- `result === -1` - 用户确认选择（返回 -1 表示点了确定）
+- `result === 0` - 用户取消选择
+- `fd.SelectedItems.Item(1)` - 获取用户选中的文件夹路径
+- 取消选择时清空输入框，避免用户体验困惑
