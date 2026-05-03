@@ -195,7 +195,7 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:-apple-system,Blink
     <h3>OpenCode</h3>
     <p>Set the working directory and start the server</p>
     <div class="setup-cwd-row">
-      <input id="setup-cwd" type="text" placeholder="点击选择或输入工作目录" spellcheck="false" onclick="openCwdModalFromSetup()">
+      <input id="setup-cwd" type="text" placeholder="点击选择工作目录" spellcheck="false" onclick="openCwdModalFromSetup()">
     </div>
     <button class="btn-primary" id="btn-start" onclick="startOpenCode()"><span class="icon-play"></span>Start Server</button>
     <div class="setup-status" id="setup-status"></div>
@@ -272,7 +272,7 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:-apple-system,Blink
     </div>
     <div class="modal-body">
       <p class="cwd-tip">当前目录: <span id="modal-cwd-current"></span></p>
-      <input type="text" id="cwd-input" class="cwd-input" placeholder="输入新的工作目录" spellcheck="false">
+      <input type="text" id="cwd-input" class="cwd-input" placeholder="点击选择工作目录" spellcheck="false" onclick="openCwdBrowse()">
       <div id="cwd-history" style="margin-top:8px;max-height:120px;overflow-y:auto"></div>
       <p class="cwd-hint">提示: 切换目录将重启服务</p>
     </div>
@@ -445,7 +445,7 @@ function showChat() {
     $viewChat.classList.remove('hidden')
     // 更新 topbar cwd 显示
     var cwd = PROJECT_DIR || getPS('opencode_cwd') || ''
-    $topbarCwd.textContent = cwd || '点击切换工作目录'
+    $topbarCwd.textContent = cwd || '点击选择工作目录'
 }
 
 // --- CWD Modal ---
