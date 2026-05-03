@@ -112,11 +112,19 @@ function stopOpenCode() {
         opencodeProcess = null;
     }
 
-    // 使用 PowerShell 执行 taskkill（更可靠）
-    var exec = require('child_process').exec;
-    exec('powershell -ExecutionPolicy Bypass -Command "Stop-Process -Name opencode -Force -ErrorAction SilentlyContinue; taskkill /IM opencode.exe /F /T"', function(err, stdout, stderr) {
-        console.log('[launcher] Kill result:', err ? err.message : 'success');
-    });
+    // 使用同步方式执行 taskkill（通过 cmd.exe shell）
+    try {
+        var execSync = require('child_process').execSync;
+        // 通过 shell 执行，并设置超时
+        execSync('taskkill /IM opencode.exe /F /T', { 
+            shell: 'cmd.exe',
+            stdio: 'ignore',
+            timeout: 5000
+        });
+        console.log('[launcher] taskkill success');
+    } catch(e) {
+        console.log('[launcher] taskkill failed: ' + e.message);
+    }
     
     // 清理 PID 文件
     var pidFile = path.join(__dirname, 'opencode.pid');
@@ -127,7 +135,6 @@ function stopOpenCode() {
     } catch(e) {}
 
     return { success: true };
-}
 }
 
 function loadOpenCodeConfig() {

@@ -440,38 +440,27 @@ function openCwdModalFromSetup() {
     setTimeout(function() { cwdInput.focus(); cwdInput.select() }, 100)
 }
 
-// 通过选择文件来获取目录
+// 通过选择文件夹
 function selectFolderViaFile() {
     try {
         // 使用 WPS Application API 选择文件夹
         var fd = window.Application.FileDialog(window.Application.Enum.msoFileDialogFolderPicker)
         fd.Title = '选择工作目录'
-        var ret = fd.Show()
-        if (ret != 0) {
-            // SelectedItems 返回的是集合，需要用 Item(1) 获取第一项
+        // 设置初始目录为当前值
+        var current = document.getElementById('cwd-input').value || getPS('opencode_cwd')
+        if (current) fd.InitialFileName = current
+        if (fd.Show()) {
+            // SelectedItems 返回的是集合，用 Item(1) 或直接索引
             var items = fd.SelectedItems
-            if (items && items.Count > 0) {
-                var folderPath = items.Item(1)
-                document.getElementById('cwd-input').value = folderPath
+            var folderPath = items && items.Item ? items.Item(1) : (items ? items(1) : items)
+            // 如果还是 COM 对象，尝试 toString 或直接用 InitialFileName（用户选完后会更新）
+            if (folderPath && typeof folderPath !== 'string') {
+                folderPath = fd.InitialFileName || ''
             }
+            document.getElementById('cwd-input').value = folderPath
         }
     } catch(e) {
-        // 降级：用文件选择
-        var fileInput = document.createElement('input')
-        fileInput.type = 'file'
-        fileInput.accept = '*'
-        fileInput.onchange = function(ev) {
-            var file = ev.target.files[0]
-            if (file) {
-                var folderPath = file.path || file.webkitRelativePath || file.name
-                var idx = folderPath.lastIndexOf('\\')
-                if (idx > -1) folderPath = folderPath.substring(0, idx)
-                else if (folderPath.indexOf('/') > -1) folderPath = folderPath.substring(0, folderPath.lastIndexOf('/'))
-
-                document.getElementById('cwd-input').value = folderPath
-            }
-        }
-        fileInput.click()
+        alert('选择文件夹失败: ' + e.message)
     }
 }
 
