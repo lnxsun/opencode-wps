@@ -161,6 +161,10 @@ function OnAction(control) {
         case "btnCheckStatus":
             checkStatus()
             break
+        case "btnDebug":
+            // 显示 WPS/Launcher 状态信息
+            checkStatus()
+            break
     }
     return true
 }
