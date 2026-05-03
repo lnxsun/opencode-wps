@@ -112,16 +112,15 @@ function stopOpenCode() {
         opencodeProcess = null;
     }
 
-    // 使用同步方式执行 taskkill（通过 cmd.exe shell）
+    // 使用 PowerShell 执行 taskkill（更可靠）
     try {
         var execSync = require('child_process').execSync;
-        // 通过 shell 执行，并设置超时
-        execSync('taskkill /IM opencode.exe /F /T', { 
-            shell: 'cmd.exe',
+        // PowerShell 版本
+        execSync('powershell -Command "Stop-Process -Name opencode -Force -ErrorAction SilentlyContinue"', { 
             stdio: 'ignore',
             timeout: 5000
         });
-        console.log('[launcher] taskkill success');
+        console.log('[launcher] taskkill via PowerShell success');
     } catch(e) {
         console.log('[launcher] taskkill failed: ' + e.message);
     }
