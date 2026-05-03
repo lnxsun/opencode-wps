@@ -112,11 +112,15 @@ function stopOpenCode() {
         opencodeProcess = null;
     }
 
-    // 使用同步方式执行 taskkill（更可靠）
+    // 使用同步方式执行 taskkill（通过 cmd.exe shell）
     try {
         var execSync = require('child_process').execSync;
-        // /T 杀进程树，/F 强制杀
-        execSync('taskkill /IM opencode.exe /F /T', { stdio: 'ignore' });
+        // 通过 shell 执行，并设置超时
+        execSync('taskkill /IM opencode.exe /F /T', { 
+            shell: 'cmd.exe',
+            stdio: 'ignore',
+            timeout: 5000
+        });
         console.log('[launcher] taskkill success');
     } catch(e) {
         console.log('[launcher] taskkill failed: ' + e.message);
