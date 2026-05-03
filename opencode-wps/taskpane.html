@@ -232,7 +232,7 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:-apple-system,Blink
         <div class="input-toolbar">
           <div class="input-toolbar-left">
             <button class="plus-btn" title="Upload file" onclick="document.getElementById('file-input').click()">+</button>
-            <input type="file" id="file-input" accept="*" onchange="handleFileUpload(event)" />
+            <input type="file" id="file-input" accept=".png,.jpg,.jpeg,.gif,.webp,.pdf,.xls,.xlsx,.vtt,.text,.xlt,.htm,.html,.ics,.tpl,.xql,.css,.csv,.asp,.py,.jhtml,.java,.js,.json,.jsx,.log,.md,.mdx,.mts,.rb,.rs,.sass,.scss,.sql,.toml,.ts,.tsx,.xml,.yaml,.yml,.zsh" onchange="handleFileUpload(event)" />
           </div>
           <div id="send-area">
             <button class="send-btn disabled" id="send-btn" onclick="sendMessage()" title="Send">
