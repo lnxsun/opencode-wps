@@ -102,16 +102,26 @@ function startOpenCode(cwd, port) {
 function stopOpenCode() {
     console.log('[launcher] stopOpenCode called');
     
-    // 使用 PowerShell 脚本杀进程（更可靠）
-    var scriptPath = path.join(__dirname, 'kill-opencode.ps1');
-    var script = 'taskkill /IM opencode.exe /F /T; taskkill /IM bun.exe /F /T; Remove-Item -Path "' + scriptPath + '" -Force -ErrorAction SilentlyContinue';
-    fs.writeFileSync(scriptPath, script, 'utf8');
-    
-    var exec = require('child_process').exec;
-    exec('powershell -ExecutionPolicy Bypass -WindowStyle Hidden -File "' + scriptPath + '"', function(err, stdout, stderr) {
-        console.log('[launcher] Kill result:', err ? err.message : 'success');
-    });
+    // 先尝试结束 node 跟踪的子进程
+    if (opencodeProcess) {
+        try {
+            opencodeProcess.kill();
+        } catch(e) {
+            console.error('[launcher] 终止子进程失败: ' + e.message);
+        }
+        opencodeProcess = null;
+    }
 
+    // 用系统命令强制结束所有 opencode.exe 进程
+    var exec = require('child_process').exec;
+    exec('taskkill /IM opencode.exe /F', (error, stdout, stderr) => {
+        if (error) {
+            console.error('[launcher] taskkill 执行出错: ' + error.message);
+            return;
+        }
+        console.log('[launcher] taskkill 执行成功: ' + stdout);
+    });
+    
     // 清理 PID 文件
     var pidFile = path.join(__dirname, 'opencode.pid');
     try {
