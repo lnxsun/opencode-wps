@@ -453,33 +453,21 @@ function selectFolderViaFile() {
             defaultPath = getPS('opencode_cwd') || ''
         }
         
-        // 用文件选择对话框
-        var fd = window.Application.FileDialog(window.Application.Enum.msoFileDialogOpen)
-        fd.Title = '选择一个文件，工作目录自动设为该文件所在文件夹'
-        fd.InitialFileName = defaultPath
-        fd.AllowMultiSelect = false
-        if (fd.Show()) {
-            // 尝试从多个属性获取路径
-            var filePath = ''
-            try { filePath = fd.InitialFileName } catch(e) {}
-            if (!filePath) {
-                try { filePath = fd.SelectedItems.Item(1) } catch(e) {}
-            }
-            if (!filePath) {
-                try { filePath = fd.SelectedItems(1) } catch(e) {}
-            }
-            // 提取目录
-            if (filePath) {
-                var idx = filePath.lastIndexOf('\\')
-                if (idx > -1) filePath = filePath.substring(0, idx)
-                document.getElementById('cwd-input').value = filePath
-                return
-            }
-            // 如果还是获取不到，但用户点了确定，就用默认目录
-            if (defaultPath) {
-                var idx = defaultPath.lastIndexOf('\\')
-                if (idx > -1) defaultPath = defaultPath.substring(0, idx)
-                document.getElementById('cwd-input').value = defaultPath
+        // 用文件夹选择对话框
+        var fd = window.Application.FileDialog(window.Application.Enum.msoFileDialogFolderPicker)
+        fd.Title = '选择工作目录'
+        fd.InitialFileName = defaultPath || 'C:\\'
+        var result = fd.Show()
+        if (result === -1) {
+            var folderPath = ''
+            try { folderPath = fd.SelectedItems.Item(1) } catch(e) {}
+            if (!folderPath) { folderPath = fd.InitialFileName }
+            if (folderPath) {
+                // 同时更新 setup 页面和 modal 中的输入框
+                var setupCwd = document.getElementById('setup-cwd')
+                var cwdInput = document.getElementById('cwd-input')
+                if (setupCwd) setupCwd.value = folderPath
+                if (cwdInput) cwdInput.value = folderPath
             }
         }
     } catch(e) {
