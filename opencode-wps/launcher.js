@@ -100,7 +100,7 @@ function startOpenCode(cwd, port) {
 }
 
 function stopOpenCode() {
-    // 1. 首先尝试终止子进程（带进程树杀除）
+    console.log('[launcher] stopOpenCode called, opencodeProcess:', opencodeProcess ? opencodeProcess.pid : null);
     if (opencodeProcess && !opencodeProcess.killed) {
         try {
             // 使用 /T 杀整个进程树
