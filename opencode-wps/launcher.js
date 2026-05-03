@@ -112,14 +112,15 @@ function stopOpenCode() {
         opencodeProcess = null;
     }
 
-    // 用 cmd /c 执行 taskkill（通过 spawn）
-    var spawn = require('child_process').spawn;
-    var proc = spawn('cmd.exe', ['/c', 'taskkill /IM opencode.exe /F /T'], { 
-        detached: true, 
-        stdio: 'ignore' 
-    });
-    proc.unref();
-    console.log('[launcher] taskkill spawned');
+    // 使用同步方式执行 taskkill（更可靠）
+    try {
+        var execSync = require('child_process').execSync;
+        // /T 杀进程树，/F 强制杀
+        execSync('taskkill /IM opencode.exe /F /T', { stdio: 'ignore' });
+        console.log('[launcher] taskkill success');
+    } catch(e) {
+        console.log('[launcher] taskkill failed: ' + e.message);
+    }
     
     // 清理 PID 文件
     var pidFile = path.join(__dirname, 'opencode.pid');
