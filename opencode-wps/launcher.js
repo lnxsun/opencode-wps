@@ -100,62 +100,20 @@ function startOpenCode(cwd, port) {
 }
 
 function stopOpenCode() {
-    console.log('[launcher] stopOpenCode called, opencodeProcess:', opencodeProcess ? opencodeProcess.pid : null);
-    if (opencodeProcess && !opencodeProcess.killed) {
-        try {
-            // 使用 /T 杀整个进程树
-            opencodeProcess.kill('SIGTERM');
-            // 如果是 shell 包装的进程，需要等待一下再强制杀
-            setTimeout(function() {
-                if (opencodeProcess && !opencodeProcess.killed) {
-                    try { opencodeProcess.kill('SIGKILL'); } catch(e) {}
-                }
-            }, 500);
-            console.log('[launcher] Killed child process tree');
-            // 继续尝试杀 opencode.exe（因为 shell:true 导致进程分离）
-        } catch (e) {
-            console.log('[launcher] Failed to kill child: ' + e.message);
-        }
-    }
+    console.log('[launcher] stopOpenCode called');
+    
+    // 使用 PowerShell 脚本杀进程（更可靠）
+    var scriptPath = path.join(__dirname, 'kill-opencode.ps1');
+    var script = 'taskkill /IM opencode.exe /F /T; taskkill /IM bun.exe /F /T; Remove-Item -Path "' + scriptPath + '" -Force -ErrorAction SilentlyContinue';
+    fs.writeFileSync(scriptPath, script, 'utf8');
+    
+    var exec = require('child_process').exec;
+    exec('powershell -ExecutionPolicy Bypass -WindowStyle Hidden -File "' + scriptPath + '"', function(err, stdout, stderr) {
+        console.log('[launcher] Kill result:', err ? err.message : 'success');
+    });
 
-    // 2. 如果子进程不存在，尝试从 PID 文件读取并精确终止（带进程树）
+    // 清理 PID 文件
     var pidFile = path.join(__dirname, 'opencode.pid');
-    if (fs.existsSync(pidFile)) {
-        try {
-            var pid = parseInt(fs.readFileSync(pidFile, 'utf-8').trim());
-            if (pid && pid > 0) {
-                // 使用 taskkill /T /F 杀整个进程树
-                var execSync = require('child_process').execSync;
-                try {
-                    execSync('taskkill /PID ' + pid + ' /T /F', { encoding: 'utf8', stdio: 'ignore' });
-                    console.log('[launcher] Killed process tree by PID: ' + pid);
-                } catch(e) {
-                    // 如果上面的方式失败，直接杀所有 opencode.exe
-                    try {
-                        execSync('taskkill /IM opencode.exe /F /T', { encoding: 'utf8', stdio: 'ignore' });
-                        console.log('[launcher] Killed opencode.exe directly');
-                    } catch(e2) {}
-                }
-                fs.unlinkSync(pidFile);
-                return { success: true };
-            }
-        } catch (e) {
-            console.log('[launcher] PID file error: ' + e.message);
-        }
-    }
-
-    // 3. 最后尝试杀所有 opencode.exe 和 bun.exe（保险方案）
-    try {
-        var execSync = require('child_process').execSync;
-        // 杀 opencode.exe
-        try { execSync('taskkill /IM opencode.exe /F /T', { encoding: 'utf8', stdio: 'ignore' }); } catch(e) {}
-        // 杀 bun.exe
-        try { execSync('taskkill /IM bun.exe /F /T', { encoding: 'utf8', stdio: 'ignore' }); } catch(e) {}
-    } catch(e) {
-        console.log('[launcher] taskkill error: ' + e.message);
-    }
-
-    // 4. 清理 PID 文件
     try {
         if (fs.existsSync(pidFile)) {
             fs.unlinkSync(pidFile);

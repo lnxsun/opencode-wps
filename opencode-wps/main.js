@@ -161,38 +161,6 @@ function OnAction(control) {
         case "btnCheckStatus":
             checkStatus()
             break
-        case "btnDebug":
-            // 打开调试面板（启动浏览器测试页）
-            try {
-                var debugPath = GetUrlPath() + "/browsertest.html";
-                var tsId = window.Application.PluginStorage.getItem("taskpane_id");
-                if (tsId) {
-                    window.Application.GetTaskPane(tsId).Navigate(debugPath);
-                    window.Application.GetTaskPane(tsId).Visible = true;
-                } else {
-                    var tskpane = window.Application.CreateTaskPane(debugPath);
-                    window.Application.PluginStorage.setItem("taskpane_id", tskpane.ID);
-                    tskpane.Visible = true;
-                }
-            } catch (e) {
-                alert('打开调试页面失败: ' + e.message);
-            }
-            break
-        case "btnCheckStatus":
-            checkStatus()
-            break
-    }
-    return true
-}
-
-function GetImage(control) {
-    if (!control || !control.id) return ''
-    if (control.id === 'btnShowTaskPane') return 'btn-panel.png'
-    if (control.id === 'btnDockWindow') return 'btn-dock.png'
-    if (control.id === 'btnDebug') return 'btn-debug.png'
-    if (control.id === 'btnCheckStatus') return 'btn-status.png'
-    return ''
-}
     }
     return true
 }
