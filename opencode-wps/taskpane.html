@@ -442,28 +442,31 @@ function openCwdModalFromSetup() {
 
 // 通过选择文件来获取目录
 function selectFolderViaFile() {
-    var fileInput = document.createElement('input')
-    fileInput.type = 'file'
-    fileInput.accept = '*'
-    fileInput.onchange = function(e) {
-        var file = e.target.files[0]
-        if (file) {
-            // file.path 在某些浏览器可用，否则用 webkitRelativePath
-            var folderPath = file.path || file.webkitRelativePath
-            if (!folderPath || folderPath.indexOf('/') > -1) {
-                folderPath = file.name
-            }
-            // 去掉文件名，只保留目录
-            var idx = folderPath.lastIndexOf('\\')
-            if (idx > -1) {
-                folderPath = folderPath.substring(0, idx)
-            } else if (folderPath.indexOf('/') > -1) {
-                folderPath = folderPath.substring(0, folderPath.lastIndexOf('/'))
-            }
+    try {
+        // 使用 WPS Application API 选择文件夹
+        var dialog = window.Application.FileDialog(window.Application.Enum.msoFileDialogFolderPicker)
+        dialog.Title = '选择工作目录'
+        if (dialog.Show()) {
+            var folderPath = dialog.SelectedItems(1)
             document.getElementById('cwd-input').value = folderPath
         }
+    } catch(e) {
+        // 降级：用文件选择
+        var fileInput = document.createElement('input')
+        fileInput.type = 'file'
+        fileInput.accept = '*'
+        fileInput.onchange = function(ev) {
+            var file = ev.target.files[0]
+            if (file) {
+                var folderPath = file.path || file.webkitRelativePath || file.name
+                var idx = folderPath.lastIndexOf('\\')
+                if (idx > -1) folderPath = folderPath.substring(0, idx)
+                else if (folderPath.indexOf('/') > -1) folderPath = folderPath.substring(0, folderPath.lastIndexOf('/'))
+                document.getElementById('cwd-input').value = folderPath
+            }
+        }
+        fileInput.click()
     }
-    fileInput.click()
 }
 
 function showChat() {
