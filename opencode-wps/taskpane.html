@@ -443,18 +443,47 @@ function openCwdModalFromSetup() {
 // 通过选择文件夹
 function selectFolderViaFile() {
     try {
-        var fd = window.Application.FileDialog(window.Application.Enum.msoFileDialogFolderPicker)
-        fd.Title = '选择工作目录'
-        var current = document.getElementById('cwd-input').value || getPS('opencode_cwd')
-        if (current) fd.InitialFileName = current
-        fd.Show()
-        // Show() 返回 true 后，InitialFileName 会被更新为用户选择的路径
-        var selected = fd.InitialFileName
-        if (selected) {
-            document.getElementById('cwd-input').value = selected
+        // 优先用当前打开的文档所在目录
+        var doc = window.Application.ActiveDocument || window.Application.ActiveWorkbook || window.Application.ActivePresentation
+        var defaultPath = ''
+        if (doc) {
+            try { defaultPath = doc.Path || doc.FullName } catch(e) {}
+        }
+        if (!defaultPath) {
+            defaultPath = getPS('opencode_cwd') || ''
+        }
+        
+        // 用文件选择对话框
+        var fd = window.Application.FileDialog(window.Application.Enum.msoFileDialogOpen)
+        fd.Title = '选择一个文件，工作目录自动设为该文件所在文件夹'
+        fd.InitialFileName = defaultPath
+        fd.AllowMultiSelect = false
+        if (fd.Show()) {
+            // 尝试从多个属性获取路径
+            var filePath = ''
+            try { filePath = fd.InitialFileName } catch(e) {}
+            if (!filePath) {
+                try { filePath = fd.SelectedItems.Item(1) } catch(e) {}
+            }
+            if (!filePath) {
+                try { filePath = fd.SelectedItems(1) } catch(e) {}
+            }
+            // 提取目录
+            if (filePath) {
+                var idx = filePath.lastIndexOf('\\')
+                if (idx > -1) filePath = filePath.substring(0, idx)
+                document.getElementById('cwd-input').value = filePath
+                return
+            }
+            // 如果还是获取不到，但用户点了确定，就用默认目录
+            if (defaultPath) {
+                var idx = defaultPath.lastIndexOf('\\')
+                if (idx > -1) defaultPath = defaultPath.substring(0, idx)
+                document.getElementById('cwd-input').value = defaultPath
+            }
         }
     } catch(e) {
-        alert('选择文件夹失败: ' + e.message)
+        alert('选择失败: ' + e.message + '\n请手动输入工作目录')
     }
 }
 
