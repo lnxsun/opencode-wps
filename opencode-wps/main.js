@@ -12,7 +12,9 @@ var OPENCODE_ERROR = ''
 
 var WPS_Enum = {
     msoCTPDockPositionLeft: 0,
-    msoCTPDockPositionRight: 2
+    msoCTPDockPositionRight: 2,
+    msoFileDialogFolderPicker: 4,
+    msoFileDialogOpen: 1
 }
 
 // --- 全局状态封装 ---

@@ -132,6 +132,7 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:-apple-system,Blink
 .input-toolbar-left{display:flex;align-items:center;gap:4px}
 .plus-btn{width:28px;height:28px;border:none;background:none;cursor:pointer;border-radius:6px;display:flex;align-items:center;justify-content:center;color:#9ca3af;font-size:18px}
 .plus-btn:hover{background:#f5f5f5;color:#666}
+#file-input{display:none}
 .send-btn{width:36px;height:36px;border:none;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all 0.2s;margin-right:2px}
 .send-btn.ready{background:#2563eb;color:#fff;box-shadow:0 2px 4px rgba(37,99,235,0.3)}
 .send-btn.ready:hover{background:#1d4ed8;transform:scale(1.05)}
@@ -194,7 +195,7 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:-apple-system,Blink
     <h3>OpenCode</h3>
     <p>Set the working directory and start the server</p>
     <div class="setup-cwd-row">
-      <input id="setup-cwd" type="text" placeholder="点击选择或输入工作目录" spellcheck="false" onclick="openCwdModalFromSetup()">
+      <input id="setup-cwd" type="text" placeholder="点击选择工作目录" spellcheck="false" onclick="selectFolderViaFile()">
     </div>
     <button class="btn-primary" id="btn-start" onclick="startOpenCode()"><span class="icon-play"></span>Start Server</button>
     <div class="setup-status" id="setup-status"></div>
@@ -230,7 +231,8 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:-apple-system,Blink
         <textarea class="input-box" id="input-box" placeholder="Ask anything..." rows="1" onkeydown="onInputKey(event)" oninput="autoGrow(this)"></textarea>
         <div class="input-toolbar">
           <div class="input-toolbar-left">
-            <button class="plus-btn" title="Insert document context into chat" onclick="forceInjectContext()">+</button>
+            <button class="plus-btn" title="Upload file" onclick="document.getElementById('file-input').click()">+</button>
+            <input type="file" id="file-input" accept=".png,.jpg,.jpeg,.gif,.webp,.pdf,.xls,.xlsx,.vtt,.text,.xlt,.htm,.html,.ics,.tpl,.xql,.css,.csv,.asp,.py,.jhtml,.java,.js,.json,.jsx,.log,.md,.mdx,.mts,.rb,.rs,.sass,.scss,.sql,.toml,.ts,.tsx,.xml,.yaml,.yml,.zsh" onchange="handleFileUpload(event)" />
           </div>
           <div id="send-area">
             <button class="send-btn disabled" id="send-btn" onclick="sendMessage()" title="Send">
@@ -270,7 +272,7 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:-apple-system,Blink
     </div>
     <div class="modal-body">
       <p class="cwd-tip">当前目录: <span id="modal-cwd-current"></span></p>
-      <input type="text" id="cwd-input" class="cwd-input" placeholder="输入新的工作目录" spellcheck="false">
+      <input type="text" id="cwd-input" class="cwd-input" placeholder="点击选择工作目录" spellcheck="false" onclick="selectFolderViaFile()">
       <div id="cwd-history" style="margin-top:8px;max-height:120px;overflow-y:auto"></div>
       <p class="cwd-hint">提示: 切换目录将重启服务</p>
     </div>
@@ -300,13 +302,16 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:-apple-system,Blink
 .btn-cancel:hover{background:#f5f5f5}
 </style>
 
+<script src="config.js"></script>
 <script>
 // ============================================================
 // OpenCode Chat - Custom UI for WPS sidebar (Chrome 104 compatible)
 // Flow: Setup (choose CWD + start) → Chat (with status bar)
 // ============================================================
 
-var API_BASE = 'http://127.0.0.1:14096'  // 将在初始化后更新为 CONFIG.apiUrl
+var API_BASE = CONFIG.opencode.apiBase
+var NETWORK_TIMEOUT = CONFIG.network.timeout
+var UPLOAD_TIMEOUT = CONFIG.network.uploadTimeout
 var SESSION_ID = ''
 var PROJECT_DIR = ''
 var IS_BUSY = false
@@ -438,12 +443,48 @@ function openCwdModalFromSetup() {
     setTimeout(function() { cwdInput.focus(); cwdInput.select() }, 100)
 }
 
+// 通过选择文件夹
+function selectFolderViaFile() {
+    try {
+        // 优先用当前打开的文档所在目录
+        var doc = window.Application.ActiveDocument || window.Application.ActiveWorkbook || window.Application.ActivePresentation
+        var defaultPath = ''
+        if (doc) {
+            try { defaultPath = doc.Path || doc.FullName } catch(e) {}
+        }
+        if (!defaultPath) {
+            defaultPath = getPS('opencode_cwd') || ''
+        }
+        
+        // 用文件夹选择对话框
+        var fd = window.Application.FileDialog(window.Application.Enum.msoFileDialogFolderPicker)
+        fd.Title = '选择工作目录'
+        fd.InitialFileName = defaultPath || 'C:\\'
+        var result = fd.Show()
+        var setupCwd = document.getElementById('setup-cwd')
+        var cwdInput = document.getElementById('cwd-input')
+        if (result === -1) {
+            var folderPath = ''
+            try { folderPath = fd.SelectedItems.Item(1) } catch(e) {}
+            if (folderPath) {
+                if (setupCwd) setupCwd.value = folderPath
+                if (cwdInput) cwdInput.value = folderPath
+            }
+        } else if (result === 0) {
+            if (setupCwd) setupCwd.value = ''
+            if (cwdInput) cwdInput.value = ''
+        }
+    } catch(e) {
+        alert('选择失败: ' + e.message + '\n请手动输入工作目录')
+    }
+}
+
 function showChat() {
     $viewSetup.classList.add('hidden')
     $viewChat.classList.remove('hidden')
     // 更新 topbar cwd 显示
     var cwd = PROJECT_DIR || getPS('opencode_cwd') || ''
-    $topbarCwd.textContent = cwd || '点击切换工作目录'
+    $topbarCwd.textContent = cwd || '点击选择工作目录'
 }
 
 // --- CWD Modal ---
@@ -835,7 +876,7 @@ function fetchAvailableModels(cb) {
 
 function fetchAvailableAgents(cb) {
     var xhr = new XMLHttpRequest()
-    xhr.timeout = 10000
+    xhr.timeout = NETWORK_TIMEOUT
     xhr.onreadystatechange = function() {
         if (xhr.readyState === 4) {
             if (xhr.status >= 200 && xhr.status < 300) {
@@ -875,7 +916,7 @@ function toggleAgentDropdown(e) {
     createDropdown(btn, '<div class="dd-header">Loading...</div>', 'bottom-up')
     
     var xhr = new XMLHttpRequest()
-    xhr.timeout = 10000
+    xhr.timeout = NETWORK_TIMEOUT
     xhr.onreadystatechange = function() {
         if (xhr.readyState === 4 && xhr.status === 200) {
             try {
@@ -1053,7 +1094,7 @@ function fetchJSON(method, path, body, onSuccess, onError, timeout) {
     fetchWithRetry(method, path, body, onSuccess, onError, timeout, CONSTANTS.MAX_RETRIES);
 }
 function postMessage(path, body, onError) {
-    var xhr = new XMLHttpRequest(); xhr.timeout = 300000
+    var xhr = new XMLHttpRequest(); xhr.timeout = UPLOAD_TIMEOUT
     xhr.onreadystatechange = function() { if (xhr.readyState === 4 && xhr.status >= 400 && onError) onError(xhr.status, xhr.responseText) }
     xhr.onerror = function() { if (onError) onError(0, 'Network error') }
     xhr.ontimeout = function() { console.log('[Chat] POST timeout (SSE still active)') }
@@ -1213,18 +1254,37 @@ function sendMessage() {
 function injectContext(cb) {
     var ctx = gatherWpsContext(); if (!ctx || ctx === LAST_INJECTED_CONTEXT) { cb(); return }
     LAST_INJECTED_CONTEXT = ctx
-    var xhr = new XMLHttpRequest(); xhr.timeout = 10000
+    var xhr = new XMLHttpRequest(); xhr.timeout = NETWORK_TIMEOUT
     xhr.onreadystatechange = function() { if (xhr.readyState === 4) cb() }
     xhr.onerror = function() { cb() }; xhr.ontimeout = function() { cb() }
     xhr.open('POST', API_BASE + '/session/' + SESSION_ID + '/message', true)
     xhr.setRequestHeader('Content-Type', 'application/json')
     xhr.send(JSON.stringify({ noReply: true, parts: [{ type: 'text', text: ctx }] }))
 }
+function handleFileUpload(e) {
+    var file = e.target.files[0];
+    if (!file) return;
+    if (!SESSION_ID) { addSystemMessage('Please start a session first'); return }
+    if (file.size > 100 * 1024 * 1024) { addSystemMessage('File too large (max 100MB)'); return }
+    addSystemMessage('Uploading: ' + file.name);
+    var reader = new FileReader();
+    reader.onload = function(evt) {
+        var base64 = evt.target.result.split(',')[1];
+        var msg = '<file-upload>\nfilename: ' + file.name + '\ntype: ' + file.type + '\ndata: ' + base64 + '\n</file-upload>';
+        var xhr = new XMLHttpRequest();
+        xhr.timeout = NETWORK_TIMEOUT;
+        xhr.open('POST', API_BASE + '/session/' + SESSION_ID + '/message', true);
+        xhr.setRequestHeader('Content-Type', 'application/json');
+        xhr.send(JSON.stringify({ parts: [{ type: 'text', text: msg }] }));
+    };
+    reader.readAsDataURL(file);
+    e.target.value = ''
+}
 function forceInjectContext() {
     if (!SESSION_ID || IS_BUSY) return; LAST_INJECTED_CONTEXT = ''
     var ctx = gatherWpsContext(); if (!ctx) { addSystemMessage('No document context available'); return }
     LAST_INJECTED_CONTEXT = ctx; addSystemMessage('Document context injected')
-    var xhr = new XMLHttpRequest(); xhr.timeout = 10000
+    var xhr = new XMLHttpRequest(); xhr.timeout = NETWORK_TIMEOUT
     xhr.open('POST', API_BASE + '/session/' + SESSION_ID + '/message', true)
     xhr.setRequestHeader('Content-Type', 'application/json')
     xhr.send(JSON.stringify({ noReply: true, parts: [{ type: 'text', text: ctx }] }))

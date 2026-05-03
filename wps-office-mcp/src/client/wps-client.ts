@@ -28,7 +28,9 @@ import { errorUtils } from '../utils/error';
 import { macPollServer } from './mac-poll-server';
 
 // 平台判断
-const IS_MAC = os.platform() === 'darwin';
+function isMacPlatform() {
+  return os.platform() === 'darwin';
+}
 // const IS_WINDOWS = os.platform() === 'win32';  // 暂时不用，保留备用
 
 // PowerShell脚本路径 (Windows)
@@ -119,7 +121,7 @@ async function execPowerShell(action: string, params: Record<string, unknown> = 
  * Windows: PowerShell调用COM接口
  */
 async function execWpsAction(action: string, params: Record<string, unknown> = {}): Promise<unknown> {
-  if (IS_MAC) {
+  if (isMacPlatform()) {
     return execMacPoll(action, params);
   } else {
     return execPowerShell(action, params);
@@ -181,7 +183,7 @@ export class WpsClient {
 
   constructor(_config?: Partial<WpsEndpointConfig>) {
     this.status = { connected: false };
-    const method = IS_MAC ? 'HTTP (Mac Addon)' : 'PowerShell COM';
+    const method = isMacPlatform() ? 'HTTP (Mac Addon)' : 'PowerShell COM';
     log.info('WPS Client initialized', { method, platform: os.platform() });
   }
 

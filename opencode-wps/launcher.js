@@ -100,38 +100,40 @@ function startOpenCode(cwd, port) {
 }
 
 function stopOpenCode() {
-    // 1. 首先尝试终止子进程
-    if (opencodeProcess && !opencodeProcess.killed) {
+    console.log('[launcher] stopOpenCode called');
+    
+    // 先尝试结束 node 跟踪的子进程
+    if (opencodeProcess) {
         try {
             opencodeProcess.kill();
-            opencodeProcess = null;
-            console.log('[launcher] Killed child process');
-            return { success: true };
-        } catch (e) {
-            console.log('[launcher] Failed to kill child: ' + e.message);
+        } catch(e) {
+            console.error('[launcher] 终止子进程失败: ' + e.message);
         }
+        opencodeProcess = null;
     }
 
-    // 2. 如果子进程不存在，尝试从 PID 文件读取并精确终止
+    // 使用同步方式执行 taskkill（通过 cmd.exe shell）
+    try {
+        var execSync = require('child_process').execSync;
+        // 通过 shell 执行，并设置超时
+        execSync('taskkill /IM opencode.exe /F /T', { 
+            shell: 'cmd.exe',
+            stdio: 'ignore',
+            timeout: 5000
+        });
+        console.log('[launcher] taskkill success');
+    } catch(e) {
+        console.log('[launcher] taskkill failed: ' + e.message);
+    }
+    
+    // 清理 PID 文件
     var pidFile = path.join(__dirname, 'opencode.pid');
-    if (fs.existsSync(pidFile)) {
-        try {
-            var pid = parseInt(fs.readFileSync(pidFile, 'utf-8').trim());
-            if (pid && pid > 0) {
-                process.kill(pid);
-                fs.unlinkSync(pidFile);
-                console.log('[launcher] Killed process by PID: ' + pid);
-                return { success: true };
-            }
-        } catch (e) {
-            console.log('[launcher] PID file error: ' + e.message);
+    try {
+        if (fs.existsSync(pidFile)) {
+            fs.unlinkSync(pidFile);
         }
-    }
+    } catch(e) {}
 
-    // 3. 最后才使用 taskkill，但要更精确（只杀本进程树的）
-    // 注释掉暴力 taskkill，改为记录警告
-    // exec('taskkill /IM opencode.exe /F', function() {});
-    console.log('[launcher] No process to stop or already stopped');
     return { success: true };
 }
 
