@@ -458,17 +458,18 @@ function selectFolderViaFile() {
         fd.Title = '选择工作目录'
         fd.InitialFileName = defaultPath || 'C:\\'
         var result = fd.Show()
+        var setupCwd = document.getElementById('setup-cwd')
+        var cwdInput = document.getElementById('cwd-input')
         if (result === -1) {
             var folderPath = ''
             try { folderPath = fd.SelectedItems.Item(1) } catch(e) {}
-            if (!folderPath) { folderPath = fd.InitialFileName }
             if (folderPath) {
-                // 同时更新 setup 页面和 modal 中的输入框
-                var setupCwd = document.getElementById('setup-cwd')
-                var cwdInput = document.getElementById('cwd-input')
                 if (setupCwd) setupCwd.value = folderPath
                 if (cwdInput) cwdInput.value = folderPath
             }
+        } else if (result === 0) {
+            if (setupCwd) setupCwd.value = ''
+            if (cwdInput) cwdInput.value = ''
         }
     } catch(e) {
         alert('选择失败: ' + e.message + '\n请手动输入工作目录')
