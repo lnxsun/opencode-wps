@@ -100,27 +100,43 @@ function startOpenCode(cwd, port) {
 }
 
 function stopOpenCode() {
-    // 1. 首先尝试终止子进程
+    // 1. 首先尝试终止子进程（带进程树杀除）
     if (opencodeProcess && !opencodeProcess.killed) {
         try {
-            opencodeProcess.kill();
-            opencodeProcess = null;
-            console.log('[launcher] Killed child process');
-            return { success: true };
+            // 使用 /T 杀整个进程树
+            opencodeProcess.kill('SIGTERM');
+            // 如果是 shell 包装的进程，需要等待一下再强制杀
+            setTimeout(function() {
+                if (opencodeProcess && !opencodeProcess.killed) {
+                    try { opencodeProcess.kill('SIGKILL'); } catch(e) {}
+                }
+            }, 500);
+            console.log('[launcher] Killed child process tree');
+            // 继续尝试杀 opencode.exe（因为 shell:true 导致进程分离）
         } catch (e) {
             console.log('[launcher] Failed to kill child: ' + e.message);
         }
     }
 
-    // 2. 如果子进程不存在，尝试从 PID 文件读取并精确终止
+    // 2. 如果子进程不存在，尝试从 PID 文件读取并精确终止（带进程树）
     var pidFile = path.join(__dirname, 'opencode.pid');
     if (fs.existsSync(pidFile)) {
         try {
             var pid = parseInt(fs.readFileSync(pidFile, 'utf-8').trim());
             if (pid && pid > 0) {
-                process.kill(pid);
+                // 使用 taskkill /T /F 杀整个进程树
+                var execSync = require('child_process').execSync;
+                try {
+                    execSync('taskkill /PID ' + pid + ' /T /F', { encoding: 'utf8', stdio: 'ignore' });
+                    console.log('[launcher] Killed process tree by PID: ' + pid);
+                } catch(e) {
+                    // 如果上面的方式失败，直接杀所有 opencode.exe
+                    try {
+                        execSync('taskkill /IM opencode.exe /F /T', { encoding: 'utf8', stdio: 'ignore' });
+                        console.log('[launcher] Killed opencode.exe directly');
+                    } catch(e2) {}
+                }
                 fs.unlinkSync(pidFile);
-                console.log('[launcher] Killed process by PID: ' + pid);
                 return { success: true };
             }
         } catch (e) {
@@ -128,10 +144,24 @@ function stopOpenCode() {
         }
     }
 
-    // 3. 最后才使用 taskkill，但要更精确（只杀本进程树的）
-    // 注释掉暴力 taskkill，改为记录警告
-    // exec('taskkill /IM opencode.exe /F', function() {});
-    console.log('[launcher] No process to stop or already stopped');
+    // 3. 最后尝试杀所有 opencode.exe 和 bun.exe（保险方案）
+    try {
+        var execSync = require('child_process').execSync;
+        // 杀 opencode.exe
+        try { execSync('taskkill /IM opencode.exe /F /T', { encoding: 'utf8', stdio: 'ignore' }); } catch(e) {}
+        // 杀 bun.exe
+        try { execSync('taskkill /IM bun.exe /F /T', { encoding: 'utf8', stdio: 'ignore' }); } catch(e) {}
+    } catch(e) {
+        console.log('[launcher] taskkill error: ' + e.message);
+    }
+
+    // 4. 清理 PID 文件
+    try {
+        if (fs.existsSync(pidFile)) {
+            fs.unlinkSync(pidFile);
+        }
+    } catch(e) {}
+
     return { success: true };
 }
 
