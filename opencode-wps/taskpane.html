@@ -444,11 +444,16 @@ function openCwdModalFromSetup() {
 function selectFolderViaFile() {
     try {
         // 使用 WPS Application API 选择文件夹
-        var dialog = window.Application.FileDialog(window.Application.Enum.msoFileDialogFolderPicker)
-        dialog.Title = '选择工作目录'
-        if (dialog.Show()) {
-            var folderPath = dialog.SelectedItems(1)
-            document.getElementById('cwd-input').value = folderPath
+        var fd = window.Application.FileDialog(window.Application.Enum.msoFileDialogFolderPicker)
+        fd.Title = '选择工作目录'
+        var ret = fd.Show()
+        if (ret != 0) {
+            // SelectedItems 返回的是集合，需要用 Item(1) 获取第一项
+            var items = fd.SelectedItems
+            if (items && items.Count > 0) {
+                var folderPath = items.Item(1)
+                document.getElementById('cwd-input').value = folderPath
+            }
         }
     } catch(e) {
         // 降级：用文件选择
@@ -462,6 +467,7 @@ function selectFolderViaFile() {
                 var idx = folderPath.lastIndexOf('\\')
                 if (idx > -1) folderPath = folderPath.substring(0, idx)
                 else if (folderPath.indexOf('/') > -1) folderPath = folderPath.substring(0, folderPath.lastIndexOf('/'))
+
                 document.getElementById('cwd-input').value = folderPath
             }
         }
