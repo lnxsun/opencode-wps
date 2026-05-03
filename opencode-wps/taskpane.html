@@ -302,13 +302,16 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:-apple-system,Blink
 .btn-cancel:hover{background:#f5f5f5}
 </style>
 
+<script src="config.js"></script>
 <script>
 // ============================================================
 // OpenCode Chat - Custom UI for WPS sidebar (Chrome 104 compatible)
 // Flow: Setup (choose CWD + start) → Chat (with status bar)
 // ============================================================
 
-var API_BASE = 'http://127.0.0.1:14096'  // 将在初始化后更新为 CONFIG.apiUrl
+var API_BASE = CONFIG.opencode.apiBase
+var NETWORK_TIMEOUT = CONFIG.network.timeout
+var UPLOAD_TIMEOUT = CONFIG.network.uploadTimeout
 var SESSION_ID = ''
 var PROJECT_DIR = ''
 var IS_BUSY = false
@@ -873,7 +876,7 @@ function fetchAvailableModels(cb) {
 
 function fetchAvailableAgents(cb) {
     var xhr = new XMLHttpRequest()
-    xhr.timeout = 10000
+    xhr.timeout = NETWORK_TIMEOUT
     xhr.onreadystatechange = function() {
         if (xhr.readyState === 4) {
             if (xhr.status >= 200 && xhr.status < 300) {
@@ -913,7 +916,7 @@ function toggleAgentDropdown(e) {
     createDropdown(btn, '<div class="dd-header">Loading...</div>', 'bottom-up')
     
     var xhr = new XMLHttpRequest()
-    xhr.timeout = 10000
+    xhr.timeout = NETWORK_TIMEOUT
     xhr.onreadystatechange = function() {
         if (xhr.readyState === 4 && xhr.status === 200) {
             try {
@@ -1091,7 +1094,7 @@ function fetchJSON(method, path, body, onSuccess, onError, timeout) {
     fetchWithRetry(method, path, body, onSuccess, onError, timeout, CONSTANTS.MAX_RETRIES);
 }
 function postMessage(path, body, onError) {
-    var xhr = new XMLHttpRequest(); xhr.timeout = 300000
+    var xhr = new XMLHttpRequest(); xhr.timeout = UPLOAD_TIMEOUT
     xhr.onreadystatechange = function() { if (xhr.readyState === 4 && xhr.status >= 400 && onError) onError(xhr.status, xhr.responseText) }
     xhr.onerror = function() { if (onError) onError(0, 'Network error') }
     xhr.ontimeout = function() { console.log('[Chat] POST timeout (SSE still active)') }
@@ -1251,7 +1254,7 @@ function sendMessage() {
 function injectContext(cb) {
     var ctx = gatherWpsContext(); if (!ctx || ctx === LAST_INJECTED_CONTEXT) { cb(); return }
     LAST_INJECTED_CONTEXT = ctx
-    var xhr = new XMLHttpRequest(); xhr.timeout = 10000
+    var xhr = new XMLHttpRequest(); xhr.timeout = NETWORK_TIMEOUT
     xhr.onreadystatechange = function() { if (xhr.readyState === 4) cb() }
     xhr.onerror = function() { cb() }; xhr.ontimeout = function() { cb() }
     xhr.open('POST', API_BASE + '/session/' + SESSION_ID + '/message', true)
@@ -1269,7 +1272,7 @@ function handleFileUpload(e) {
         var base64 = evt.target.result.split(',')[1];
         var msg = '<file-upload>\nfilename: ' + file.name + '\ntype: ' + file.type + '\ndata: ' + base64 + '\n</file-upload>';
         var xhr = new XMLHttpRequest();
-        xhr.timeout = 30000;
+        xhr.timeout = NETWORK_TIMEOUT;
         xhr.open('POST', API_BASE + '/session/' + SESSION_ID + '/message', true);
         xhr.setRequestHeader('Content-Type', 'application/json');
         xhr.send(JSON.stringify({ parts: [{ type: 'text', text: msg }] }));
@@ -1281,7 +1284,7 @@ function forceInjectContext() {
     if (!SESSION_ID || IS_BUSY) return; LAST_INJECTED_CONTEXT = ''
     var ctx = gatherWpsContext(); if (!ctx) { addSystemMessage('No document context available'); return }
     LAST_INJECTED_CONTEXT = ctx; addSystemMessage('Document context injected')
-    var xhr = new XMLHttpRequest(); xhr.timeout = 10000
+    var xhr = new XMLHttpRequest(); xhr.timeout = NETWORK_TIMEOUT
     xhr.open('POST', API_BASE + '/session/' + SESSION_ID + '/message', true)
     xhr.setRequestHeader('Content-Type', 'application/json')
     xhr.send(JSON.stringify({ noReply: true, parts: [{ type: 'text', text: ctx }] }))
