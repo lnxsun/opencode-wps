@@ -1,6 +1,6 @@
 ---
 name: wps-office
-description: WPS Office 跨应用智能助手，统一管理 Excel、Word、PPT 三大应用，处理跨应用操作和通用功能
+description: "WPS Office 跨应用智能助手，统一管理 Excel、Word、PPT 三大应用，处理跨应用操作和通用功能。适用于：跨应用操作、格式转换、批量处理、文档管理。当用户提及 WPS Office、跨应用、格式转换、批量操作、文档转换时使用此 skill。"
 ---
 
 # WPS Office 跨应用智能助手
