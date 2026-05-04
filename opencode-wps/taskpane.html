@@ -193,18 +193,18 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:-apple-system,Blink
   <div id="view-setup" class="view-setup">
     <div class="icon-logo"></div>
     <h3>OpenCode</h3>
-    <p>Set the working directory and start the server</p>
+    <p>设置工作目录并启动服务</p>
     <div class="setup-cwd-row">
       <input id="setup-cwd" type="text" placeholder="点击选择工作目录" spellcheck="false" onclick="selectFolderViaFile()">
     </div>
-    <button class="btn-primary" id="btn-start" onclick="startOpenCode()"><span class="icon-play"></span>Start Server</button>
+    <button class="btn-primary" id="btn-start" onclick="startOpenCode()"><span class="icon-play"></span>启动服务</button>
     <div class="setup-status" id="setup-status"></div>
   </div>
 
   <!-- ===== Chat View ===== -->
   <div id="view-chat" class="hidden" style="display:flex;flex-direction:column;height:100%">
     <div class="topbar">
-      <button class="hamburger-btn" title="Menu" onclick="openSidebar()">
+      <button class="hamburger-btn" title="菜单" onclick="openSidebar()">
         <div class="icon-hamburger"><span></span><span></span><span></span></div>
       </button>
       <div class="topbar-logo">
@@ -212,30 +212,30 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:-apple-system,Blink
       </div>
       <div class="topbar-cwd clickable" id="topbar-cwd" title="点击切换工作目录" onclick="openCwdModal()"></div>
       <div class="topbar-actions" style="display:flex;gap:4px;align-items:center">
-        <button class="topbar-btn" title="New Session" onclick="newSession()" style="width:24px;height:24px;border:1px solid #e0e0e0;border-radius:6px;background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0"><span class="icon-plus"></span></button>
+        <button class="topbar-btn" title="新会话" onclick="newSession()" style="width:24px;height:24px;border:1px solid #e0e0e0;border-radius:6px;background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0"><span class="icon-plus"></span></button>
         <div class="topbar-status">
           <div class="status-dot running" id="server-dot"></div>
-          <span class="status-label running" id="server-label">Running</span>
-          <button class="btn-stop" title="Stop server" onclick="stopOpenCode()"><span class="icon-stop"></span></button>
+          <span class="status-label running" id="server-label">运行中</span>
+          <button class="btn-stop" title="停止服务" onclick="stopOpenCode()"><span class="icon-stop"></span></button>
         </div>
       </div>
     </div>
     <div class="session-header" id="session-header-area">
       <span class="session-title" id="session-title">WPS Office</span>
       <div class="session-status"><div class="dot idle" id="status-dot"></div></div>
-      <button class="session-menu" title="More" onclick="toggleSessionMenu(event)">...</button>
+      <button class="session-menu" title="更多" onclick="toggleSessionMenu(event)">...</button>
     </div>
     <div class="messages" id="messages"></div>
     <div class="input-area">
       <div class="input-wrapper">
-        <textarea class="input-box" id="input-box" placeholder="Ask anything..." rows="1" onkeydown="onInputKey(event)" oninput="autoGrow(this)"></textarea>
+        <textarea class="input-box" id="input-box" placeholder="请输入您的问题..." rows="1" onkeydown="onInputKey(event)" oninput="autoGrow(this)"></textarea>
         <div class="input-toolbar">
           <div class="input-toolbar-left">
-            <button class="plus-btn" title="Upload file" onclick="document.getElementById('file-input').click()">+</button>
+            <button class="plus-btn" title="上传文件" onclick="document.getElementById('file-input').click()">+</button>
             <input type="file" id="file-input" accept=".png,.jpg,.jpeg,.gif,.webp,.pdf,.xls,.xlsx,.vtt,.text,.xlt,.htm,.html,.ics,.tpl,.xql,.css,.csv,.asp,.py,.jhtml,.java,.js,.json,.jsx,.log,.md,.mdx,.mts,.rb,.rs,.sass,.scss,.sql,.toml,.ts,.tsx,.xml,.yaml,.yml,.zsh" onchange="handleFileUpload(event)" />
           </div>
           <div id="send-area">
-            <button class="send-btn disabled" id="send-btn" onclick="sendMessage()" title="Send">
+<button class="send-btn disabled" id="send-btn" onclick="sendMessage()" title="发送">
               <span class="icon-send"></span>
             </button>
           </div>
@@ -244,20 +244,20 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:-apple-system,Blink
     </div>
     <div class="bottombar" id="bottombar">
       <button class="bb-btn" id="bb-agent" onclick="toggleAgentDropdown(event)">
-        <span id="agent-name">Agent</span><span class="chevron">&#9662;</span>
+        <span id="agent-name">智能体</span><span class="chevron">&#9662;</span>
       </button>
       <button class="bb-btn" id="bb-mode" onclick="toggleModeDropdown(event)">
-        <span id="mode-label">Build</span><span class="chevron">&#9662;</span>
+        <span id="mode-label">构建</span><span class="chevron">&#9662;</span>
       </button>
       <button class="bb-btn" id="bb-provider" onclick="toggleProviderDropdown(event)">
         <span id="provider-name">OpenCode</span><span class="chevron">&#9662;</span>
       </button>
       <button class="bb-btn" id="bb-model" onclick="toggleModelDropdown(event)">
         <span class="icon-model"></span>
-        <span id="model-name">AI Model</span><span class="chevron">&#9662;</span>
+        <span id="model-name">AI 模型</span><span class="chevron">&#9662;</span>
       </button>
       <button class="bb-btn" id="bb-level" onclick="toggleLevelDropdown(event)">
-        <span id="level-label"> balanced</span><span class="chevron">&#9662;</span>
+        <span id="level-label"> 中</span><span class="chevron">&#9662;</span>
       </button>
     </div>
   </div>
@@ -329,6 +329,7 @@ var CURRENT_MODE = 'build'
 var CURRENT_LEVEL = 'balanced'
 var AVAILABLE_MODELS = []
 var AVAILABLE_AGENTS = []
+var AVAILABLE_PROVIDERS = []
 var CURRENT_AGENT = 'wps-expert'
 var DEFAULT_AGENT = 'wps-expert'
 var SERVER_RUNNING = false
@@ -429,7 +430,7 @@ function showSetup() {
     if (lastCwd) $setupCwd.value = lastCwd
     $setupStatus.textContent = ''
     $btnStart.disabled = false
-    $btnStart.textContent = 'Start Server'
+    $btnStart.textContent = '启动服务'
 }
 
 function openCwdModalFromSetup() {
@@ -568,8 +569,8 @@ function confirmCwdChange() {
 
     // 直接启动服务
     $btnStart.disabled = true
-    $btnStart.innerHTML = '<span class="spinner"></span> Starting...'
-    $setupStatus.textContent = 'Starting OpenCode server...'
+    $btnStart.innerHTML = '<span class="spinner"></span> 正在启动...'
+    $setupStatus.textContent = '正在启动 OpenCode 服务...'
     setPS('opencode_command', 'start:' + newCwd.replace(/\\\\/g, '\\'))
 
     // 轮询等待服务就绪
@@ -586,8 +587,8 @@ function confirmCwdChange() {
             if (retries >= maxRetries) {
                 clearInterval(pollTimer)
                 $btnStart.disabled = false
-                $btnStart.innerHTML = '<span class="icon-play"></span>Start Server'
-                $setupStatus.textContent = 'Failed to start. Check if opencode is installed.'
+                $btnStart.innerHTML = '<span class="icon-play"></span>启动服务'
+                $setupStatus.textContent = '启动失败，请检查 OpenCode 是否已安装。'
             }
         })
     }, 1000)
@@ -610,8 +611,8 @@ function startOpenCode() {
     $topbarCwd.title = cwd.replace(/\\\\/g, '\\')
 
     $btnStart.disabled = true
-    $btnStart.innerHTML = '<span class="spinner"></span> Starting...'
-    $setupStatus.textContent = 'Starting OpenCode server...'
+    $btnStart.innerHTML = '<span class="spinner"></span> 正在启动...'
+    $setupStatus.textContent = '正在启动 OpenCode 服务...'
 
     setPS('opencode_command', 'start:' + cwd.replace(/\\\\/g, '\\'))
 
@@ -640,9 +641,9 @@ function startOpenCode() {
             if (retries >= maxRetries) {
                 clearInterval(pollTimer)
                 $btnStart.disabled = false
-                $btnStart.innerHTML = '<span class="icon-play"></span>Start Server'
+                $btnStart.innerHTML = '<span class="icon-play"></span>启动服务'
                 if (!launcherOk) $setupStatus.textContent = 'Launcher not running'
-                else $setupStatus.textContent = 'Failed to start. Check if opencode is installed.'
+                else $setupStatus.textContent = '启动失败，请检查 OpenCode 是否已安装。'
             }
         })
     }, 1000)
@@ -663,9 +664,9 @@ function onServerConnected() {
     CONNECTED = true
     updateServerStatus(true)
     showChat()
-    fetchAvailableModels(function() { $modelName.textContent = CURRENT_MODEL || 'AI Model' })
+    fetchAvailableModels(function() { $modelName.textContent = CURRENT_MODEL || 'AI 模型' })
     fetchAvailableAgents(function() { 
-        var displayName = CURRENT_AGENT || 'Agent'
+        var displayName = CURRENT_AGENT || '智能体'
         $agentName.textContent = displayName
     })
     var sid = getPS('opencode_session_id')
@@ -677,7 +678,7 @@ function onServerConnected() {
 function updateServerStatus(running) {
     $serverDot.className = 'status-dot' + (running ? ' running' : '')
     $serverLabel.className = 'status-label' + (running ? ' running' : '')
-    $serverLabel.textContent = running ? 'Running' : 'Stopped'
+    $serverLabel.textContent = running ? '运行中' : '已停止'
 }
 
 // --- Health check (detect server crash) ---
@@ -691,7 +692,7 @@ function startHealthCheck() {
                 if (SSE) { SSE.close(); SSE = null }
                 updateServerStatus(false)
                 showSetup()
-                $setupStatus.textContent = 'Server disconnected. Restart to continue.'
+                $setupStatus.textContent = '服务已断开，请重新启动以继续。'
             }
             if (ok) { SERVER_RUNNING = true; updateServerStatus(true) }
         }, function() {
@@ -700,7 +701,7 @@ function startHealthCheck() {
                 if (SSE) { SSE.close(); SSE = null }
                 updateServerStatus(false)
                 showSetup()
-                $setupStatus.textContent = 'Server disconnected. Restart to continue.'
+                $setupStatus.textContent = '服务已断开，请重新启动以继续。'
             }
         })
     }, 10000)
@@ -734,26 +735,33 @@ function escapeAttr(s) { return s.replace(/'/g, "\\'").replace(/"/g, '&quot;') }
 // Mode dropdown
 function toggleModeDropdown(e) {
     e.stopPropagation()
-    var html = '<div class="dd-item' + (CURRENT_MODE === 'build' ? ' selected' : '') + '" onclick="selectMode(\'build\')"><span>Build</span>' + (CURRENT_MODE === 'build' ? '<span class="dd-check">&#10003;</span>' : '') + '</div>' +
-        '<div class="dd-item' + (CURRENT_MODE === 'plan' ? ' selected' : '') + '" onclick="selectMode(\'plan\')"><span>Plan</span>' + (CURRENT_MODE === 'plan' ? '<span class="dd-check">&#10003;</span>' : '') + '</div>'
+    var html = '<div class="dd-item' + (CURRENT_MODE === 'build' ? ' selected' : '') + '" onclick="selectMode(\'build\')"><span>构建</span>' + (CURRENT_MODE === 'build' ? '<span class="dd-check">&#10003;</span>' : '') + '</div>' +
+        '<div class="dd-item' + (CURRENT_MODE === 'plan' ? ' selected' : '') + '" onclick="selectMode(\'plan\')"><span>规划</span>' + (CURRENT_MODE === 'plan' ? '<span class="dd-check">&#10003;</span>' : '') + '</div>'
     createDropdown(document.getElementById('bb-mode'), html, 'bottom-up')
 }
-function selectMode(mode) { CURRENT_MODE = mode; document.getElementById('mode-label').textContent = mode === 'build' ? 'Build' : 'Plan'; closeAllDropdowns() }
+function selectMode(mode) { CURRENT_MODE = mode; document.getElementById('mode-label').textContent = mode === 'build' ? '构建' : '规划'; closeAllDropdowns() }
 
 // Provider dropdown
 function toggleProviderDropdown(e) {
     e.stopPropagation()
     var btn = document.getElementById('bb-provider')
-    var html = '<div class="dd-header">Select Provider</div>'
-    for (var i = 0; i < RECOMMENDED_PROVIDERS.length; i++) {
-        var p = RECOMMENDED_PROVIDERS[i]
-        var sel = (p.id === CURRENT_PROVIDER)
-        html += '<div class="dd-item' + (sel ? ' selected' : '') + '" onclick="selectProvider(\'' + p.id + '\')">'
-        html += '<span>' + p.name + '</span>'
-        if (sel) html += '<span class="dd-check">&#10003;</span>'
-        html += '</div>'
-    }
-    createDropdown(btn, html, 'bottom-up')
+    createDropdown(btn, '<div class="dd-header">加载中...</div>', 'bottom-up')
+    fetchAvailableModels(function() {
+        closeAllDropdowns()
+        var html = '<div class="dd-header">选择供应商</div>'
+        for (var i = 0; i < AVAILABLE_PROVIDERS.length; i++) {
+            var p = AVAILABLE_PROVIDERS[i]
+            var sel = (p.id === CURRENT_PROVIDER)
+            html += '<div class="dd-item' + (sel ? ' selected' : '') + '" onclick="selectProvider(\'' + p.id + '\')">'
+            html += '<span>' + p.name + '</span>'
+            if (sel) html += '<span class="dd-check">&#10003;</span>'
+            html += '</div>'
+        }
+        if (AVAILABLE_PROVIDERS.length === 0) {
+            html += '<div class="dd-item"><span style="color:#999">暂无供应商</span></div>'
+        }
+        createDropdown(btn, html, 'bottom-up')
+    })
 }
 function selectProvider(id) {
     CURRENT_PROVIDER = id
@@ -763,7 +771,7 @@ function selectProvider(id) {
     updateModelsForProvider()
 }
 function updateModelsForProvider() {
-    var p = RECOMMENDED_PROVIDERS.find(function(x) { return x.id === CURRENT_PROVIDER })
+    var p = AVAILABLE_PROVIDERS.find(function(x) { return x.id === CURRENT_PROVIDER })
     if (p && p.models) {
         AVAILABLE_MODELS = p.models.slice()
         if (AVAILABLE_MODELS.length > 0) {
@@ -779,11 +787,11 @@ var AVAILABLE_LEVELS = ['balanced', 'high', 'low']
 function toggleLevelDropdown(e) {
     e.stopPropagation()
     var btn = document.getElementById('bb-level')
-    var html = '<div class="dd-header">Select Reasoning Level</div>'
+    var html = '<div class="dd-header">选择推理级别</div>'
     var levels = [
-        { id: 'balanced', name: 'Balanced', desc: 'Good reasoning, good speed' },
-        { id: 'high', name: 'High', desc: 'Best reasoning, may be slower' },
-        { id: 'low', name: 'Low', desc: 'Faster response, less reasoning' }
+        { id: 'balanced', name: '中等', desc: '良好的推理和速度' },
+        { id: 'high', name: '高', desc: '最佳推理，可能较慢' },
+        { id: 'low', name: '低', desc: '响应更快，推理较少' }
     ]
     for (var i = 0; i < levels.length; i++) {
         var l = levels[i]
@@ -798,8 +806,8 @@ function toggleLevelDropdown(e) {
 
 function selectLevel(id) {
     CURRENT_LEVEL = id
-    var labels = { balanced: ' balanced', high: ' high', low: ' low' }
-    document.getElementById('level-label').textContent = labels[id] || ' balanced'
+    var labels = { balanced: ' 中', high: ' 高', low: ' 低' }
+    document.getElementById('level-label').textContent = labels[id] || ' 中'
     closeAllDropdowns()
 }
 
@@ -807,11 +815,11 @@ function toggleModelDropdown(e) {
     e.stopPropagation()
     var btn = document.getElementById('bb-model')
     if (AVAILABLE_MODELS.length === 0) {
-        createDropdown(btn, '<div class="dd-header">Loading models...</div>', 'bottom-up')
+        createDropdown(btn, '<div class="dd-header">加载模型中...</div>', 'bottom-up')
         fetchAvailableModels(function() { closeAllDropdowns(); toggleModelDropdown(e) })
         return
     }
-    var html = '<div class="dd-header">Select Model</div>'
+    var html = '<div class="dd-header">选择模型</div>'
     for (var i = 0; i < AVAILABLE_MODELS.length; i++) {
         var m = AVAILABLE_MODELS[i]
         var sel = (m.id === CURRENT_MODEL)
@@ -853,6 +861,7 @@ var RECOMMENDED_PROVIDERS = [
 function fetchAvailableModels(cb) {
     fetchJSON('GET', '/global/config', null, function(cfg) {
         AVAILABLE_MODELS = RECOMMENDED_MODELS.slice()
+        AVAILABLE_PROVIDERS = RECOMMENDED_PROVIDERS.slice()
         var allProviders = {}
         for (var i = 0; i < RECOMMENDED_MODELS.length; i++) {
             var m = RECOMMENDED_MODELS[i]
@@ -863,10 +872,13 @@ function fetchAvailableModels(cb) {
         for (var pid in providers) {
             var p = providers[pid]
             if (p && p.models) {
+                AVAILABLE_PROVIDERS.push({ id: pid, name: p.name || pid, models: [] })
                 for (var mid in p.models) {
                     AVAILABLE_MODELS.push({ id: mid, name: p.models[mid].name || mid, providerID: pid, free: false })
                     allProviders[pid] = true
                 }
+            } else if (p && p.name) {
+                AVAILABLE_PROVIDERS.push({ id: pid, name: p.name, models: [] })
             }
         }
         if (!CURRENT_MODEL && AVAILABLE_MODELS.length > 0) { CURRENT_MODEL = AVAILABLE_MODELS[0].id }
@@ -913,7 +925,7 @@ function fetchAvailableAgents(cb) {
 function toggleAgentDropdown(e) {
     e.stopPropagation()
     var btn = document.getElementById('bb-agent')
-    createDropdown(btn, '<div class="dd-header">Loading...</div>', 'bottom-up')
+    createDropdown(btn, '<div class="dd-header">加载中...</div>', 'bottom-up')
     
     var xhr = new XMLHttpRequest()
     xhr.timeout = NETWORK_TIMEOUT
@@ -924,9 +936,9 @@ function toggleAgentDropdown(e) {
                 var agents = resp.data || resp || []
                 closeAllDropdowns()
                 
-                var html = '<div class="dd-header">Select Agent (' + agents.length + ')</div>'
+                var html = '<div class="dd-header">选择智能体</div>'
                 if (agents.length === 0) {
-                    html += '<div class="dd-item"><span style="color:#999">No agents found</span></div>'
+                    html += '<div class="dd-item"><span style="color:#999">未找到智能体</span></div>'
                 } else {
                     for (var i = 0; i < agents.length; i++) {
                         var a = agents[i]
@@ -941,17 +953,17 @@ function toggleAgentDropdown(e) {
                 createDropdown(btn, html, 'bottom-up')
             } catch(e) {
                 closeAllDropdowns()
-                createDropdown(btn, '<div class="dd-header">Error: parse failed</div>', 'bottom-up')
+                createDropdown(btn, '<div class="dd-header">错误：解析失败</div>', 'bottom-up')
             }
         } else if (xhr.readyState === 4) {
             closeAllDropdowns()
-            var errMsg = xhr.status === 0 ? 'Network error' : 'HTTP ' + xhr.status
+            var errMsg = xhr.status === 0 ? '网络错误' : 'HTTP ' + xhr.status
             createDropdown(btn, '<div class="dd-header">' + errMsg + '</div>', 'bottom-up')
         }
     }
     xhr.onerror = function() {
         closeAllDropdowns()
-        createDropdown(btn, '<div class="dd-header">Network error</div>', 'bottom-up')
+        createDropdown(btn, '<div class="dd-header">网络错误</div>', 'bottom-up')
     }
     xhr.open('GET', API_BASE + '/agent', true)
     xhr.send()
@@ -962,7 +974,7 @@ function selectAgent(id) { CURRENT_AGENT = id; $agentName.textContent = id; clos
 function toggleSessionMenu(e) {
     e.stopPropagation()
     createDropdown(document.getElementById('session-header-area'),
-        '<div class="dd-item" onclick="renameSession()"><span class="icon-pen"></span><span>Rename</span></div><div class="dd-divider"></div><div class="dd-item dd-item-danger" onclick="deleteSession()"><span class="icon-trash"></span><span>Delete</span></div>', 'top-down')
+        '<div class="dd-item" onclick="renameSession()"><span class="icon-pen"></span><span>重命名</span></div><div class="dd-divider"></div><div class="dd-item dd-item-danger" onclick="deleteSession()"><span class="icon-trash"></span><span>删除</span></div>', 'top-down')
 }
 function renameSession() {
     closeAllDropdowns()
@@ -970,11 +982,11 @@ function renameSession() {
     var backdrop = document.createElement('div'); backdrop.className = 'dropdown-backdrop'; document.body.appendChild(backdrop)
     var renameBox = document.createElement('div')
     renameBox.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.2);z-index:100;padding:20px;width:260px'
-    renameBox.innerHTML = '<div style="font-size:15px;font-weight:600;margin-bottom:12px">Rename Session</div>' +
+    renameBox.innerHTML = '<div style="font-size:15px;font-weight:600;margin-bottom:12px">重命名会话</div>' +
         '<input id="rename-input" type="text" value="' + escapeHtml($sessionTitle.textContent) + '" style="width:100%;border:1px solid #e5e5e5;border-radius:8px;padding:8px 12px;font-size:14px;outline:none;font-family:inherit" />'
     var btnRow = document.createElement('div'); btnRow.style.cssText = 'display:flex;gap:8px;margin-top:14px;justify-content:flex-end'
-    var cancelBtn = document.createElement('button'); cancelBtn.textContent = 'Cancel'; cancelBtn.style.cssText = 'padding:6px 16px;border:1px solid #e0e0e0;border-radius:8px;background:#fff;cursor:pointer;font-size:13px'
-    var confirmBtn = document.createElement('button'); confirmBtn.textContent = 'Rename'; confirmBtn.style.cssText = 'padding:6px 16px;border:none;border-radius:8px;background:#1a1a1a;color:#fff;cursor:pointer;font-size:13px'
+    var cancelBtn = document.createElement('button'); cancelBtn.textContent = '取消'; cancelBtn.style.cssText = 'padding:6px 16px;border:1px solid #e0e0e0;border-radius:8px;background:#fff;cursor:pointer;font-size:13px'
+    var confirmBtn = document.createElement('button'); confirmBtn.textContent = '重命名'; confirmBtn.style.cssText = 'padding:6px 16px;border:none;border-radius:8px;background:#1a1a1a;color:#fff;cursor:pointer;font-size:13px'
     btnRow.appendChild(cancelBtn); btnRow.appendChild(confirmBtn); renameBox.appendChild(btnRow); document.body.appendChild(renameBox)
     var input = document.getElementById('rename-input'); input.focus(); input.select()
     function closeRename() { if (renameBox.parentNode) document.body.removeChild(renameBox); if (backdrop.parentNode) document.body.removeChild(backdrop) }
@@ -988,10 +1000,10 @@ function deleteSession() {
     var backdrop = document.createElement('div'); backdrop.className = 'dropdown-backdrop'; document.body.appendChild(backdrop)
     var confirmBox = document.createElement('div')
     confirmBox.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.2);z-index:100;padding:20px;width:260px'
-    confirmBox.innerHTML = '<div style="font-size:15px;font-weight:600;margin-bottom:12px">Delete Session</div><div style="font-size:14px;color:#666;margin-bottom:16px">Are you sure you want to delete this session?</div>'
+    confirmBox.innerHTML = '<div style="font-size:15px;font-weight:600;margin-bottom:12px">删除会话</div><div style="font-size:14px;color:#666;margin-bottom:16px">确定要删除此会话吗？</div>'
     var btnRow = document.createElement('div'); btnRow.style.cssText = 'display:flex;gap:8px;justify-content:flex-end'
-    var cancelBtn = document.createElement('button'); cancelBtn.textContent = 'Cancel'; cancelBtn.style.cssText = 'padding:6px 16px;border:1px solid #e0e0e0;border-radius:8px;background:#fff;cursor:pointer;font-size:13px'
-    var deleteBtn = document.createElement('button'); deleteBtn.textContent = 'Delete'; deleteBtn.style.cssText = 'padding:6px 16px;border:none;border-radius:8px;background:#e53935;color:#fff;cursor:pointer;font-size:13px'
+    var cancelBtn = document.createElement('button'); cancelBtn.textContent = '取消'; cancelBtn.style.cssText = 'padding:6px 16px;border:1px solid #e0e0e0;border-radius:8px;background:#fff;cursor:pointer;font-size:13px'
+    var deleteBtn = document.createElement('button'); deleteBtn.textContent = '删除'; deleteBtn.style.cssText = 'padding:6px 16px;border:none;border-radius:8px;background:#e53935;color:#fff;cursor:pointer;font-size:13px'
     btnRow.appendChild(cancelBtn); btnRow.appendChild(deleteBtn); confirmBox.appendChild(btnRow); document.body.appendChild(confirmBox)
     function closeConfirm() { if (confirmBox.parentNode) document.body.removeChild(confirmBox); if (backdrop.parentNode) document.body.removeChild(backdrop) }
     backdrop.onclick = closeConfirm; cancelBtn.onclick = closeConfirm
@@ -1002,7 +1014,7 @@ function deleteSession() {
                 var list = sessions && sessions.data ? sessions.data : (Array.isArray(sessions) ? sessions : [])
                 var other = null
                 for (var i = 0; i < list.length; i++) { if (list[i].id !== deletedId) { other = list[i]; break } }
-                if (other) { SESSION_ID = other.id; setPS('opencode_session_id', SESSION_ID); LAST_INJECTED_CONTEXT = ''; $sessionTitle.textContent = other.title || other.slug || 'WPS Office'; $messages.innerHTML = ''; loadSessionMessages(SESSION_ID); if (!SSE) connectSSE() }
+                if (other) { SESSION_ID = other.id; setPS('opencode_session_id', SESSION_ID); LAST_INJECTED_CONTEXT = ''; $sessionTitle.textContent = other.title || other.slug || '新会话'; $messages.innerHTML = ''; loadSessionMessages(SESSION_ID); if (!SSE) connectSSE() }
                 else { SESSION_ID = ''; setPS('opencode_session_id', ''); $messages.innerHTML = ''; createNewSession(function() { if (!SSE) connectSSE() }) }
             })
         })
@@ -1014,12 +1026,12 @@ function openSidebar() {
     closeAllDropdowns()
     var backdrop = document.createElement('div'); backdrop.className = 'sidebar-backdrop'; backdrop.onclick = closeSidebar; document.body.appendChild(backdrop)
     var sb = document.createElement('div'); sb.className = 'sidebar'; sb.id = 'sidebar'
-    sb.innerHTML = '<div class="sidebar-header"><span>Sessions</span><button class="sidebar-close" onclick="closeSidebar()">&#10005;</button></div><div class="sidebar-list" id="sidebar-list"><div style="padding:16px;color:#999;font-size:13px">Loading...</div></div>'
+    sb.innerHTML = '<div class="sidebar-header"><span>会话</span><button class="sidebar-close" onclick="closeSidebar()">&#10005;</button></div><div class="sidebar-list" id="sidebar-list"><div style="padding:16px;color:#999;font-size:13px">加载中...</div></div>'
     document.body.appendChild(sb)
     fetchJSON('GET', '/session', null, function(sessions) {
         var list = sessions && sessions.data ? sessions.data : (Array.isArray(sessions) ? sessions : [])
         var el = document.getElementById('sidebar-list'); if (!el) return
-        if (!list.length) { el.innerHTML = '<div style="padding:16px;color:#999;font-size:13px">No sessions</div>'; return }
+        if (!list.length) { el.innerHTML = '<div style="padding:16px;color:#999;font-size:13px">暂无会话</div>'; return }
         var html = ''
         for (var i = 0; i < list.length; i++) { var s = list[i], active = (s.id === SESSION_ID); var date = s.time ? new Date(s.time.updated || s.time.created) : null; var ts = date ? (date.getMonth()+1)+'/'+date.getDate() : ''; html += '<div class="sidebar-item' + (active ? ' active' : '') + '" onclick="switchSession(\'' + s.id + '\')"><span class="sl-slug">' + escapeHtml(s.title || s.slug || s.id) + '</span><span class="sl-time">' + ts + '</span></div>' }
         el.innerHTML = html
@@ -1103,10 +1115,10 @@ function postMessage(path, body, onError) {
 
 // --- Session ---
 function createNewSession(cb) {
-    fetchJSON('POST', '/session', { title: 'WPS Office' }, function(resp) {
+    fetchJSON('POST', '/session', { title: '新会话' }, function(resp) {
         var data = resp && resp.data ? resp.data : resp
-        if (data && data.id) { SESSION_ID = data.id; setPS('opencode_session_id', SESSION_ID); $sessionTitle.textContent = data.title || data.slug || 'WPS Office'; $messages.innerHTML = ''; LAST_INJECTED_CONTEXT = ''; if (cb) cb() }
-    }, function(s, t) { addSystemMessage('Session Error: ' + (t || s)) })
+        if (data && data.id) { SESSION_ID = data.id; setPS('opencode_session_id', SESSION_ID); $sessionTitle.textContent = data.title || data.slug || '新会话'; $messages.innerHTML = ''; LAST_INJECTED_CONTEXT = ''; if (cb) cb() }
+    }, function(s, t) { addSystemMessage('会话错误: ' + (t || s)) })
 }
 function newSession() { if (IS_BUSY) return; createNewSession(function() { if (!SSE) connectSSE() }) }
 function loadSessionMessages(sid) {
@@ -1116,7 +1128,7 @@ function loadSessionMessages(sid) {
         for (var i = 0; i < list.length; i++) renderHistoryMessage(list[i])
         scrollToBottom()
     })
-    fetchJSON('GET', '/session/' + sid, null, function(sess) { var d = sess && sess.data ? sess.data : sess; if (d) $sessionTitle.textContent = d.title || d.slug || 'WPS Office' })
+    fetchJSON('GET', '/session/' + sid, null, function(sess) { var d = sess && sess.data ? sess.data : sess; if (d) $sessionTitle.textContent = d.title || d.slug || '新会话' })
 }
 function renderHistoryMessage(msg) {
     if (!msg || !msg.info) return
@@ -1211,7 +1223,7 @@ function ensureStreamingBubble() { var el = document.getElementById('streaming-m
 function updateStreamingBubble() {
     var el = document.getElementById('streaming-msg'); if (!el) { ensureStreamingBubble(); el = document.getElementById('streaming-msg') }
     var html = ''
-    if (STREAMING_REASONING) { html += '<div class="thinking-toggle" onclick="toggleThinking(this)">&#9654; Thinking (' + STREAMING_REASONING.length + ' chars)</div><div class="thinking-content">' + escapeHtml(STREAMING_REASONING) + '</div>' }
+    if (STREAMING_REASONING) { html += '<div class="thinking-toggle" onclick="toggleThinking(this)">&#9654; 思考中 (' + STREAMING_REASONING.length + ' chars)</div><div class="thinking-content">' + escapeHtml(STREAMING_REASONING) + '</div>' }
     if (STREAMING_TEXT) { html += renderMarkdown(STREAMING_TEXT) + '<span class="streaming-cursor"></span>' } else if (!STREAMING_REASONING) { html += '<span class="streaming-cursor"></span>' }
     el.innerHTML = html; scrollToBottom()
 }
@@ -1219,20 +1231,20 @@ function finalizeStreaming() {
     var el = document.getElementById('streaming-msg')
     if (el && (STREAMING_TEXT || STREAMING_REASONING)) {
         var html = ''
-        if (STREAMING_REASONING) html += '<div class="thinking-toggle" onclick="toggleThinking(this)">&#9654; Thinking (' + STREAMING_REASONING.length + ' chars)</div><div class="thinking-content">' + escapeHtml(STREAMING_REASONING) + '</div>'
+        if (STREAMING_REASONING) html += '<div class="thinking-toggle" onclick="toggleThinking(this)">&#9654; 思考中 (' + STREAMING_REASONING.length + ' chars)</div><div class="thinking-content">' + escapeHtml(STREAMING_REASONING) + '</div>'
         if (STREAMING_TEXT) html += renderMarkdown(STREAMING_TEXT)
         el.innerHTML = html; el.removeAttribute('id')
     } else if (el) el.removeAttribute('id')
     STREAMING_MSG_ID = ''; STREAMING_TEXT = ''; STREAMING_REASONING = ''; STREAMING_TEXT_PART_ID = ''; STREAMING_REASONING_PART_ID = ''
     setStatus('idle'); scrollToBottom()
 }
-function toggleThinking(el) { var c = el.nextElementSibling; if (c) { c.classList.toggle('show'); el.innerHTML = (c.classList.contains('show') ? '&#9660;' : '&#9654;') + ' Thinking (' + c.textContent.length + ' chars)' } }
+function toggleThinking(el) { var c = el.nextElementSibling; if (c) { c.classList.toggle('show'); el.innerHTML = (c.classList.contains('show') ? '&#9660;' : '&#9654;') + ' 思考中 (' + c.textContent.length + ' 字符)' } }
 
 // --- Messages ---
 function addUserMessage(text) { var el = document.createElement('div'); el.className = 'msg-user'; el.textContent = text; $messages.appendChild(el); scrollToBottom() }
 function addAssistantMessage(text, reasoning) {
     var el = document.createElement('div'); el.className = 'msg-assistant'; var html = ''
-    if (reasoning) html += '<div class="thinking-toggle" onclick="toggleThinking(this)">&#9654; Thinking (' + reasoning.length + ' chars)</div><div class="thinking-content">' + escapeHtml(reasoning) + '</div>'
+    if (reasoning) html += '<div class="thinking-toggle" onclick="toggleThinking(this)">&#9654; 思考中 (' + reasoning.length + ' chars)</div><div class="thinking-content">' + escapeHtml(reasoning) + '</div>'
     html += renderMarkdown(text || ''); el.innerHTML = html; $messages.appendChild(el); scrollToBottom()
 }
 function addSystemMessage(text) { var el = document.createElement('div'); el.className = 'msg-system'; el.textContent = text; $messages.appendChild(el); scrollToBottom() }
@@ -1246,6 +1258,7 @@ function sendMessage() {
     $input.value = ''; autoGrow($input); setStatus('busy')
     injectContext(function() {
         var body = { parts: [{ type: 'text', text: text }] }
+        if (CURRENT_MODE && CURRENT_MODE !== 'build') body.mode = CURRENT_MODE
         if (CURRENT_LEVEL && CURRENT_LEVEL !== 'balanced') body.level = CURRENT_LEVEL
         if (CURRENT_AGENT) body.agent = CURRENT_AGENT
         postMessage('/session/' + SESSION_ID + '/message', body, function(s, t) { addSystemMessage('Error: ' + (t || 'status ' + s)); finalizeStreaming() })
@@ -1265,8 +1278,8 @@ function handleFileUpload(e) {
     var file = e.target.files[0];
     if (!file) return;
     if (!SESSION_ID) { addSystemMessage('Please start a session first'); return }
-    if (file.size > 100 * 1024 * 1024) { addSystemMessage('File too large (max 100MB)'); return }
-    addSystemMessage('Uploading: ' + file.name);
+    if (file.size > 100 * 1024 * 1024) { addSystemMessage('文件过大（最大 100MB）'); return }
+    addSystemMessage('上传中: ' + file.name);
     var reader = new FileReader();
     reader.onload = function(evt) {
         var base64 = evt.target.result.split(',')[1];
@@ -1292,7 +1305,7 @@ function forceInjectContext() {
 function gatherWpsContext() {
     var lines = []
     try { var doc = window.Application.ActiveDocument; if (doc) { if (doc.Name) lines.push('Current document: ' + doc.Name); if (doc.Path) lines.push('Path: ' + doc.Path) } } catch(e) {}
-    try { var sel = window.Application.Selection; if (sel && sel.Text && sel.Text.trim()) { var t = sel.Text; if (t.length > 3000) t = t.substring(0, 3000) + '...[truncated]'; lines.push(''); lines.push('Selected text:'); lines.push('"""'); lines.push(t); lines.push('"""') } } catch(e) {}
+    try { var sel = window.Application.Selection; if (sel && sel.Text && sel.Text.trim()) { var t = sel.Text; if (t.length > 3000) t = t.substring(0, 3000) + '...[truncated]'; lines.push(''); lines.push('选中文本:'); lines.push('"""'); lines.push(t); lines.push('"""') } } catch(e) {}
     if (lines.length === 0) return null
     return '<wps-context>\n' + lines.join('\n') + '\n</wps-context>'
 }
@@ -1330,7 +1343,7 @@ function autoGrow(el) { el.style.height = 'auto'; el.style.height = Math.min(el.
 function updateSendButton() { $sendBtn.className = 'send-btn ' + ($input.value.trim().length > 0 && !IS_BUSY ? 'ready' : 'disabled') }
 function updateInputState() {
     $input.disabled = IS_BUSY
-    if (IS_BUSY) { $sendArea.innerHTML = '<button class="stop-btn" onclick="abortMessage()" title="Stop"><div class="stop-icon"></div></button>' }
+    if (IS_BUSY) { $sendArea.innerHTML = '<button class="stop-btn" onclick="abortMessage()" title="停止"><div class="stop-icon"></div></button>' }
     else { $sendArea.innerHTML = '<button class="send-btn disabled" id="send-btn" onclick="sendMessage()" title="Send"><span class="icon-send"></span></button>'; $sendBtn = document.getElementById('send-btn'); updateSendButton() }
 }
 
