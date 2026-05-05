@@ -642,7 +642,7 @@ function startOpenCode() {
                 clearInterval(pollTimer)
                 $btnStart.disabled = false
                 $btnStart.innerHTML = '<span class="icon-play"></span>启动服务'
-                if (!launcherOk) $setupStatus.textContent = 'Launcher not running'
+                if (!launcherOk) $setupStatus.textContent = 'Launcher 未运行'
                 else $setupStatus.textContent = '启动失败，请检查 OpenCode 是否已安装。'
             }
         })

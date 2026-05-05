@@ -99,6 +99,63 @@ function startOpenCode(cwd, port) {
     }
 }
 
+function stopOpenCodeByPort(port) {
+    port = port || 14096;
+    console.log('[launcher] stopOpenCodeByPort called for port: ' + port);
+    
+    try {
+        var execSync = require('child_process').execSync;
+        
+        // 查找占用指定端口的进程 PID
+        var output = execSync('netstat -ano | findstr :' + port, { 
+            shell: 'cmd.exe',
+            encoding: 'utf8',
+            timeout: 5000
+        });
+        
+        var lines = output.split('\n');
+        var killed = false;
+        
+        for (var i = 0; i < lines.length; i++) {
+            var line = lines[i].trim();
+            if (line.indexOf('LISTENING') > 0 || line.indexOf('ESTABLISHED') > 0) {
+                var parts = line.split(/\s+/);
+                var localAddr = parts[1] || '';
+                // 检查是否为指定端口
+                var addrPort = localAddr.split(':');
+                var listenPort = parseInt(addrPort[addrAddr.length - 1], 10);
+                
+                if (listenPort === port) {
+                    var pid = parseInt(parts[parts.length - 1], 10);
+                    if (pid > 0) {
+                        console.log('[launcher] Found process占用端口 ' + port + ', PID: ' + pid);
+                        try {
+                            execSync('taskkill /PID ' + pid + ' /F', { 
+                                shell: 'cmd.exe',
+                                stdio: 'ignore',
+                                timeout: 5000
+                            });
+                            console.log('[launcher] 已终止 PID: ' + pid);
+                            killed = true;
+                        } catch(e) {
+                            console.log('[launcher] 终止 PID ' + pid + ' 失败: ' + e.message);
+                        }
+                    }
+                }
+            }
+        }
+        
+        if (!killed) {
+            console.log('[launcher] 未找到占用端口 ' + port + ' 的进程');
+        }
+        
+    } catch(e) {
+        console.log('[launcher] 按端口关闭失败: ' + e.message);
+    }
+    
+    return { success: true };
+}
+
 function stopOpenCode() {
     console.log('[launcher] stopOpenCode called');
     
@@ -112,18 +169,11 @@ function stopOpenCode() {
         opencodeProcess = null;
     }
 
-    // 使用同步方式执行 taskkill（通过 cmd.exe shell）
+    // 按端口关闭（14096 和 14097）- 精确杀，不全杀
     try {
-        var execSync = require('child_process').execSync;
-        // 通过 shell 执行，并设置超时
-        execSync('taskkill /IM opencode.exe /F /T', { 
-            shell: 'cmd.exe',
-            stdio: 'ignore',
-            timeout: 5000
-        });
-        console.log('[launcher] taskkill success');
+        stopOpenCodeByPort(14096);
     } catch(e) {
-        console.log('[launcher] taskkill failed: ' + e.message);
+        console.log('[launcher] 按端口关闭失败: ' + e.message);
     }
     
     // 清理 PID 文件
