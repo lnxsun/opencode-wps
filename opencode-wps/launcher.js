@@ -169,23 +169,9 @@ function stopOpenCode() {
         opencodeProcess = null;
     }
 
-    // 使用 taskkill 按进程名关闭
-    try {
-        var execSync = require('child_process').execSync;
-        execSync('taskkill /IM opencode.exe /F /T', { 
-            shell: 'cmd.exe',
-            stdio: 'ignore',
-            timeout: 5000
-        });
-        console.log('[launcher] taskkill success');
-    } catch(e) {
-        console.log('[launcher] taskkill (进程名) failed: ' + e.message);
-    }
-    
-    // 备用：尝试按端口关闭（14096 和 14097）
+    // 按端口关闭（14096 和 14097）- 精确杀，不全杀
     try {
         stopOpenCodeByPort(14096);
-        stopOpenCodeByPort(14097);
     } catch(e) {
         console.log('[launcher] 按端口关闭失败: ' + e.message);
     }

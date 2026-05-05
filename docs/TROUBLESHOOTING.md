@@ -243,21 +243,20 @@ User-Agent: Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like
    - 尝试通过窗口标题找到进程
    - 问题：命令行窗口可能被隐藏或标题变化
 
-### 最终方案（简单粗暴但有效）
+4. **按进程名全杀**
+   - 使用 `taskkill /IM opencode.exe /F /T`
+   - 问题：会终止系统上所有名为 `opencode.exe` 的进程
 
+### 最终方案（2026-05-05 更新）
+
+删除全杀命令，改为 `stopOpenCodeByPort(14096)` 按端口精确停止。
+
+**代码**：
 ```javascript
-// 使用 taskkill 根据进程名直接终止
-execSync('taskkill /IM opencode.exe /F /T', { stdio: 'ignore' });
+stopOpenCodeByPort(14096);  // 复用 stopOpenCodeByPort 函数
 ```
 
-**说明**：
-- `/IM opencode.exe` - 指定要终止的进程名
-- `/F` - 强制终止
-- `/T` - 同时终止子进程
-
-**缺点**：会终止系统上所有名为 `opencode.exe` 的进程，不够精确。
-
-**优点**：经过 2 天尝试其他方式都不成功后，这是唯一可行且稳定的方法。
+**优点**：只终止占用 14096 端口的进程，不影响其他 opencode.exe 进程。
 
 ---
 
