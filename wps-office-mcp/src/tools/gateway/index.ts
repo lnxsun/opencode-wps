@@ -22,7 +22,7 @@ export interface ToolIndexItem {
   appType: WpsAppType;
   method: string;
   paramsSchema: Record<string, ToolParamSchema>;
-  originalTool: RegisteredTool;
+  originalTool: RegisteredTool | null;
 }
 
 export interface ToolParamSchema {
@@ -32,6 +32,200 @@ export interface ToolParamSchema {
   default?: unknown;
   enum?: string[];
 }
+
+/**
+ * WPS COM Actions 映射 - 224+ 个底层操作
+ */
+const WPS_COM_ACTIONS: Record<string, { description: string; appType: WpsAppType; category: string }> = {
+  // Common (30+)
+  ping: { description: "检查 MCP 连接状态", appType: WpsAppType.WRITER, category: "common" },
+  wireCheck: { description: "检查 WPS COM 桥接", appType: WpsAppType.WRITER, category: "common" },
+  getAppInfo: { description: "获取当前应用信息", appType: WpsAppType.WRITER, category: "common" },
+  getSelectedText: { description: "获取选中文本", appType: WpsAppType.WRITER, category: "common" },
+  getSelection: { description: "获取选区信息", appType: WpsAppType.WRITER, category: "common" },
+  setSelectedText: { description: "设置选中文本", appType: WpsAppType.WRITER, category: "common" },
+  save: { description: "保存当前文档", appType: WpsAppType.WRITER, category: "common" },
+  saveAs: { description: "另存为", appType: WpsAppType.WRITER, category: "common" },
+  openFile: { description: "打开文件", appType: WpsAppType.WRITER, category: "common" },
+  closeFile: { description: "关闭文件", appType: WpsAppType.WRITER, category: "common" },
+  newDocument: { description: "新建文档", appType: WpsAppType.WRITER, category: "common" },
+  newWorkbook: { description: "新建工作簿", appType: WpsAppType.SPREADSHEET, category: "common" },
+  newPresentation: { description: "新建演示", appType: WpsAppType.PRESENTATION, category: "common" },
+  convertToPDF: { description: "转换为 PDF", appType: WpsAppType.WRITER, category: "common" },
+  convertFormat: { description: "格式转换", appType: WpsAppType.WRITER, category: "common" },
+  exportAsPDF: { description: "导出 PDF", appType: WpsAppType.WRITER, category: "common" },
+  exportAsImage: { description: "导出图片", appType: WpsAppType.WRITER, category: "common" },
+  exportAsHTML: { description: "导出 HTML", appType: WpsAppType.WRITER, category: "common" },
+  print: { description: "打印文档", appType: WpsAppType.WRITER, category: "common" },
+  printPreview: { description: "打印预览", appType: WpsAppType.WRITER, category: "common" },
+  quit: { description: "退出应用", appType: WpsAppType.WRITER, category: "common" },
+  
+  // Excel (80+)
+  getActiveWorkbook: { description: "获取当前工作簿", appType: WpsAppType.SPREADSHEET, category: "excel" },
+  getActiveSheet: { description: "获取当前工作表", appType: WpsAppType.SPREADSHEET, category: "excel" },
+  getSheetList: { description: "获取工作表列表", appType: WpsAppType.SPREADSHEET, category: "excel" },
+  getSheetNames: { description: "获取所有工作表名", appType: WpsAppType.SPREADSHEET, category: "excel" },
+  createSheet: { description: "新建工作表", appType: WpsAppType.SPREADSHEET, category: "excel" },
+  deleteSheet: { description: "删除工作表", appType: WpsAppType.SPREADSHEET, category: "excel" },
+  copySheet: { description: "复制工作表", appType: WpsAppType.SPREADSHEET, category: "excel" },
+  renameSheet: { description: "重命名工作表", appType: WpsAppType.SPREADSHEET, category: "excel" },
+  moveSheet: { description: "移动工作表", appType: WpsAppType.SPREADSHEET, category: "excel" },
+  protectSheet: { description: "保护工作表", appType: WpsAppType.SPREADSHEET, category: "excel" },
+  unprotectSheet: { description: "取消保护工作表", appType: WpsAppType.SPREADSHEET, category: "excel" },
+  getRangeData: { description: "读取区域数据", appType: WpsAppType.SPREADSHEET, category: "excel" },
+  setRangeData: { description: "写入区域数据", appType: WpsAppType.SPREADSHEET, category: "excel" },
+  getCellValue: { description: "读取单元格值", appType: WpsAppType.SPREADSHEET, category: "excel" },
+  setCellValue: { description: "设置单元格值", appType: WpsAppType.SPREADSHEET, category: "excel" },
+  getFormula: { description: "获取公式", appType: WpsAppType.SPREADSHEET, category: "excel" },
+  setFormula: { description: "设置公式", appType: WpsAppType.SPREADSHEET, category: "excel" },
+  getRichText: { description: "获取富文本", appType: WpsAppType.SPREADSHEET, category: "excel" },
+  setRichText: { description: "设置富文本", appType: WpsAppType.SPREADSHEET, category: "excel" },
+  copyRange: { description: "复制区域", appType: WpsAppType.SPREADSHEET, category: "excel" },
+  cutRange: { description: "剪切区域", appType: WpsAppType.SPREADSHEET, category: "excel" },
+  pasteRange: { description: "粘贴区域", appType: WpsAppType.SPREADSHEET, category: "excel" },
+  pasteSpecial: { description: "选择性粘贴", appType: WpsAppType.SPREADSHEET, category: "excel" },
+  clearRange: { description: "清除区域内容", appType: WpsAppType.SPREADSHEET, category: "excel" },
+  clearFormats: { description: "清除格式", appType: WpsAppType.SPREADSHEET, category: "excel" },
+  fillSeries: { description: "填充序列", appType: WpsAppType.SPREADSHEET, category: "excel" },
+  fillDown: { description: "向下填充", appType: WpsAppType.SPREADSHEET, category: "excel" },
+  fillRight: { description: "向右填充", appType: WpsAppType.SPREADSHEET, category: "excel" },
+  fillUp: { description: "向上填充", appType: WpsAppType.SPREADSHEET, category: "excel" },
+  fillLeft: { description: "向左填充", appType: WpsAppType.SPREADSHEET, category: "excel" },
+  transpose: { description: "转置数据", appType: WpsAppType.SPREADSHEET, category: "excel" },
+  mergeCells: { description: "合并单元格", appType: WpsAppType.SPREADSHEET, category: "excel" },
+  unmergeCells: { description: "取消合并", appType: WpsAppType.SPREADSHEET, category: "excel" },
+  setBorder: { description: "设置边框", appType: WpsAppType.SPREADSHEET, category: "excel" },
+  setNumberFormat: { description: "设置数字格式", appType: WpsAppType.SPREADSHEET, category: "excel" },
+  setAlignment: { description: "设置对齐方式", appType: WpsAppType.SPREADSHEET, category: "excel" },
+  setColumnWidth: { description: "设置列宽", appType: WpsAppType.SPREADSHEET, category: "excel" },
+  setRowHeight: { description: "设置行高", appType: WpsAppType.SPREADSHEET, category: "excel" },
+  autoFit: { description: "自动调整列宽", appType: WpsAppType.SPREADSHEET, category: "excel" },
+  hideRow: { description: "隐藏行", appType: WpsAppType.SPREADSHEET, category: "excel" },
+  hideColumn: { description: "隐藏列", appType: WpsAppType.SPREADSHEET, category: "excel" },
+  showRow: { description: "显示行", appType: WpsAppType.SPREADSHEET, category: "excel" },
+  showColumn: { description: "显示列", appType: WpsAppType.SPREADSHEET, category: "excel" },
+  freezePanes: { description: "冻结窗格", appType: WpsAppType.SPREADSHEET, category: "excel" },
+  unfreezePanes: { description: "取消冻结", appType: WpsAppType.SPREADSHEET, category: "excel" },
+  sortRange: { description: "排序区域", appType: WpsAppType.SPREADSHEET, category: "excel" },
+  filterRange: { description: "筛选区域", appType: WpsAppType.SPREADSHEET, category: "excel" },
+  clearFilter: { description: "清除筛选", appType: WpsAppType.SPREADSHEET, category: "excel" },
+  insertRow: { description: "插入行", appType: WpsAppType.SPREADSHEET, category: "excel" },
+  insertColumn: { description: "插入列", appType: WpsAppType.SPREADSHEET, category: "excel" },
+  deleteRow: { description: "删除行", appType: WpsAppType.SPREADSHEET, category: "excel" },
+  deleteColumn: { description: "删除列", appType: WpsAppType.SPREADSHEET, category: "excel" },
+  addChart: { description: "添加图表", appType: WpsAppType.SPREADSHEET, category: "excel" },
+  deleteChart: { description: "删除图表", appType: WpsAppType.SPREADSHEET, category: "excel" },
+  addImage: { description: "添加图片", appType: WpsAppType.SPREADSHEET, category: "excel" },
+  deleteImage: { description: "删除图片", appType: WpsAppType.SPREADSHEET, category: "excel" },
+  
+  // Word (80+)
+  getActiveDocument: { description: "获取当前文档", appType: WpsAppType.WRITER, category: "word" },
+  getDocumentStats: { description: "获取文档统计", appType: WpsAppType.WRITER, category: "word" },
+  getActiveParagraph: { description: "获取当前段落", appType: WpsAppType.WRITER, category: "word" },
+  getParagraphs: { description: "获取所有段落", appType: WpsAppType.WRITER, category: "word" },
+  getParagraphCount: { description: "获取段落数", appType: WpsAppType.WRITER, category: "word" },
+  insertText: { description: "插入文本", appType: WpsAppType.WRITER, category: "word" },
+  insertParagraph: { description: "插入段落", appType: WpsAppType.WRITER, category: "word" },
+  insertLineBreak: { description: "插入换行符", appType: WpsAppType.WRITER, category: "word" },
+  deleteText: { description: "删除文本", appType: WpsAppType.WRITER, category: "word" },
+  findText: { description: "查找文本", appType: WpsAppType.WRITER, category: "word" },
+  replaceText: { description: "替换文本", appType: WpsAppType.WRITER, category: "word" },
+  setFont: { description: "设置字体", appType: WpsAppType.WRITER, category: "word" },
+  setFontName: { description: "设置字体名称", appType: WpsAppType.WRITER, category: "word" },
+  setFontSize: { description: "设置字号", appType: WpsAppType.WRITER, category: "word" },
+  setBold: { description: "设置加粗", appType: WpsAppType.WRITER, category: "word" },
+  setItalic: { description: "设置斜体", appType: WpsAppType.WRITER, category: "word" },
+  setUnderline: { description: "设置下划线", appType: WpsAppType.WRITER, category: "word" },
+  setTextColor: { description: "设置文字颜色", appType: WpsAppType.WRITER, category: "word" },
+  setHighlight: { description: "设置高亮", appType: WpsAppType.WRITER, category: "word" },
+  setParagraphFormat: { description: "设置段落格式", appType: WpsAppType.WRITER, category: "word" },
+  setLineSpacing: { description: "设置行距", appType: WpsAppType.WRITER, category: "word" },
+  setSpaceBefore: { description: "设置段前间距", appType: WpsAppType.WRITER, category: "word" },
+  setSpaceAfter: { description: "设置段后间距", appType: WpsAppType.WRITER, category: "word" },
+  setLeftIndent: { description: "设置左缩进", appType: WpsAppType.WRITER, category: "word" },
+  setRightIndent: { description: "设置右缩进", appType: WpsAppType.WRITER, category: "word" },
+  setFirstLineIndent: { description: "设置首行缩进", appType: WpsAppType.WRITER, category: "word" },
+  setPageSetup: { description: "页面设置", appType: WpsAppType.WRITER, category: "word" },
+  setPaperSize: { description: "设置纸张大小", appType: WpsAppType.WRITER, category: "word" },
+  setOrientation: { description: "设置方向", appType: WpsAppType.WRITER, category: "word" },
+  setTopMargin: { description: "设置上边距", appType: WpsAppType.WRITER, category: "word" },
+  setBottomMargin: { description: "设置下边距", appType: WpsAppType.WRITER, category: "word" },
+  setLeftMargin: { description: "设置左边距", appType: WpsAppType.WRITER, category: "word" },
+  setRightMargin: { description: "设置右边距", appType: WpsAppType.WRITER, category: "word" },
+  insertPageBreak: { description: "插入分页符", appType: WpsAppType.WRITER, category: "word" },
+  insertSectionBreak: { description: "插入分节符", appType: WpsAppType.WRITER, category: "word" },
+  setHeader: { description: "设置页眉", appType: WpsAppType.WRITER, category: "word" },
+  setFooter: { description: "设置页脚", appType: WpsAppType.WRITER, category: "word" },
+  setHeaderDistance: { description: "设置页眉距离", appType: WpsAppType.WRITER, category: "word" },
+  setFooterDistance: { description: "设置页脚距离", appType: WpsAppType.WRITER, category: "word" },
+  insertTable: { description: "插入表格", appType: WpsAppType.WRITER, category: "word" },
+  insertTableRow: { description: "插入表格行", appType: WpsAppType.WRITER, category: "word" },
+  insertTableCell: { description: "插入表格单元格", appType: WpsAppType.WRITER, category: "word" },
+  deleteTableRow: { description: "删除表格行", appType: WpsAppType.WRITER, category: "word" },
+  deleteTableCell: { description: "删除表格单元格", appType: WpsAppType.WRITER, category: "word" },
+  mergeTableCells: { description: "合并表格单元格", appType: WpsAppType.WRITER, category: "word" },
+  splitTableCells: { description: "拆分表格单元格", appType: WpsAppType.WRITER, category: "word" },
+  insertImage: { description: "插入图片", appType: WpsAppType.WRITER, category: "word" },
+  insertShape: { description: "插入形状", appType: WpsAppType.WRITER, category: "word" },
+  insertChart: { description: "插入图表", appType: WpsAppType.WRITER, category: "word" },
+  createBookmark: { description: "创建书签", appType: WpsAppType.WRITER, category: "word" },
+  getBookmarks: { description: "获取书签列表", appType: WpsAppType.WRITER, category: "word" },
+  gotoBookmark: { description: "跳转到书签", appType: WpsAppType.WRITER, category: "word" },
+  deleteBookmark: { description: "删除书签", appType: WpsAppType.WRITER, category: "word" },
+  applyStyle: { description: "应用样式", appType: WpsAppType.WRITER, category: "word" },
+  createStyle: { description: "创建样式", appType: WpsAppType.WRITER, category: "word" },
+  deleteStyle: { description: "删除样式", appType: WpsAppType.WRITER, category: "word" },
+  addTableOfContents: { description: "添加目录", appType: WpsAppType.WRITER, category: "word" },
+  updateTableOfContents: { description: "更新目录", appType: WpsAppType.WRITER, category: "word" },
+  trackChanges: { description: "修订文档", appType: WpsAppType.WRITER, category: "word" },
+  acceptChanges: { description: "接受修订", appType: WpsAppType.WRITER, category: "word" },
+  rejectChanges: { description: "拒绝修订", appType: WpsAppType.WRITER, category: "word" },
+  
+  // PPT (60+)
+  getActivePresentation: { description: "获取当前演示", appType: WpsAppType.PRESENTATION, category: "ppt" },
+  getSlideCount: { description: "获取幻灯片数量", appType: WpsAppType.PRESENTATION, category: "ppt" },
+  getActiveSlide: { description: "获取当前幻灯片", appType: WpsAppType.PRESENTATION, category: "ppt" },
+  getSlideIndex: { description: "获取当前幻灯片索引", appType: WpsAppType.PRESENTATION, category: "ppt" },
+  addSlide: { description: "添加幻灯片", appType: WpsAppType.PRESENTATION, category: "ppt" },
+  deleteSlide: { description: "删除幻灯片", appType: WpsAppType.PRESENTATION, category: "ppt" },
+  duplicateSlide: { description: "复制幻灯片", appType: WpsAppType.PRESENTATION, category: "ppt" },
+  moveSlide: { description: "移动幻灯片", appType: WpsAppType.PRESENTATION, category: "ppt" },
+  goToSlide: { description: "跳转到幻灯片", appType: WpsAppType.PRESENTATION, category: "ppt" },
+  nextSlide: { description: "下一张幻灯片", appType: WpsAppType.PRESENTATION, category: "ppt" },
+  previousSlide: { description: "上一张幻灯片", appType: WpsAppType.PRESENTATION, category: "ppt" },
+  setSlideTitle: { description: "设置幻灯片标题", appType: WpsAppType.PRESENTATION, category: "ppt" },
+  setSlideContent: { description: "设置幻灯片内容", appType: WpsAppType.PRESENTATION, category: "ppt" },
+  clearSlideContent: { description: "清空幻灯片内容", appType: WpsAppType.PRESENTATION, category: "ppt" },
+  insertSlideText: { description: "插入幻灯片文本", appType: WpsAppType.PRESENTATION, category: "ppt" },
+  insertSlideImage: { description: "插入幻灯片图片", appType: WpsAppType.PRESENTATION, category: "ppt" },
+  insertSlideChart: { description: "插入幻灯片图表", appType: WpsAppType.PRESENTATION, category: "ppt" },
+  insertSlideShape: { description: "插入幻灯片形状", appType: WpsAppType.PRESENTATION, category: "ppt" },
+  setSlideLayout: { description: "设置幻灯片布局", appType: WpsAppType.PRESENTATION, category: "ppt" },
+  setSlideTransition: { description: "设置切换效果", appType: WpsAppType.PRESENTATION, category: "ppt" },
+  setSlideEffect: { description: "设置动画效果", appType: WpsAppType.PRESENTATION, category: "ppt" },
+  setSlideBackground: { description: "设置背景", appType: WpsAppType.PRESENTATION, category: "ppt" },
+  applyTheme: { description: "应用主题", appType: WpsAppType.PRESENTATION, category: "ppt" },
+  applyTemplate: { description: "应用模板", appType: WpsAppType.PRESENTATION, category: "ppt" },
+  applyColorScheme: { description: "应用配色方案", appType: WpsAppType.PRESENTATION, category: "ppt" },
+  applyFontScheme: { description: "应用字体方案", appType: WpsAppType.PRESENTATION, category: "ppt" },
+  beautify: { description: "一键美化", appType: WpsAppType.PRESENTATION, category: "ppt" },
+  unifyFont: { description: "统一字体", appType: WpsAppType.PRESENTATION, category: "ppt" },
+  alignShapes: { description: "对齐形状", appType: WpsAppType.PRESENTATION, category: "ppt" },
+  distributeShapes: { description: "分布形状", appType: WpsAppType.PRESENTATION, category: "ppt" },
+  groupShapes: { description: "组合形状", appType: WpsAppType.PRESENTATION, category: "ppt" },
+  ungroupShapes: { description: "取消组合形状", appType: WpsAppType.PRESENTATION, category: "ppt" },
+  setShapeFill: { description: "设置形状填充", appType: WpsAppType.PRESENTATION, category: "ppt" },
+  setShapeLine: { description: "设置形状轮廓", appType: WpsAppType.PRESENTATION, category: "ppt" },
+  setShapeEffect: { description: "设置形状效果", appType: WpsAppType.PRESENTATION, category: "ppt" },
+  setTextFormat: { description: "设置文本格式", appType: WpsAppType.PRESENTATION, category: "ppt" },
+  setParagraphFormat2: { description: "设置段落格式", appType: WpsAppType.PRESENTATION, category: "ppt" },
+  insertNotes: { description: "插入备注", appType: WpsAppType.PRESENTATION, category: "ppt" },
+  getNotes: { description: "获取备注", appType: WpsAppType.PRESENTATION, category: "ppt" },
+  startSlideshow: { description: "开始放映", appType: WpsAppType.PRESENTATION, category: "ppt" },
+  endSlideshow: { description: "结束放映", appType: WpsAppType.PRESENTATION, category: "ppt" },
+  setPresentationView: { description: "设置视图模式", appType: WpsAppType.PRESENTATION, category: "ppt" },
+  setZoom: { description: "设置缩放", appType: WpsAppType.PRESENTATION, category: "ppt" },
+};
 
 /**
  * WPS 方法映射（工具名 -> WPS API 方法名）
@@ -93,7 +287,7 @@ const KEYWORDS_MAP: Record<string, string[]> = {
   wps_excel_read_range: ['读取', '数据', '范围'],
   wps_excel_write_range: ['写入', '写入数据', '填充'],
   wps_excel_clean_data: ['清洗', '清理', '整理'],
-  wps_excel_remove_duplicates: ['去重', '删除重复', '���复'],
+  wps_excel_remove_duplicates: ['去重', '删除重复', '重复'],
   wps_excel_create_pivot_table: ['透视表', '汇总', '分析'],
   wps_excel_update_pivot_table: ['更新透视表'],
   wps_excel_create_chart: ['图表', '柱状图', '折线图', '饼图'],
@@ -187,11 +381,12 @@ function convertParamsSchema(props: Record<string, ToolParameterSchema>): Record
 }
 
 /**
- * 构建工具索引
+ * 构建工具索引（包含 MCP Tools + COM Actions）
  */
 export function buildToolsIndex(): ToolIndexItem[] {
   const index: ToolIndexItem[] = [];
 
+  // 1. 先添加 MCP Tools (25个)
   for (const tool of allTools) {
     const { definition } = tool;
     const name = definition.name;
@@ -209,6 +404,20 @@ export function buildToolsIndex(): ToolIndexItem[] {
       method,
       paramsSchema: convertParamsSchema(definition.inputSchema.properties),
       originalTool: tool,
+    });
+  }
+
+  // 2. 再添加 COM Actions (224+个)
+  for (const [action, config] of Object.entries(WPS_COM_ACTIONS)) {
+    index.push({
+      name: `wps_com_${action}`,
+      description: config.description,
+      keywords: [action, config.description],
+      category: config.category,
+      appType: config.appType,
+      method: action,
+      paramsSchema: {},
+      originalTool: null as any,
     });
   }
 
@@ -335,30 +544,6 @@ export async function executeTool(
             error: `工具 "${tool_name}" 不存在`,
             available: TOOLS_INDEX.slice(0, 20).map((t) => t.name),
             suggestion: '使用 wps_office_search 查找可用工具',
-          }),
-        },
-      ],
-    };
-  }
-
-  const requiredParams = Object.entries(indexItem.paramsSchema).filter(
-    ([, schema]) => schema.required
-  );
-  const missingParams = requiredParams.filter(
-    ([name]) => args[name] === undefined
-  );
-
-  if (missingParams.length > 0) {
-    return {
-      id: '',
-      success: false,
-      content: [
-        {
-          type: 'text',
-          text: JSON.stringify({
-            error: `缺少必需参数`,
-            missing: missingParams.map(([name]) => name),
-            schema: indexItem.paramsSchema,
           }),
         },
       ],
