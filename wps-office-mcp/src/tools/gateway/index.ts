@@ -1,7 +1,6 @@
 /**
  * WPS Office COM Actions 索引
- * 从 wps-com.ps1 自动提取，共 238 个 COM Actions
- * 供 wps_office_search 搜索使用
+ * 共 236 个 COM Actions
  */
 
 import { wpsClient } from '../../client/wps-client';
@@ -266,6 +265,9 @@ const COM_ACTIONS: ToolIndexItem[] = [
   { name: 'placeholder', description: '占位符', keywords: ['占位符'], category: 'common', appType: WpsAppType.WRITER, paramsSchema: {} },
   { name: 'trim', description: '去除前后空格', keywords: ['空格'], category: 'common', appType: WpsAppType.WRITER, paramsSchema: {} },
   { name: 'underline', description: '添加下划线', keywords: ['下划线'], category: 'common', appType: WpsAppType.WRITER, paramsSchema: {} },
+  { name: 'remove_duplicates', description: '删除重复行（cleanData 子命令）', keywords: ['去重', '重复行'], category: 'excel', appType: WpsAppType.SPREADSHEET, paramsSchema: { range: { type: 'string', description: '区域', required: true } } },
+  { name: 'unify_date', description: '统一日期格式（cleanData 子命令）', keywords: ['日期', '统一'], category: 'excel', appType: WpsAppType.SPREADSHEET, paramsSchema: { range: { type: 'string', description: '区域', required: true } } },
+  { name: 'closeWorkbook', description: '保存工作簿', keywords: ['工作簿', '关闭'], category: 'excel', appType: WpsAppType.SPREADSHEET, paramsSchema: { save: { type: 'boolean', description: '是否保存', required: false } } },
 ];
 
 export const TOOLS_INDEX: ToolIndexItem[] = COM_ACTIONS;
