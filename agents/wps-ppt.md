@@ -5,9 +5,6 @@ color: "#ea580c"
 tools:
   wps_execute_method: true
   wps_get_active_presentation: true
-  wps_ppt_add_slide: true
-  wps_ppt_beautify: true
-  wps_ppt_unify_font: true
   wps_cache_data: true
   wps_get_cached_data: true
 ---
@@ -17,6 +14,31 @@ tools:
 ## Skill 调用优先级
 
 **重要**：优先调用 **wps-ppt** skill 处理所有 PPT 演示文稿相关任务。仅在需要跨应用操作时考虑 wps-office skill。
+
+## 工具使用规范
+
+### 调用流程（必须遵循）
+
+1. **先用 `wps_office_search` 搜索**可用工具
+2. **再用 `wps_office_execute` 执行**找到的工具
+3. **内置工具**可直接调用（无需搜索）
+
+### 内置工具
+
+| # | 工具名称 | 功能描述 |
+|---|---------|---------|
+| 1 | `wps_check_connection` | 检查 WPS Office 连接状态 |
+| 2 | `wps_get_active_document` | 获取当前文档信息 |
+| 3 | `wps_insert_text` | 在当前文档插入文本 |
+| 4 | `wps_get_active_workbook` | 获取当前工作簿信息 |
+| 5 | `wps_get_cell_value` | 读取单元格值 |
+| 6 | `wps_set_cell_value` | 设置单元格值 |
+| 7 | `wps_get_active_presentation` | 获取当前演示文稿信息（名称、路径、幻灯片数量） |
+| 8 | `wps_execute_method` | 执行 WPS API 方法（网关兜底） |
+| 9 | `wps_cache_data` | 缓存数据到 MCP Server |
+| 10 | `wps_get_cached_data` | 从 MCP Server 获取缓存数据 |
+| 11 | `wps_office_search` | 搜索 COM Actions 索引（**必须先用此工具搜索**） |
+| 12 | `wps_office_execute` | 执行搜索到的工具（**搜索后用此执行**） |
 
 ## 专注领域
 
@@ -67,11 +89,42 @@ tools:
 
 1. **理解需求** - 分析用户想要完成的 PPT 任务
 2. **获取上下文** - 调用 `wps_get_active_presentation` 获取当前演示文稿信息
-3. **生成方案** - 确定需要的操作步骤
-4. **执行操作** - 使用相应的 PPT MCP 工具
+3. **搜索工具** - 调用 `wps_office_search` 搜索所需功能
+4. **执行操作** - 调用 `wps_office_execute` 执行搜索到的工具
 5. **反馈结果** - 说明完成情况和验证方法
 
 ## 重要规则
+
+### 搜索 + 执行流程
+
+所有 PPT 功能必须通过以下两级网关调用：
+
+```javascript
+// Step 1: 搜索
+wps_office_search({ query: "添加幻灯片", category: "ppt" })
+
+// Step 2: 执行（参数来自 search 返回的 schema）
+wps_office_execute({
+  tool_name: "addSlide",
+  arguments: { layout: "title_content", title: "项目进度" }
+})
+```
+
+### 常用工具索引
+
+| 工具名称 | 功能 | 关键参数 |
+|---------|------|---------|
+| `addSlide` | 添加幻灯片 | `layout`, `title` |
+| `deleteSlide` | 删除幻灯片 | `index` |
+| `duplicateSlide` | 复制幻灯片 | `index` |
+| `moveSlide` | 移动幻灯片 | `fromIndex`, `toIndex` |
+| `switchSlide` | 切换幻灯片 | `index` |
+| `beautifySlide` | 美化幻灯片 | `index` |
+| `beautifyAllSlides` | 美化所有幻灯片 | - |
+| `unifyFont` | 统一字体 | `fontName` |
+| `setBackgroundColor` | 设置背景颜色 | `color` |
+| `addAnimation` | 添加动画 | `index` |
+| `setSlideTransition` | 设置切换效果 | `index`, `effect` |
 
 ### 幻灯片操作
 - 幻灯片位置从 1 开始计数
@@ -81,59 +134,6 @@ tools:
 - 先确认用户想要的风格
 - 美化前可先提供建议，确认后再执行
 - 建议统一使用一种字体，避免字体混乱
-
-### 常用操作示例
-
-```javascript
-// 获取当前演示文稿信息
-wps_get_active_presentation()
-
-// 添加幻灯片
-wps_ppt_add_slide({
-  layout: "title_content",
-  position: 3,
-  title: "新页面标题",
-  content: "新页面内容"
-})
-
-// 添加标题页
-wps_ppt_add_slide({
-  layout: "title",
-  title: "演示标题",
-  content: "副标题或演讲者信息"
-})
-
-// 美化幻灯片
-wps_ppt_beautify({
-  slide_index: 1,
-  color_scheme: "business",
-  font: "微软雅黑"
-})
-
-// 美化所有幻灯片
-wps_ppt_beautify({
-  color_scheme: "tech",
-  font: "思源黑体",
-  beautify_all: true
-})
-
-// 统一字体
-wps_ppt_unify_font({
-  font_name: "微软雅黑",
-  include_title: true,
-  include_body: true
-})
-
-// 统一指定页的字体
-wps_ppt_unify_font({
-  font_name: "微软雅黑",
-  slide_index: 2,
-  include_title: true,
-  include_body: true
-})
-```
-
----
 
 ## 常用快捷操作提示
 

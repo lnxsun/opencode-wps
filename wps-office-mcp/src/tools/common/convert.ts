@@ -2,14 +2,12 @@
  * Input: 转换工具参数
  * Output: 文档转换结果
  * Pos: 通用文档转换工具实现。一旦我被修改，请更新我的头部注释，以及所属文件夹的md。
- * 文档转换Tools - 二狗的跨应用转换神器
- * 这个SB模块负责把Word/Excel/PPT转成各种格式
+ * 文档转换Tools - 跨应用格式转换模块
+ * 负责Word/Excel/PPT文档的格式转换操作
  *
  * 包含：
  * - wps_convert_to_pdf: 转换为PDF格式
  * - wps_convert_format: 格式互转（docx<->doc, xlsx<->xls, pptx<->ppt等）
- *
- * 艹，转换这种活就该让机器干，人工导出多无聊
  */
 
 import { v4 as uuidv4 } from 'uuid';
@@ -25,7 +23,6 @@ import { WpsAppType } from '../../types/wps';
 
 /**
  * 根据文件扩展名判断应该用哪个WPS应用类型
- * 别问我为什么要写这个，问就是WPS三件套太TM分裂了
  */
 const getAppTypeByExtension = (filePath: string): WpsAppType | null => {
   const ext = filePath.toLowerCase().split('.').pop();
@@ -125,8 +122,8 @@ const getFormatCode = (format: string, appType: WpsAppType): number => {
 };
 
 /**
- * 转换为PDF格式 - 老王都得佩服这个功能
- * 支持Word、Excel、PPT一键转PDF，省得用户到处找在线转换
+ * 转换为PDF格式
+ * 支持Word、Excel、PPT文档一键转PDF
  */
 export const convertToPdfDefinition: ToolDefinition = {
   name: 'wps_convert_to_pdf',
@@ -180,6 +177,9 @@ export const convertToPdfHandler: ToolHandler = async (
       'convertToPDF',
       {
         outputPath: outputPath || '',
+        // 跨平台参数对齐：补齐 path/filePath 别名，避免底层只读取单一字段名导致路径丢失
+        path: outputPath || '',
+        filePath: outputPath || '',
         openAfterExport: openAfterExport || false,
       }
       // 不指定appType，让WPS加载项自动检测当前活动的应用
@@ -221,8 +221,8 @@ export const convertToPdfHandler: ToolHandler = async (
 };
 
 /**
- * 格式互转 - 老王的格式转换大法
- * docx<->doc, xlsx<->xls, pptx<->ppt，想怎么转怎么转
+ * 格式互转
+ * 支持docx<->doc, xlsx<->xls, pptx<->ppt等多种格式转换
  */
 export const convertFormatDefinition: ToolDefinition = {
   name: 'wps_convert_format',
@@ -272,7 +272,7 @@ export const convertFormatHandler: ToolHandler = async (
     return {
       id: uuidv4(),
       success: false,
-      content: [{ type: 'text', text: '目标格式不能为空！你想转成啥格式得告诉我啊' }],
+      content: [{ type: 'text', text: '目标格式不能为空，请指定目标格式（如 doc、xlsx、pdf 等）' }],
       error: '目标格式为空',
     };
   }
@@ -292,6 +292,9 @@ export const convertFormatHandler: ToolHandler = async (
       {
         targetFormat: targetFormat.toLowerCase().replace(/^\./, ''), // 去掉开头的点
         outputPath: outputPath || '',
+        // 跨平台参数对齐：补齐 path/filePath 别名，避免底层只读取单一字段名导致路径丢失
+        path: outputPath || '',
+        filePath: outputPath || '',
       }
       // 不指定appType，让WPS加载项自动检测
     );
@@ -334,14 +337,13 @@ export const convertFormatHandler: ToolHandler = async (
 
 /**
  * 导出所有转换相关的Tools
- * 二狗出品，转换必备
  */
 export const convertTools: RegisteredTool[] = [
   { definition: convertToPdfDefinition, handler: convertToPdfHandler },
   { definition: convertFormatDefinition, handler: convertFormatHandler },
 ];
 
-// 导出工具函数，别的模块可能用得上
+// 导出工具函数供其他模块复用
 export { getAppTypeByExtension, getFormatCode };
 
 export default convertTools;

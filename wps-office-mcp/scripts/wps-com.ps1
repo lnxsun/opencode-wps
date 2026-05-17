@@ -1106,6 +1106,47 @@ switch ($Action) {
         Output-Json @{ success = $true; data = @{ chartName = $chartObj.Name; updatedProperties = $updated } }
     }
 
+    "exportChartAsImage" {
+        $excel = Get-WpsExcel
+        if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; exit }
+        $sheet = if ($p.sheet) { $excel.ActiveWorkbook.Sheets.Item($p.sheet) } else { $excel.ActiveSheet }
+        $outputPath = if ($p.outputPath) { $p.outputPath } else { $p.path }
+        if ([string]::IsNullOrEmpty($outputPath)) { Output-Json @{ success = $false; error = "Missing outputPath" }; exit }
+        $chartName = $p.chartName
+        if ([string]::IsNullOrEmpty($chartName)) { Output-Json @{ success = $false; error = "Missing chartName" }; exit }
+        $rawFormat = if ($p.format) { $p.format.ToString().ToUpper() } else { "PNG" }
+        $filterName = if ($rawFormat -eq "JPEG") { "JPG" } else { $rawFormat }
+        $chartObj = $sheet.ChartObjects($chartName)
+        $chartObj.Chart.Export($outputPath, $filterName)
+        Output-Json @{ success = $true; data = @{ chartName = $chartName; outputPath = $outputPath; format = $filterName } }
+    }
+
+    "exportRangeAsImage" {
+        $excel = Get-WpsExcel
+        if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; exit }
+        $sheet = if ($p.sheet) { $excel.ActiveWorkbook.Sheets.Item($p.sheet) } else { $excel.ActiveSheet }
+        $outputPath = if ($p.outputPath) { $p.outputPath } else { $p.path }
+        if ([string]::IsNullOrEmpty($outputPath)) { Output-Json @{ success = $false; error = "Missing outputPath" }; exit }
+        if ([string]::IsNullOrEmpty($p.range)) { Output-Json @{ success = $false; error = "Missing range" }; exit }
+        $rawFormat = if ($p.format) { $p.format.ToString().ToUpper() } else { "PNG" }
+        $filterName = if ($rawFormat -eq "JPEG") { "JPG" } else { $rawFormat }
+        $range = $sheet.Range($p.range)
+        $tempChart = $null
+        try {
+            $range.CopyPicture(1, 2)
+            $tempChart = $sheet.ChartObjects().Add(0, 0, $range.Width, $range.Height)
+            $tempChart.Activate()
+            $tempChart.Chart.Paste()
+            $tempChart.Chart.Export($outputPath, $filterName)
+            $tempChart.Delete()
+            $tempChart = $null
+            Output-Json @{ success = $true; data = @{ range = $p.range; outputPath = $outputPath; format = $filterName } }
+        } catch {
+            if ($null -ne $tempChart) { try { $tempChart.Delete() } catch {} }
+            Output-Json @{ success = $false; error = "导出区域为图片失败: $($_.Exception.Message)" }
+        }
+    }
+
     "removeDuplicates" {
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; exit }
@@ -2215,11 +2256,11 @@ switch ($Action) {
                 $fillDone = $false
                 # Check the paragraph runs
                 for ($ri = 1; $ri -le $paraRange.Words.Count; $ri++) {
-                    $word = $paraRange.Words.Item($ri)
-                    if ($word.Start -gt $keywordEndPos -and $word.Font.Underline -ne 0 -and $word.Text -match '_+') {
+                    $wordObj = $paraRange.Words.Item($ri)
+                    if ($wordObj.Start -gt $keywordEndPos -and $wordObj.Font.Underline -ne 0 -and $wordObj.Text -match '_+') {
                         # Found underlined underscore run - replace with value
-                        $word.Text = $p.value
-                        $word.Font.Underline = 1  # Keep underline
+                        $wordObj.Text = $p.value
+                        $wordObj.Font.Underline = 1  # Keep underline
                         $fillDone = $true
                         $fillResult = "Filled underlined field after '$($p.keyword)' with '$($p.value)'"
                         break
@@ -2231,6 +2272,7 @@ switch ($Action) {
                     $afterKeyRange = $doc.Range($keywordEndPos, $paraRange.End)
                     $afterKeyRange.Find.ClearFormatting()
                     $afterKeyRange.Find.Text = $underscorePattern
+                    $afterKeyRange.Find.MatchWildcards = $true
                     $foundUl = $afterKeyRange.Find.Execute($underscorePattern, $false, $false, $false, $false, $false, $true, 1, $false, $p.value, 1)
                     if ($foundUl) {
                         $fillResult = "Filled underline after '$($p.keyword)' with '$($p.value)'"
@@ -2849,6 +2891,22 @@ switch ($Action) {
         if ($null -ne $p.height) { $shape.Height = $p.height }
         if ($null -ne $p.rotation) { $shape.Rotation = $p.rotation }
         Output-Json @{ success = $true; data = @{ name = $shape.Name } }
+    }
+
+    "exportSlideAsImage" {
+        $ppt = Get-WpsPpt
+        if ($null -eq $ppt) { Output-Json @{ success = $false; error = "WPS PPT not running" }; exit }
+        $pres = $ppt.ActivePresentation
+        $slideIndex = if ($p.slideIndex) { $p.slideIndex } else { 1 }
+        $slide = $pres.Slides.Item($slideIndex)
+        $outputPath = if ($p.outputPath) { $p.outputPath } else { $p.path }
+        if ([string]::IsNullOrEmpty($outputPath)) { Output-Json @{ success = $false; error = "Missing outputPath" }; exit }
+        $rawFormat = if ($p.format) { $p.format.ToString().ToUpper() } else { "PNG" }
+        $filterName = if ($rawFormat -eq "JPEG") { "JPG" } else { $rawFormat }
+        $width = if ($p.width) { $p.width } else { 1280 }
+        $height = if ($p.height) { $p.height } else { 720 }
+        $slide.Export($outputPath, $filterName, $width, $height)
+        Output-Json @{ success = $true; data = @{ slideIndex = $slideIndex; outputPath = $outputPath; format = $filterName; width = $width; height = $height } }
     }
 
     "insertPptTable" {

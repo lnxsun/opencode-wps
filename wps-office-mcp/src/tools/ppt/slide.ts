@@ -2,13 +2,15 @@
  * Input: PPT 幻灯片操作参数
  * Output: 幻灯片操作结果
  * Pos: PPT 幻灯片工具实现。一旦我被修改，请更新我的头部注释，以及所属文件夹的md。
- * PPT幻灯片Tools - 老王的演示神器
+ * PPT幻灯片Tools - 幻灯片管理模块
  * 处理幻灯片的添加、美化、字体统一等操作
  *
  * 包含：
  * - wps_ppt_add_slide: 添加新幻灯片
  * - wps_ppt_beautify: 美化幻灯片（核心功能）
  * - wps_ppt_unify_font: 统一字体
+ * - wps_ppt_set_font_color: 设置文字颜色
+ * - wps_ppt_align_objects: 对齐幻灯片中的对象
  */
 
 import { v4 as uuidv4 } from 'uuid';
@@ -134,7 +136,7 @@ export const addSlideHandler: ToolHandler = async (
 
 /**
  * 美化幻灯片
- * 这是老王最得意的功能，一键让PPT变得专业
+ * 一键优化排版、配色、字体和间距
  */
 export const beautifyDefinition: ToolDefinition = {
   name: 'wps_ppt_beautify',
@@ -367,12 +369,196 @@ export const unifyFontHandler: ToolHandler = async (
 };
 
 /**
+ * 设置文字颜色
+ * 修改幻灯片中指定形状的文字颜色
+ */
+export const setFontColorDefinition: ToolDefinition = {
+  name: 'wps_ppt_set_font_color',
+  description: `设置幻灯片中指定形状的文字颜色。
+
+使用场景：
+- "把标题改成红色"
+- "设置第2页第1个文本框的文字颜色为蓝色"
+- "修改文字颜色"`,
+  category: ToolCategory.PRESENTATION,
+  inputSchema: {
+    type: 'object',
+    properties: {
+      slideIndex: {
+        type: 'number',
+        description: '幻灯片页码（从1开始）',
+      },
+      shapeIndex: {
+        type: 'number',
+        description: '形状索引（从1开始）',
+      },
+      color: {
+        type: 'string',
+        description: '颜色值，支持十六进制如 "#FF0000" 或颜色名如 "red"',
+      },
+    },
+    required: ['slideIndex', 'shapeIndex', 'color'],
+  },
+};
+
+export const setFontColorHandler: ToolHandler = async (
+  args: Record<string, unknown>
+): Promise<ToolCallResult> => {
+  const { slideIndex, shapeIndex, color } = args as {
+    slideIndex: number;
+    shapeIndex: number;
+    color: string;
+  };
+
+  try {
+    const response = await wpsClient.executeMethod<{
+      success: boolean;
+      message: string;
+    }>(
+      'setFontColor', // NOTE: macOS未实现，仅Windows支持
+      { slideIndex, shapeIndex, color },
+      WpsAppType.PRESENTATION
+    );
+
+    if (response.success) {
+      return {
+        id: uuidv4(),
+        success: true,
+        content: [
+          {
+            type: 'text',
+            text: `文字颜色设置成功！\n幻灯片: 第 ${slideIndex} 页\n形状: 第 ${shapeIndex} 个\n颜色: ${color}`,
+          },
+        ],
+      };
+    } else {
+      return {
+        id: uuidv4(),
+        success: false,
+        content: [{ type: 'text', text: `设置文字颜色失败: ${response.error}` }],
+        error: response.error,
+      };
+    }
+  } catch (error) {
+    const errMsg = error instanceof Error ? error.message : String(error);
+    return {
+      id: uuidv4(),
+      success: false,
+      content: [{ type: 'text', text: `设置文字颜色出错: ${errMsg}` }],
+      error: errMsg,
+    };
+  }
+};
+
+/**
+ * 对齐幻灯片中的对象
+ * 支持多种对齐方式
+ */
+export const alignObjectsDefinition: ToolDefinition = {
+  name: 'wps_ppt_align_objects',
+  description: `对齐幻灯片中的对象。
+
+支持的对齐方式：
+- left: 左对齐
+- center: 水平居中
+- right: 右对齐
+- top: 顶部对齐
+- middle: 垂直居中
+- bottom: 底部对齐
+- distribute_h: 水平等距分布
+- distribute_v: 垂直等距分布
+
+使用场景：
+- "把这些元素居中对齐"
+- "让所有对象左对齐"
+- "等距分布这些形状"`,
+  category: ToolCategory.PRESENTATION,
+  inputSchema: {
+    type: 'object',
+    properties: {
+      slideIndex: {
+        type: 'number',
+        description: '幻灯片页码（从1开始）',
+      },
+      alignment: {
+        type: 'string',
+        description: '对齐方式',
+        enum: ['left', 'center', 'right', 'top', 'middle', 'bottom', 'distribute_h', 'distribute_v'],
+      },
+    },
+    required: ['slideIndex', 'alignment'],
+  },
+};
+
+export const alignObjectsHandler: ToolHandler = async (
+  args: Record<string, unknown>
+): Promise<ToolCallResult> => {
+  const { slideIndex, alignment } = args as {
+    slideIndex: number;
+    alignment: string;
+  };
+
+  try {
+    const response = await wpsClient.executeMethod<{
+      success: boolean;
+      message: string;
+      count?: number;
+    }>(
+      'alignShapes',
+      { slideIndex, alignment },
+      WpsAppType.PRESENTATION
+    );
+
+    if (response.success) {
+      const alignName: Record<string, string> = {
+        left: '左对齐',
+        center: '水平居中',
+        right: '右对齐',
+        top: '顶部对齐',
+        middle: '垂直居中',
+        bottom: '底部对齐',
+        distribute_h: '水平等距分布',
+        distribute_v: '垂直等距分布',
+      };
+
+      return {
+        id: uuidv4(),
+        success: true,
+        content: [
+          {
+            type: 'text',
+            text: `对象对齐完成！\n幻灯片: 第 ${slideIndex} 页\n对齐方式: ${alignName[alignment] || alignment}${response.data?.count ? `\n处理对象: ${response.data.count} 个` : ''}`,
+          },
+        ],
+      };
+    } else {
+      return {
+        id: uuidv4(),
+        success: false,
+        content: [{ type: 'text', text: `对齐对象失败: ${response.error}` }],
+        error: response.error,
+      };
+    }
+  } catch (error) {
+    const errMsg = error instanceof Error ? error.message : String(error);
+    return {
+      id: uuidv4(),
+      success: false,
+      content: [{ type: 'text', text: `对齐对象出错: ${errMsg}` }],
+      error: errMsg,
+    };
+  }
+};
+
+/**
  * 导出所有幻灯片相关的Tools
  */
 export const slideTools: RegisteredTool[] = [
   { definition: addSlideDefinition, handler: addSlideHandler },
   { definition: beautifyDefinition, handler: beautifyHandler },
   { definition: unifyFontDefinition, handler: unifyFontHandler },
+  { definition: setFontColorDefinition, handler: setFontColorHandler },
+  { definition: alignObjectsDefinition, handler: alignObjectsHandler },
 ];
 
 export default slideTools;

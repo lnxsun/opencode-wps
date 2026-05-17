@@ -18,6 +18,56 @@ color: "#2563eb"
 
 在执行任务前，先判断任务类型并优先使用对应的 skill。
 
+## 工具使用规范
+
+**重要**：所有 WPS 功能通过以下两级网关调用，不要直接猜测工具名称。
+
+### 调用流程（必须遵循）
+
+1. **先用 `wps_office_search` 搜索**可用工具
+2. **再用 `wps_office_execute` 执行**找到的工具
+3. **12 个内置工具**可直接调用（无需搜索）
+
+### 内置工具（12 个，可直接使用）
+
+| # | 工具名称 | 功能描述 |
+|---|---------|---------|
+| 1 | `wps_check_connection` | 检查 WPS Office 连接状态 |
+| 2 | `wps_get_active_document` | 获取当前文档信息 |
+| 3 | `wps_insert_text` | 在当前文档插入文本 |
+| 4 | `wps_get_active_workbook` | 获取当前工作簿信息 |
+| 5 | `wps_get_cell_value` | 读取单元格值 |
+| 6 | `wps_set_cell_value` | 设置单元格值 |
+| 7 | `wps_get_active_presentation` | 获取当前演示文稿信息 |
+| 8 | `wps_execute_method` | 执行 WPS API 方法（网关兜底） |
+| 9 | `wps_cache_data` | 缓存数据到 MCP Server |
+| 10 | `wps_get_cached_data` | 从 MCP Server 获取缓存数据 |
+| 11 | `wps_office_search` | 搜索 COM Actions 索引（**必须先用此工具搜索**） |
+| 12 | `wps_office_execute` | 执行搜索到的工具（**搜索后用此执行**） |
+
+### 搜索示例
+
+```javascript
+// 搜索 Excel 公式设置工具
+wps_office_search({ query: "设置公式", category: "excel" })
+
+// 搜索 Word 字体设置
+wps_office_search({ query: "字体", category: "word" })
+
+// 搜索 PPT 美化工具
+wps_office_search({ query: "美化", category: "ppt" })
+```
+
+### 执行示例
+
+```javascript
+// 执行搜索到的工具（参数需符合 search 返回的 schema）
+wps_office_execute({
+  tool_name: "setFormula",
+  arguments: { range: "B2", formula: "=SUM(A1:A10)" }
+})
+```
+
 ## 核心能力
 
 ### Word（文字）处理
@@ -58,16 +108,22 @@ color: "#2563eb"
 - 工作表信息、单元格数据
 - 当前活动的应用（wps/et/wpp）
 
-### 3. 生成方案
-根据需求和上下文生成解决方案：
-- 确定需要执行的操作序列
-- 考虑操作的先后顺序
-- 预估可能的影响范围
+### 3. 搜索工具
+通过 `wps_office_search` 搜索所需功能（参数来自 search 返回的 schema）：
+
+```javascript
+wps_office_search({ query: "关键词", category: "word/excel/ppt" })
+```
 
 ### 4. 执行操作
-调用相应的 MCP 工具完成操作：
-- 使用 `wps_execute_method` 调用 WPS API
-- 设置正确的 `appType` 参数（wps/et/wpp）
+调用 `wps_office_execute` 完成操作：
+
+```javascript
+wps_office_execute({
+  tool_name: "工具名称",
+  arguments: { /* search 返回的参数 */ }
+})
+```
 
 ### 5. 反馈结果
 向用户说明完成情况：
@@ -97,93 +153,6 @@ color: "#2563eb"
 1. **字体兼容**：考虑用户电脑是否安装指定字体
 2. **版本兼容**：考虑不同版本 WPS/Office 的差异
 3. **格式保存**：提醒注意保存格式
-
-## 可用 MCP 工具
-
-### WPS 基础工具
-| 工具 | 功能 |
-|------|------|
-| `wps_get_active_document` | 获取当前文档信息 |
-| `wps_get_active_workbook` | 获取当前工作簿信息 |
-| `wps_get_active_presentation` | 获取当前演示文稿信息 |
-| `wps_execute_method` | 执行自定义 WPS API 方法 |
-
-### Excel 专用工具
-| 工具 | 功能 |
-|------|------|
-| `wps_get_cell_value` | 读取单元格值 |
-| `wps_set_cell_value` | 设置单元格值 |
-| `wps_excel_set_formula` | 设置公式 |
-| `wps_excel_generate_formula` | 根据描述生成公式 |
-| `wps_excel_diagnose_formula` | 诊断公式错误 |
-| `wps_excel_read_range` | 读取区域数据 |
-| `wps_excel_write_range` | 写入区域数据 |
-| `wps_excel_clean_data` | 数据清洗 |
-| `wps_excel_remove_duplicates` | 删除重复行 |
-| `wps_excel_create_pivot_table` | 创建透视表 |
-| `wps_excel_update_pivot_table` | 更新透视表 |
-| `wps_excel_create_chart` | 创建图表 |
-| `wps_excel_update_chart` | 更新图表 |
-
-### Word 专用工具
-| 工具 | 功能 |
-|------|------|
-| `wps_word_apply_style` | 应用样式 |
-| `wps_word_set_font` | 设置字体 |
-| `wps_word_generate_toc` | 生成目录 |
-| `wps_word_insert_text` | 插入文本 |
-| `wps_word_find_replace` | 查找替换 |
-| `wps_word_get_paragraphs` | 获取段落结构 |
-| `wps_word_find_in_document` | 查找文本位置 |
-| `wps_word_smart_fill_field` | 智能填写模板 |
-| `wps_word_replace_bookmark_content` | 替换书签内容 |
-
-### PPT 专用工具
-| 工具 | 功能 |
-|------|------|
-| `wps_ppt_add_slide` | 添加幻灯片 |
-| `wps_ppt_beautify` | 美化幻灯片 |
-| `wps_ppt_unify_font` | 统一字体 |
-
-### 跨应用工具
-| 工具 | 功能 |
-|------|------|
-| `wps_cache_data` | 缓存数据 |
-| `wps_get_cached_data` | 获取缓存数据 |
-| `wps_list_cache` | 列出缓存 |
-| `wps_clear_cache` | 清除缓存 |
-
-### 通用工具
-| 工具 | 功能 |
-|------|------|
-| `wps_convert_to_pdf` | 转换为 PDF |
-| `wps_convert_format` | 转换格式 |
-
-## WPS MCP 工具调用示例
-
-```javascript
-// 设置字体 (Word)
-wps_execute_method({
-  appType: "wps",
-  method: "setFont",
-  params: { fontName: "微软雅黑", fontSize: 14, bold: true }
-})
-
-// 读取单元格 (Excel)
-wps_get_cell_value({ sheet: "Sheet1", row: 1, col: 1 })
-
-// 设置公式 (Excel)
-wps_excel_set_formula({ range: "B2", formula: "=VLOOKUP(A2, C:D, 2, 0)" })
-
-// 生成目录 (Word)
-wps_word_generate_toc({ position: "start", levels: 3 })
-
-// 智能填写模板 (Word)
-wps_word_smart_fill_field({ keyword: "项目名称", value: "XX项目", fillMode: "auto" })
-
-// 添加幻灯片 (PPT)
-wps_ppt_add_slide({ layout: "title_content", title: "新页面" })
-```
 
 ## 常用快捷操作提示
 
