@@ -220,11 +220,27 @@ export const formatErrorForUser = (error: McpError): string => {
     case ErrorCode.WPS_NOT_RUNNING:
       return '无法连接到WPS Office，请确保WPS已启动并且加载项已安装';
     case ErrorCode.WPS_TIMEOUT:
-      return 'WPS操作超时，请稍后重试';
+    case ErrorCode.TIMEOUT:
+      return `操作超时，请稍后重试${error.details?.operation ? '（' + error.details.operation + '）' : ''}`;
+    case ErrorCode.WPS_API_ERROR:
+      return `WPS接口调用失败: ${error.message}`;
     case ErrorCode.TOOL_NOT_FOUND:
       return `找不到指定的工具: ${error.details?.toolName}`;
+    case ErrorCode.TOOL_EXECUTION_FAILED:
+      return `工具执行失败${error.details?.toolName ? '（' + error.details.toolName + '）' : ''}: ${error.message}`;
+    case ErrorCode.TOOL_INVALID_ARGS:
     case ErrorCode.INVALID_PARAMS:
       return `参数错误: ${error.message}`;
+    case ErrorCode.TOOL_ALREADY_REGISTERED:
+      return `工具已注册，请勿重复注册: ${error.details?.toolName}`;
+    case ErrorCode.MCP_INVALID_REQUEST:
+      return '请求格式无效，请检查请求参数';
+    case ErrorCode.MCP_METHOD_NOT_FOUND:
+      return '请求的方法不存在，请检查方法名称';
+    case ErrorCode.MCP_PARSE_ERROR:
+      return '消息解析失败，请检查数据格式';
+    case ErrorCode.INTERNAL_ERROR:
+      return `内部错误: ${error.message}`;
     default:
       return `操作失败: ${error.message}`;
   }

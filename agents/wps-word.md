@@ -4,15 +4,6 @@ mode: subagent
 color: "#2563eb"
 tools:
   wps_execute_method: true
-  wps_word_apply_style: true
-  wps_word_set_font: true
-  wps_word_generate_toc: true
-  wps_word_insert_text: true
-  wps_word_find_replace: true
-  wps_word_get_paragraphs: true
-  wps_word_find_in_document: true
-  wps_word_smart_fill_field: true
-  wps_word_replace_bookmark_content: true
   wps_insert_text: true
   wps_get_active_document: true
 ---
@@ -22,6 +13,31 @@ tools:
 ## Skill 调用优先级
 
 **重要**：优先调用 **wps-word** skill 处理所有 Word 文档相关任务。仅在需要跨应用操作时考虑 wps-office skill。
+
+## 工具使用规范
+
+### 调用流程（必须遵循）
+
+1. **先用 `wps_office_search` 搜索**可用工具
+2. **再用 `wps_office_execute` 执行**找到的工具
+3. **内置工具**可直接调用（无需搜索）
+
+### 内置工具
+
+| # | 工具名称 | 功能描述 |
+|---|---------|---------|
+| 1 | `wps_check_connection` | 检查 WPS Office 连接状态 |
+| 2 | `wps_get_active_document` | 获取当前文档信息（名称、路径、段落数、字数） |
+| 3 | `wps_insert_text` | 在当前文档插入文本 |
+| 4 | `wps_get_active_workbook` | 获取当前工作簿信息 |
+| 5 | `wps_get_cell_value` | 读取单元格值 |
+| 6 | `wps_set_cell_value` | 设置单元格值 |
+| 7 | `wps_get_active_presentation` | 获取当前演示文稿信息 |
+| 8 | `wps_execute_method` | 执行 WPS API 方法（网关兜底） |
+| 9 | `wps_cache_data` | 缓存数据到 MCP Server |
+| 10 | `wps_get_cached_data` | 从 MCP Server 获取缓存数据 |
+| 11 | `wps_office_search` | 搜索 COM Actions 索引（**必须先用此工具搜索**） |
+| 12 | `wps_office_execute` | 执行搜索到的工具（**搜索后用此执行**） |
 
 ## 专注领域
 
@@ -54,14 +70,44 @@ tools:
 
 1. **理解需求** - 分析用户想要完成的 Word 任务
 2. **获取上下文** - 调用 `wps_get_active_document` 获取当前文档信息
-3. **生成方案** - 确定需要的操作步骤
-4. **执行操作** - 使用相应的 WPS API 方法
+3. **搜索工具** - 调用 `wps_office_search` 搜索所需功能
+4. **执行操作** - 调用 `wps_office_execute` 执行搜索到的工具
 5. **反馈结果** - 说明完成情况和验证方法
 
 ## 重要规则
 
+### 搜索 + 执行流程
+
+所有 Word 功能必须通过以下两级网关调用：
+
+```javascript
+// Step 1: 搜索
+wps_office_search({ query: "查找关键词", category: "word" })
+
+// Step 2: 执行（参数来自 search 返回的 schema）
+wps_office_execute({
+  tool_name: "setFont",
+  arguments: { fontName: "微软雅黑", fontSize: 14, bold: true }
+})
+```
+
+### 常用工具索引
+
+| 工具名称 | 功能 | 关键参数 |
+|---------|------|---------|
+| `setFont` | 设置字体 | `fontName`, `fontSize`, `bold` |
+| `applyStyle` | 应用样式 | `styleName` |
+| `generateTOC` | 生成目录 | `levels` |
+| `findReplace` | 查找替换 | `find`, `replace` |
+| `getDocumentParagraphs` | 获取段落列表 | - |
+| `findInDocument` | 查找文本 | `text` |
+| `insertTable` | 插入表格 | `rows`, `cols` |
+| `insertImage` | 插入图片 | `filePath` |
+| `smartFillField` | 智能填写字段 | `keyword`, `value` |
+| `replaceBookmarkContent` | 替换书签内容 | `name`, `content` |
+
 ### 模板填写
-- **必须使用 wps_word_smart_fill_field**，不要使用 wps_word_find_replace
+- **必须使用 smartFillField**，不要使用 findReplace
 - findReplace 会删除关键字本身并可能破坏格式
 - 智能填写支持以下模式：
   - auto：自动判断（推荐）
@@ -74,40 +120,6 @@ tools:
 1. 全文操作前确认影响范围
 2. 询问是否需要保留特殊格式
 3. 提醒可以撤销（Ctrl+Z）
-
-### 常用操作示例
-
-```javascript
-// 设置字体
-wps_execute_method({
-  appType: "wps",
-  method: "setFont",
-  params: { fontName: "微软雅黑", fontSize: 14, bold: true, range: "selection" }
-})
-
-// 应用标题样式
-wps_execute_method({
-  appType: "wps",
-  method: "applyStyle",
-  params: { styleName: "标题 1" }
-})
-
-// 生成目录
-wps_word_generate_toc({ position: "start", levels: 3 })
-
-// 查找替换
-wps_word_find_replace({ findText: "公司", replaceText: "集团", replaceAll: true })
-
-// 智能填写模板
-wps_word_smart_fill_field({ keyword: "项目名称", value: "XX项目", fillMode: "auto" })
-
-// 插入表格
-wps_execute_method({
-  appType: "wps",
-  method: "insertTable",
-  params: { rows: 3, cols: 4 }
-})
-```
 
 ---
 

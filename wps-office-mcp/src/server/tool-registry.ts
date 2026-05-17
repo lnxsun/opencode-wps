@@ -23,7 +23,6 @@ import {
   ToolExecutionError,
   InvalidParamsError,
   McpError,
-  ErrorCode,
 } from '../utils/error';
 
 const logger = createChildLogger('ToolRegistry');
@@ -65,13 +64,10 @@ export class ToolRegistry {
   register(definition: ToolDefinition, handler: ToolHandler): void {
     const { name, category } = definition;
 
-    // 检查是否已注册
+    // 检查是否已注册 - 跳过重复注册而非崩溃，防止过期编译产物导致启动失败
     if (this.tools.has(name)) {
-      throw new McpError(
-        `Tool already registered: ${name}`,
-        ErrorCode.TOOL_ALREADY_REGISTERED,
-        { toolName: name }
-      );
+      logger.warn(`Tool already registered, skipping: ${name}`);
+      return;
     }
 
     // 注册Tool

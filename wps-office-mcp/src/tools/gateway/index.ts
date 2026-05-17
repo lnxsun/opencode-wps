@@ -155,6 +155,7 @@ const COM_ACTIONS: ToolIndexItem[] = [
   { name: 'consolidate', description: '合并计算', keywords: ['合并'], category: 'excel', appType: WpsAppType.SPREADSHEET, paramsSchema: { range: { type: 'string', description: '区域', required: true } } },
   { name: 'calculateSheet', description: '重新计算工作表', keywords: ['计算'], category: 'excel', appType: WpsAppType.SPREADSHEET, paramsSchema: {} },
   { name: 'getExcelContext', description: '获取 Excel 上下文', keywords: ['上下文'], category: 'excel', appType: WpsAppType.SPREADSHEET, paramsSchema: {} },
+  { name: 'generateFormula', description: '根据自然语言生成公式', keywords: ['公式', '生成'], category: 'excel', appType: WpsAppType.SPREADSHEET, paramsSchema: { description: { type: 'string', description: '用自然语言描述要计算的逻辑', required: true } } },
 
   // PPT 操作 (~80)
   { name: 'getActivePresentation', description: '获取当前演示文稿信息', keywords: ['演示', '当前'], category: 'ppt', appType: WpsAppType.PRESENTATION, paramsSchema: {} },

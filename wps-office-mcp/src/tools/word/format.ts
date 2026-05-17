@@ -2,13 +2,15 @@
  * Input: Word 格式化参数
  * Output: 样式与字体设置结果
  * Pos: Word 格式化工具实现。一旦我被修改，请更新我的头部注释，以及所属文件夹的md。
- * Word格式化Tools - 老王的排版神器
+ * Word格式化Tools - 排版格式化模块
  * 处理文档样式、字体、目录等格式化需求
  *
  * 包含：
  * - wps_word_apply_style: 应用样式到选中区域
  * - wps_word_set_font: 设置字体格式
  * - wps_word_generate_toc: 生成目录
+ * - wps_word_insert_bookmark: 插入书签
+ * - wps_word_set_page_setup: 设置页面布局
  */
 
 import { v4 as uuidv4 } from 'uuid';
@@ -117,7 +119,6 @@ export const applyStyleHandler: ToolHandler = async (
 
 /**
  * 设置字体格式
- * 老王说：字体是文档的脸面，不能马虎
  */
 export const setFontDefinition: ToolDefinition = {
   name: 'wps_word_set_font',
@@ -184,7 +185,7 @@ export const setFontHandler: ToolHandler = async (
     return {
       id: uuidv4(),
       success: false,
-      content: [{ type: 'text', text: '至少要设置一个字体属性啊，啥都不设置让我干嘛？' }],
+      content: [{ type: 'text', text: '请至少指定一个字体属性（如 font_name、font_size、bold 等）' }],
       error: '没有指定任何字体属性',
     };
   }
@@ -336,12 +337,200 @@ export const generateTocHandler: ToolHandler = async (
 };
 
 /**
+ * 插入书签
+ * 在当前光标位置插入书签，方便交叉引用和导航
+ */
+export const insertBookmarkDefinition: ToolDefinition = {
+  name: 'wps_word_insert_bookmark',
+  description: `在当前光标位置或选中区域插入书签。
+
+书签可用于：
+- 交叉引用
+- 超链接跳转目标
+- 文档内快速导航
+
+使用场景：
+- "在这里插入一个书签"
+- "标记这个位置为'章节开头'"`,
+  category: ToolCategory.DOCUMENT,
+  inputSchema: {
+    type: 'object',
+    properties: {
+      name: {
+        type: 'string',
+        description: '书签名称，不能包含空格，建议使用英文或下划线连接',
+      },
+    },
+    required: ['name'],
+  },
+};
+
+export const insertBookmarkHandler: ToolHandler = async (
+  args: Record<string, unknown>
+): Promise<ToolCallResult> => {
+  const { name } = args as { name: string };
+
+  try {
+    const response = await wpsClient.executeMethod<{
+      success: boolean;
+      message: string;
+    }>(
+      'insertBookmark',
+      { name },
+      WpsAppType.WRITER
+    );
+
+    if (response.success) {
+      return {
+        id: uuidv4(),
+        success: true,
+        content: [
+          {
+            type: 'text',
+            text: `书签插入成功！\n书签名称: ${name}`,
+          },
+        ],
+      };
+    } else {
+      return {
+        id: uuidv4(),
+        success: false,
+        content: [{ type: 'text', text: `插入书签失败: ${response.error}` }],
+        error: response.error,
+      };
+    }
+  } catch (error) {
+    const errMsg = error instanceof Error ? error.message : String(error);
+    return {
+      id: uuidv4(),
+      success: false,
+      content: [{ type: 'text', text: `插入书签出错: ${errMsg}` }],
+      error: errMsg,
+    };
+  }
+};
+
+/**
+ * 设置页面布局
+ * 调整页面方向、边距等页面设置
+ */
+export const setPageSetupDefinition: ToolDefinition = {
+  name: 'wps_word_set_page_setup',
+  description: `设置文档页面布局，包括页面方向和边距。
+
+使用场景：
+- "把页面改成横向"
+- "设置上下边距为2厘米"
+- "调整页面为A4横向，边距2cm"`,
+  category: ToolCategory.DOCUMENT,
+  inputSchema: {
+    type: 'object',
+    properties: {
+      orientation: {
+        type: 'string',
+        description: '页面方向: "portrait"(纵向) 或 "landscape"(横向)',
+        enum: ['portrait', 'landscape'],
+      },
+      marginTop: {
+        type: 'number',
+        description: '上边距（磅值）',
+      },
+      marginBottom: {
+        type: 'number',
+        description: '下边距（磅值）',
+      },
+      marginLeft: {
+        type: 'number',
+        description: '左边距（磅值）',
+      },
+      marginRight: {
+        type: 'number',
+        description: '右边距（磅值）',
+      },
+    },
+    required: [],
+  },
+};
+
+export const setPageSetupHandler: ToolHandler = async (
+  args: Record<string, unknown>
+): Promise<ToolCallResult> => {
+  const { orientation, marginTop, marginBottom, marginLeft, marginRight } = args as {
+    orientation?: string;
+    marginTop?: number;
+    marginBottom?: number;
+    marginLeft?: number;
+    marginRight?: number;
+  };
+
+  if (!orientation && marginTop === undefined && marginBottom === undefined &&
+      marginLeft === undefined && marginRight === undefined) {
+    return {
+      id: uuidv4(),
+      success: false,
+      content: [{ type: 'text', text: '请至少指定一个页面设置属性（如 orientation、marginTop 等）' }],
+      error: '没有指定任何页面设置属性',
+    };
+  }
+
+  try {
+    const response = await wpsClient.executeMethod<{
+      success: boolean;
+      message: string;
+      settings: Record<string, unknown>;
+    }>(
+      'setPageSetup',
+      { orientation, marginTop, marginBottom, marginLeft, marginRight },
+      WpsAppType.WRITER
+    );
+
+    if (response.success && response.data) {
+      const s = response.data.settings;
+      let desc = '';
+      if (s.orientation) desc += `页面方向: ${s.orientation === 'landscape' ? '横向' : '纵向'}\n`;
+      if (s.marginTop !== undefined) desc += `上边距: ${s.marginTop}pt\n`;
+      if (s.marginBottom !== undefined) desc += `下边距: ${s.marginBottom}pt\n`;
+      if (s.marginLeft !== undefined) desc += `左边距: ${s.marginLeft}pt\n`;
+      if (s.marginRight !== undefined) desc += `右边距: ${s.marginRight}pt\n`;
+
+      return {
+        id: uuidv4(),
+        success: true,
+        content: [
+          {
+            type: 'text',
+            text: `页面布局设置成功！\n${desc}`,
+          },
+        ],
+      };
+    } else {
+      return {
+        id: uuidv4(),
+        success: false,
+        content: [{ type: 'text', text: `设置页面布局失败: ${response.error}` }],
+        error: response.error,
+      };
+    }
+  } catch (error) {
+    const errMsg = error instanceof Error ? error.message : String(error);
+    return {
+      id: uuidv4(),
+      success: false,
+      content: [{ type: 'text', text: `设置页面布局出错: ${errMsg}` }],
+      error: errMsg,
+    };
+  }
+};
+
+/**
  * 导出所有格式化相关的Tools
  */
 export const formatTools: RegisteredTool[] = [
   { definition: applyStyleDefinition, handler: applyStyleHandler },
   { definition: setFontDefinition, handler: setFontHandler },
   { definition: generateTocDefinition, handler: generateTocHandler },
+  { definition: insertBookmarkDefinition, handler: insertBookmarkHandler },
+  { definition: setPageSetupDefinition, handler: setPageSetupHandler },
 ];
 
 export default formatTools;

@@ -2,14 +2,13 @@
  * Input: 透视表工具参数
  * Output: 透视表创建/更新结果
  * Pos: Excel 透视表工具实现。一旦我被修改，请更新我的头部注释，以及所属文件夹的md。
- * Excel透视表Tools - 老王的数据分析神器
- * 透视表是数据分析的核心功能，别tm给我说你不会用透视表
+ * Excel透视表Tools - 数据分析模块
+ * 透视表是数据汇总和分析的核心功能
  *
  * 包含：
  * - wps_excel_create_pivot_table: 创建透视表
  * - wps_excel_update_pivot_table: 更新透视表配置
  *
- * @author 马铁锤 (老王团队数据分析专家)
  * @date 2026-01-24
  */
 
@@ -26,7 +25,7 @@ import { WpsAppType } from '../../types/wps';
 
 /**
  * 值字段聚合类型
- * 这几个是透视表最常用的聚合方式，别问我为啥没有PRODUCT，用的人太少了
+ * 透视表最常用的聚合方式
  */
 type AggregationType = 'SUM' | 'COUNT' | 'AVERAGE' | 'MAX' | 'MIN';
 
@@ -44,7 +43,6 @@ interface PivotValueField {
 
 /**
  * 透视表配置接口
- * 老王设计的，参数清晰明了，别给我传乱七八糟的
  */
 interface PivotTableConfig {
   /** 数据源范围，如"A1:E100"或"Sheet1!A1:E100" */
@@ -155,12 +153,12 @@ export const createPivotTableHandler: ToolHandler = async (
 ): Promise<ToolCallResult> => {
   const config = args as unknown as PivotTableConfig;
 
-  // 参数校验 - 老王说必填项一个都不能少
+  // 参数校验：必填项检查
   if (!config.sourceRange || config.sourceRange.trim() === '') {
     return {
       id: uuidv4(),
       success: false,
-      content: [{ type: 'text', text: '数据源范围(sourceRange)不能为空，你想让我分析空气吗？' }],
+      content: [{ type: 'text', text: '数据源范围(sourceRange)不能为空' }],
       error: '参数错误：sourceRange为空',
     };
   }
@@ -169,7 +167,7 @@ export const createPivotTableHandler: ToolHandler = async (
     return {
       id: uuidv4(),
       success: false,
-      content: [{ type: 'text', text: '放置位置(destinationCell)不能为空，透视表总得有个地方放吧' }],
+      content: [{ type: 'text', text: '放置位置(destinationCell)不能为空' }],
       error: '参数错误：destinationCell为空',
     };
   }
@@ -178,7 +176,7 @@ export const createPivotTableHandler: ToolHandler = async (
     return {
       id: uuidv4(),
       success: false,
-      content: [{ type: 'text', text: '行字段(rowFields)至少要有一个，不然透视表怎么分组？' }],
+      content: [{ type: 'text', text: '行字段(rowFields)至少需要一个字段' }],
       error: '参数错误：rowFields为空',
     };
   }
@@ -187,7 +185,7 @@ export const createPivotTableHandler: ToolHandler = async (
     return {
       id: uuidv4(),
       success: false,
-      content: [{ type: 'text', text: '值字段(valueFields)至少要有一个，不然透视表汇总啥？' }],
+      content: [{ type: 'text', text: '值字段(valueFields)至少需要一个字段' }],
       error: '参数错误：valueFields为空',
     };
   }
@@ -199,7 +197,7 @@ export const createPivotTableHandler: ToolHandler = async (
       return {
         id: uuidv4(),
         success: false,
-        content: [{ type: 'text', text: '值字段的field不能为空，你要汇总哪个字段告诉我啊' }],
+        content: [{ type: 'text', text: '值字段的field不能为空，请指定要汇总的字段名' }],
         error: '参数错误：valueFields中field为空',
       };
     }
@@ -209,7 +207,7 @@ export const createPivotTableHandler: ToolHandler = async (
         success: false,
         content: [{
           type: 'text',
-          text: `聚合类型(aggregation)必须是${validAggregations.join('/')}之一，你给的"${vf.aggregation}"是什么鬼？`
+          text: `聚合类型(aggregation)必须是${validAggregations.join('/')}之一，当前值"${vf.aggregation}"无效`
         }],
         error: '参数错误：aggregation无效',
       };
@@ -274,7 +272,7 @@ export const createPivotTableHandler: ToolHandler = async (
     return {
       id: uuidv4(),
       success: false,
-      content: [{ type: 'text', text: `艹，创建透视表出错了: ${errMsg}` }],
+      content: [{ type: 'text', text: `创建透视表出错: ${errMsg}` }],
       error: errMsg,
     };
   }
@@ -429,7 +427,7 @@ export const updatePivotTableHandler: ToolHandler = async (
       success: false,
       content: [{
         type: 'text',
-        text: '你要更新哪个透视表？给我透视表名称(pivotTableName)或者透视表所在单元格(pivotTableCell)啊！'
+        text: '请指定目标透视表，提供 pivotTableName 或 pivotTableCell'
       }],
       error: '参数错误：未指定透视表',
     };
@@ -454,7 +452,7 @@ export const updatePivotTableHandler: ToolHandler = async (
       success: false,
       content: [{
         type: 'text',
-        text: '你让我更新透视表但啥操作都没给，逗我玩呢？至少指定一个操作参数！'
+        text: '未指定任何操作参数，请至少指定一个更新操作'
       }],
       error: '参数错误：无操作',
     };
@@ -549,7 +547,7 @@ export const updatePivotTableHandler: ToolHandler = async (
     return {
       id: uuidv4(),
       success: false,
-      content: [{ type: 'text', text: `艹，更新透视表出错了: ${errMsg}` }],
+      content: [{ type: 'text', text: `更新透视表出错: ${errMsg}` }],
       error: errMsg,
     };
   }

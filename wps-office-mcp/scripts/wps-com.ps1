@@ -2215,11 +2215,11 @@ switch ($Action) {
                 $fillDone = $false
                 # Check the paragraph runs
                 for ($ri = 1; $ri -le $paraRange.Words.Count; $ri++) {
-                    $word = $paraRange.Words.Item($ri)
-                    if ($word.Start -gt $keywordEndPos -and $word.Font.Underline -ne 0 -and $word.Text -match '_+') {
+                    $wordObj = $paraRange.Words.Item($ri)
+                    if ($wordObj.Start -gt $keywordEndPos -and $wordObj.Font.Underline -ne 0 -and $wordObj.Text -match '_+') {
                         # Found underlined underscore run - replace with value
-                        $word.Text = $p.value
-                        $word.Font.Underline = 1  # Keep underline
+                        $wordObj.Text = $p.value
+                        $wordObj.Font.Underline = 1  # Keep underline
                         $fillDone = $true
                         $fillResult = "Filled underlined field after '$($p.keyword)' with '$($p.value)'"
                         break
@@ -2231,6 +2231,7 @@ switch ($Action) {
                     $afterKeyRange = $doc.Range($keywordEndPos, $paraRange.End)
                     $afterKeyRange.Find.ClearFormatting()
                     $afterKeyRange.Find.Text = $underscorePattern
+                    $afterKeyRange.Find.MatchWildcards = $true
                     $foundUl = $afterKeyRange.Find.Execute($underscorePattern, $false, $false, $false, $false, $false, $true, 1, $false, $p.value, 1)
                     if ($foundUl) {
                         $fillResult = "Filled underline after '$($p.keyword)' with '$($p.value)'"

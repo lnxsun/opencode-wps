@@ -2,14 +2,22 @@
  * Input: 数据处理工具参数
  * Output: 读写/清洗结果
  * Pos: Excel 数据处理工具实现。一旦我被修改，请更新我的头部注释，以及所属文件夹的md。
- * Excel数据处理Tools - 老王的数据清洗神器
- * 处理那些乱七八糟的数据，去重、去空格、格式统一等
+ * Excel数据处理Tools - 数据读写与清洗模块
+ * 处理数据的读取、写入、去重、去空格、格式统一等操作
  *
  * 包含：
  * - wps_excel_read_range: 读取指定范围数据
  * - wps_excel_write_range: 写入数据到指定范围
  * - wps_excel_clean_data: 数据清洗（核心功能）
  * - wps_excel_remove_duplicates: 删除重复行
+ * - wps_excel_sort_range: 对选定区域排序
+ * - wps_excel_find_replace: 查找并替换内容
+ * - wps_excel_insert_row: 插入行
+ * - wps_excel_add_comment: 给单元格添加批注
+ * - wps_excel_protect_sheet: 保护/取消保护工作表
+ * - wps_excel_set_conditional_format: 设置条件格式
+ * - wps_excel_protect_workbook: 保护/取消保护工作簿
+ * - wps_excel_set_zoom: 设置工作表缩放比例
  */
 
 import { v4 as uuidv4 } from 'uuid';
@@ -25,7 +33,6 @@ import { WpsAppType } from '../../types/wps';
 
 /**
  * 读取指定范围的单元格数据
- * 先读后写，老王的原则是搞清楚数据长啥样再动手
  */
 export const readRangeDefinition: ToolDefinition = {
   name: 'wps_excel_read_range',
@@ -157,7 +164,7 @@ export const writeRangeHandler: ToolHandler = async (
     return {
       id: uuidv4(),
       success: false,
-      content: [{ type: 'text', text: '数据不能为空，给我整点实际的！' }],
+      content: [{ type: 'text', text: '写入数据不能为空，请提供有效的二维数组数据' }],
       error: '数据为空',
     };
   }
@@ -197,7 +204,7 @@ export const writeRangeHandler: ToolHandler = async (
 
 /**
  * 数据清洗工具
- * 这是老王的得意之作，一键处理那些乱七八糟的脏数据
+ * 一键处理脏数据，支持多种清洗操作组合
  */
 export const cleanDataDefinition: ToolDefinition = {
   name: 'wps_excel_clean_data',
@@ -410,6 +417,318 @@ export const removeDuplicatesHandler: ToolHandler = async (
 };
 
 /**
+ * 对选定区域排序
+ */
+export const sortRangeDefinition: ToolDefinition = {
+  name: 'wps_excel_sort_range',
+  description: '对Excel选定区域按指定列排序。',
+  category: ToolCategory.SPREADSHEET,
+  inputSchema: {
+    type: 'object',
+    properties: {
+      range: { type: 'string', description: '要排序的范围，如 A1:D100' },
+      column: { type: 'number', description: '排序依据的列号（从1开始）' },
+      ascending: { type: 'boolean', description: '是否升序，默认true' },
+    },
+    required: ['range', 'column'],
+  },
+};
+
+export const sortRangeHandler: ToolHandler = async (
+  args: Record<string, unknown>
+): Promise<ToolCallResult> => {
+  const { range, column, ascending } = args as {
+    range: string;
+    column: number;
+    ascending?: boolean;
+  };
+  try {
+    const response = await wpsClient.executeMethod<{ message: string }>(
+      'sortRange',
+      { range, column, ascending: ascending !== false },
+      WpsAppType.SPREADSHEET
+    );
+    if (!response.success) {
+      return { id: uuidv4(), success: false, content: [{ type: 'text', text: `排序失败: ${response.error}` }], error: response.error };
+    }
+    return { id: uuidv4(), success: true, content: [{ type: 'text', text: `排序完成！范围: ${range}，按第${column}列${ascending !== false ? '升序' : '降序'}` }] };
+  } catch (error) {
+    const errMsg = error instanceof Error ? error.message : String(error);
+    return { id: uuidv4(), success: false, content: [{ type: 'text', text: `排序出错: ${errMsg}` }], error: errMsg };
+  }
+};
+
+/**
+ * 查找并替换内容
+ */
+export const findReplaceDefinition: ToolDefinition = {
+  name: 'wps_excel_find_replace',
+  description: '在Excel中查找并替换内容。',
+  category: ToolCategory.SPREADSHEET,
+  inputSchema: {
+    type: 'object',
+    properties: {
+      find: { type: 'string', description: '要查找的文本' },
+      replace: { type: 'string', description: '替换为的文本' },
+      matchCase: { type: 'boolean', description: '是否区分大小写，默认false' },
+    },
+    required: ['find', 'replace'],
+  },
+};
+
+export const findReplaceHandler: ToolHandler = async (
+  args: Record<string, unknown>
+): Promise<ToolCallResult> => {
+  const { find, replace, matchCase } = args as {
+    find: string;
+    replace: string;
+    matchCase?: boolean;
+  };
+  try {
+    const response = await wpsClient.executeMethod<{ count: number; message: string }>(
+      'findReplace',
+      { find, replace, matchCase: matchCase || false },
+      WpsAppType.SPREADSHEET
+    );
+    if (!response.success) {
+      return { id: uuidv4(), success: false, content: [{ type: 'text', text: `查找替换失败: ${response.error}` }], error: response.error };
+    }
+    const count = response.data?.count || 0;
+    return { id: uuidv4(), success: true, content: [{ type: 'text', text: `查找替换完成！将"${find}"替换为"${replace}"，共替换${count}处` }] };
+  } catch (error) {
+    const errMsg = error instanceof Error ? error.message : String(error);
+    return { id: uuidv4(), success: false, content: [{ type: 'text', text: `查找替换出错: ${errMsg}` }], error: errMsg };
+  }
+};
+
+/**
+ * 插入行
+ */
+export const insertRowDefinition: ToolDefinition = {
+  name: 'wps_excel_insert_row',
+  description: '在Excel中插入行。',
+  category: ToolCategory.SPREADSHEET,
+  inputSchema: {
+    type: 'object',
+    properties: {
+      row: { type: 'number', description: '在第几行前插入（从1开始）' },
+      count: { type: 'number', description: '插入行数，默认1' },
+    },
+    required: ['row'],
+  },
+};
+
+export const insertRowHandler: ToolHandler = async (
+  args: Record<string, unknown>
+): Promise<ToolCallResult> => {
+  const { row, count } = args as { row: number; count?: number };
+  const insertCount = count || 1;
+  try {
+    const response = await wpsClient.executeMethod<{ message: string }>(
+      'insertRows',
+      { row, count: insertCount },
+      WpsAppType.SPREADSHEET
+    );
+    if (!response.success) {
+      return { id: uuidv4(), success: false, content: [{ type: 'text', text: `插入行失败: ${response.error}` }], error: response.error };
+    }
+    return { id: uuidv4(), success: true, content: [{ type: 'text', text: `插入行完成！在第${row}行前插入了${insertCount}行` }] };
+  } catch (error) {
+    const errMsg = error instanceof Error ? error.message : String(error);
+    return { id: uuidv4(), success: false, content: [{ type: 'text', text: `插入行出错: ${errMsg}` }], error: errMsg };
+  }
+};
+
+/**
+ * 给单元格添加批注
+ */
+export const addCommentDefinition: ToolDefinition = {
+  name: 'wps_excel_add_comment',
+  description: '给单元格添加批注。',
+  category: ToolCategory.SPREADSHEET,
+  inputSchema: {
+    type: 'object',
+    properties: {
+      cell: { type: 'string', description: '单元格地址，如 A1、B2' },
+      comment: { type: 'string', description: '批注内容' },
+    },
+    required: ['cell', 'comment'],
+  },
+};
+
+export const addCommentHandler: ToolHandler = async (
+  args: Record<string, unknown>
+): Promise<ToolCallResult> => {
+  const { cell, comment } = args as { cell: string; comment: string };
+  try {
+    const response = await wpsClient.executeMethod<{ message: string }>(
+      'addComment',
+      { cell, comment },
+      WpsAppType.SPREADSHEET
+    );
+    if (!response.success) {
+      return { id: uuidv4(), success: false, content: [{ type: 'text', text: `添加批注失败: ${response.error}` }], error: response.error };
+    }
+    return { id: uuidv4(), success: true, content: [{ type: 'text', text: `批注添加成功！单元格: ${cell}` }] };
+  } catch (error) {
+    const errMsg = error instanceof Error ? error.message : String(error);
+    return { id: uuidv4(), success: false, content: [{ type: 'text', text: `添加批注出错: ${errMsg}` }], error: errMsg };
+  }
+};
+
+/**
+ * 保护/取消保护工作表
+ */
+export const protectSheetDefinition: ToolDefinition = {
+  name: 'wps_excel_protect_sheet',
+  description: '保护或取消保护工作表。',
+  category: ToolCategory.SPREADSHEET,
+  inputSchema: {
+    type: 'object',
+    properties: {
+      password: { type: 'string', description: '保护密码（可选）' },
+      protect: { type: 'boolean', description: '是否保护，默认true' },
+    },
+    required: [],
+  },
+};
+
+export const protectSheetHandler: ToolHandler = async (
+  args: Record<string, unknown>
+): Promise<ToolCallResult> => {
+  const { password, protect } = args as { password?: string; protect?: boolean };
+  const doProtect = protect !== false;
+  try {
+    const response = await wpsClient.executeMethod<{ message: string }>(
+      'protectSheet',
+      { password, protect: doProtect },
+      WpsAppType.SPREADSHEET
+    );
+    if (!response.success) {
+      return { id: uuidv4(), success: false, content: [{ type: 'text', text: `${doProtect ? '保护' : '取消保护'}工作表失败: ${response.error}` }], error: response.error };
+    }
+    return { id: uuidv4(), success: true, content: [{ type: 'text', text: `工作表${doProtect ? '保护' : '取消保护'}成功！` }] };
+  } catch (error) {
+    const errMsg = error instanceof Error ? error.message : String(error);
+    return { id: uuidv4(), success: false, content: [{ type: 'text', text: `${doProtect ? '保护' : '取消保护'}工作表出错: ${errMsg}` }], error: errMsg };
+  }
+};
+
+/**
+ * 设置条件格式
+ */
+export const setConditionalFormatDefinition: ToolDefinition = {
+  name: 'wps_excel_set_conditional_format',
+  description: '设置条件格式。',
+  category: ToolCategory.SPREADSHEET,
+  inputSchema: {
+    type: 'object',
+    properties: {
+      range: { type: 'string', description: '要设置条件格式的范围，如 A1:D100' },
+      condition: { type: 'string', description: '条件表达式，如 ">100"、"=0"、"between(1,10)"' },
+      format: { type: 'string', description: '格式描述，如 "red_fill"、"bold"、"green_font"' },
+    },
+    required: ['range', 'condition', 'format'],
+  },
+};
+
+export const setConditionalFormatHandler: ToolHandler = async (
+  args: Record<string, unknown>
+): Promise<ToolCallResult> => {
+  const { range, condition, format } = args as { range: string; condition: string; format: string };
+  try {
+    const response = await wpsClient.executeMethod<{ message: string }>(
+      'addConditionalFormat',
+      { range, condition, format },
+      WpsAppType.SPREADSHEET
+    );
+    if (!response.success) {
+      return { id: uuidv4(), success: false, content: [{ type: 'text', text: `设置条件格式失败: ${response.error}` }], error: response.error };
+    }
+    return { id: uuidv4(), success: true, content: [{ type: 'text', text: `条件格式设置成功！范围: ${range}，条件: ${condition}，格式: ${format}` }] };
+  } catch (error) {
+    const errMsg = error instanceof Error ? error.message : String(error);
+    return { id: uuidv4(), success: false, content: [{ type: 'text', text: `设置条件格式出错: ${errMsg}` }], error: errMsg };
+  }
+};
+
+/**
+ * 保护/取消保护工作簿
+ */
+export const protectWorkbookDefinition: ToolDefinition = {
+  name: 'wps_excel_protect_workbook',
+  description: '保护或取消保护工作簿，防止结构被修改（如添加/删除工作表）。',
+  category: ToolCategory.SPREADSHEET,
+  inputSchema: {
+    type: 'object',
+    properties: {
+      password: { type: 'string', description: '保护密码' },
+      protect: { type: 'boolean', description: '是否保护，true为保护，false为取消保护' },
+    },
+    required: ['password', 'protect'],
+  },
+};
+
+export const protectWorkbookHandler: ToolHandler = async (
+  args: Record<string, unknown>
+): Promise<ToolCallResult> => {
+  const { password, protect } = args as { password: string; protect: boolean };
+  try {
+    const response = await wpsClient.executeMethod<{ message: string }>(
+      'protectWorkbook',
+      { password, protect },
+      WpsAppType.SPREADSHEET
+    );
+    if (!response.success) {
+      return { id: uuidv4(), success: false, content: [{ type: 'text', text: `${protect ? '保护' : '取消保护'}工作簿失败: ${response.error}` }], error: response.error };
+    }
+    return { id: uuidv4(), success: true, content: [{ type: 'text', text: `工作簿${protect ? '保护' : '取消保护'}成功！` }] };
+  } catch (error) {
+    const errMsg = error instanceof Error ? error.message : String(error);
+    return { id: uuidv4(), success: false, content: [{ type: 'text', text: `${protect ? '保护' : '取消保护'}工作簿出错: ${errMsg}` }], error: errMsg };
+  }
+};
+
+/**
+ * 设置工作表缩放比例
+ */
+export const setZoomDefinition: ToolDefinition = {
+  name: 'wps_excel_set_zoom',
+  description: '设置当前工作表的缩放比例（10-400%）。',
+  category: ToolCategory.SPREADSHEET,
+  inputSchema: {
+    type: 'object',
+    properties: {
+      percent: { type: 'number', description: '缩放百分比，范围10-400' },
+    },
+    required: ['percent'],
+  },
+};
+
+export const setZoomHandler: ToolHandler = async (
+  args: Record<string, unknown>
+): Promise<ToolCallResult> => {
+  const { percent } = args as { percent: number };
+  if (percent < 10 || percent > 400) {
+    return { id: uuidv4(), success: false, content: [{ type: 'text', text: '缩放比例必须在10-400之间' }], error: '缩放比例超出范围' };
+  }
+  try {
+    const response = await wpsClient.executeMethod<{ message: string }>(
+      'setZoom', // NOTE: macOS未实现，仅Windows支持
+      { percent },
+      WpsAppType.SPREADSHEET
+    );
+    if (!response.success) {
+      return { id: uuidv4(), success: false, content: [{ type: 'text', text: `设置缩放失败: ${response.error}` }], error: response.error };
+    }
+    return { id: uuidv4(), success: true, content: [{ type: 'text', text: `缩放比例已设置为${percent}%` }] };
+  } catch (error) {
+    const errMsg = error instanceof Error ? error.message : String(error);
+    return { id: uuidv4(), success: false, content: [{ type: 'text', text: `设置缩放出错: ${errMsg}` }], error: errMsg };
+  }
+};
+
+/**
  * 导出所有数据处理相关的Tools
  */
 export const dataTools: RegisteredTool[] = [
@@ -417,6 +736,14 @@ export const dataTools: RegisteredTool[] = [
   { definition: writeRangeDefinition, handler: writeRangeHandler },
   { definition: cleanDataDefinition, handler: cleanDataHandler },
   { definition: removeDuplicatesDefinition, handler: removeDuplicatesHandler },
+  { definition: sortRangeDefinition, handler: sortRangeHandler },
+  { definition: findReplaceDefinition, handler: findReplaceHandler },
+  { definition: insertRowDefinition, handler: insertRowHandler },
+  { definition: addCommentDefinition, handler: addCommentHandler },
+  { definition: protectSheetDefinition, handler: protectSheetHandler },
+  { definition: setConditionalFormatDefinition, handler: setConditionalFormatHandler },
+  { definition: protectWorkbookDefinition, handler: protectWorkbookHandler },
+  { definition: setZoomDefinition, handler: setZoomHandler },
 ];
 
 export default dataTools;

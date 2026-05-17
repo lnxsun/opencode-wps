@@ -123,12 +123,14 @@ describe('ToolRegistry', () => {
       expect(registry.size).toBe(1);
     });
 
-    it('重复注册同名Tool应该抛出错误', () => {
+    it('重复注册同名Tool应该跳过而非崩溃', () => {
       registry.register(testToolDefinition, testHandler);
-
+      // 重复注册应该跳过（warn 日志），而不是抛出异常
       expect(() => {
         registry.register(testToolDefinition, testHandler);
-      }).toThrow();
+      }).not.toThrow();
+      // 工具数量应该仍然只有 1 个
+      expect(registry.size).toBe(1);
     });
 
     it('应该正确分类Tool', () => {

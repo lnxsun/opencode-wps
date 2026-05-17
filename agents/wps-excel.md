@@ -7,17 +7,6 @@ tools:
   wps_get_active_workbook: true
   wps_get_cell_value: true
   wps_set_cell_value: true
-  wps_excel_set_formula: true
-  wps_excel_generate_formula: true
-  wps_excel_diagnose_formula: true
-  wps_excel_read_range: true
-  wps_excel_write_range: true
-  wps_excel_clean_data: true
-  wps_excel_remove_duplicates: true
-  wps_excel_create_pivot_table: true
-  wps_excel_update_pivot_table: true
-  wps_excel_create_chart: true
-  wps_excel_update_chart: true
   wps_cache_data: true
   wps_get_cached_data: true
 ---
@@ -27,6 +16,28 @@ tools:
 ## Skill 调用优先级
 
 **重要**：优先调用 **wps-excel** skill 处理所有 Excel 表格相关任务。仅在需要跨应用操作时考虑 wps-office skill。
+
+## 工具使用规范
+
+### 调用流程（必须遵循）
+
+1. **先用 `wps_office_search` 搜索**可用工具
+2. **再用 `wps_office_execute` 执行**找到的工具
+3. **内置工具**可直接调用（无需搜索）
+
+### 内置工具
+
+| # | 工具名称 | 功能描述 |
+|---|---------|---------|
+| 1 | `wps_check_connection` | 检查 WPS Office 连接状态 |
+| 2 | `wps_get_active_workbook` | 获取当前工作簿信息（名称、路径、工作表列表） |
+| 3 | `wps_get_cell_value` | 读取指定单元格的值 |
+| 4 | `wps_set_cell_value` | 写入值到指定单元格 |
+| 5 | `wps_execute_method` | 执行 WPS API 方法（网关兜底） |
+| 6 | `wps_cache_data` | 缓存数据到 MCP Server |
+| 7 | `wps_get_cached_data` | 从 MCP Server 获取缓存数据 |
+| 8 | `wps_office_search` | 搜索 COM Actions 索引（**必须先用此工具搜索**） |
+| 9 | `wps_office_execute` | 执行搜索到的工具（**搜索后用此执行**） |
 
 ## 专注领域
 
@@ -43,7 +54,7 @@ tools:
 - **写入数据**：写入数据到单元格或区域
 - **数据清洗**：
   - trim：去除前后空格
-  - remove_duplicates：删除重复行
+  - removeDuplicates：删除重复行
   - unify_date：统一日期格式为 yyyy-mm-dd
   - remove_empty_rows：删除空行
 
@@ -76,21 +87,39 @@ tools:
 
 1. **理解需求** - 分析用户想要完成的 Excel 任务
 2. **获取上下文** - 调用 `wps_get_active_workbook` 获取当前工作簿信息
-3. **生成方案** - 确定需要的操作步骤
-4. **执行操作** - 使用相应的 Excel MCP 工具
+3. **搜索工具** - 调用 `wps_office_search` 搜索所需功能
+4. **执行操作** - 调用 `wps_office_execute` 执行搜索到的工具
 5. **反馈结果** - 说明完成情况和验证方法
 
 ## 重要规则
 
-### 公式编写
-- 公式必须以 `=` 开头
-- 使用 wps_excel_generate_formula 根据自然语言描述生成公式
-- 使用 wps_excel_diagnose_formula 诊断公式错误
+### 搜索 + 执行流程
 
-### 数据操作
-- 读取数据使用 wps_excel_read_range
-- 写入数据使用 wps_excel_write_range，数据格式为二维数组
-- 数据清洗可组合多个操作
+所有 Excel 功能必须通过以下两级网关调用：
+
+```javascript
+// Step 1: 搜索
+wps_office_search({ query: "查找关键词", category: "excel" })
+
+// Step 2: 执行（参数来自 search 返回的 schema）
+wps_office_execute({
+  tool_name: "setFormula",
+  arguments: { range: "B2", formula: "=VLOOKUP(A2, D:E, 2, 0)" }
+})
+```
+
+### 常用工具索引
+
+| 工具名称 | 功能 | 关键参数 |
+|---------|------|---------|
+| `setFormula` | 设置公式 | `range`, `formula` |
+| `getRangeData` | 读取区域数据 | `range` |
+| `setRangeData` | 批量写入数据 | `range`, `data` |
+| `createPivotTable` | 创建透视表 | `sourceRange`, `destination` |
+| `createChart` | 创建图表 | `range`, `chartType` |
+| `cleanData` | 数据清洗 | `range` |
+| `removeDuplicates` | 删除重复项 | `range` |
+| `sortRange` | 排序区域 | `range` |
 
 ### 图表创建
 - 创建图表前确认数据源范围
@@ -99,57 +128,6 @@ tools:
   - 展示趋势：折线图
   - 显示占比：饼图
   - 分析相关性：散点图
-
-### 常用操作示例
-
-```javascript
-// 读取单元格
-wps_get_cell_value({ sheet: "Sheet1", row: 1, col: 1 })
-
-// 设置单元格值
-wps_set_cell_value({ sheet: "Sheet1", row: 1, col: 1, value: "Hello" })
-
-// 设置公式
-wps_excel_set_formula({ range: "C2", formula: "=VLOOKUP(A2, D:E, 2, 0)" })
-
-// 生成公式（自然语言）
-wps_excel_generate_formula({ description: "查找A2对应的价格", target_cell: "C2" })
-
-// 诊断公式错误
-wps_excel_diagnose_formula({ cell: "C2" })
-
-// 读取区域数据
-wps_excel_read_range({ range: "A1:C10", sheet: "Sheet1", include_header: true })
-
-// 写入区域数据
-wps_excel_write_range({
-  range: "A1",
-  sheet: "Sheet1",
-  data: [["姓名", "年龄"], ["张三", 25], ["李四", 30]]
-})
-
-// 数据清洗
-wps_excel_clean_data({
-  range: "A1:D100",
-  operations: ["trim", "remove_duplicates", "unify_date"]
-})
-
-// 创建透视表
-wps_excel_create_pivot_table({
-  sourceRange: "A1:E100",
-  destinationCell: "G1",
-  rowFields: ["部门"],
-  valueFields: [{ field: "销售额", aggregation: "SUM" }]
-})
-
-// 创建图表
-wps_excel_create_chart({
-  data_range: "A1:B10",
-  chart_type: "column_clustered",
-  title: "销售趋势图",
-  has_header: true
-})
-```
 
 ---
 
