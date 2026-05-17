@@ -58,6 +58,7 @@ const VERIFIED_TOOLS = new Set([
   'insertTable', 'insertImage', 'setPageSetup', 'insertHeader', 'insertFooter',
   'insertHyperlink', 'insertPageBreak', 'setHyperlink',
   'smartFillField', 'addComment', 'getComments', 'afterColon', 'afterLabel', 'insertText',
+  'switchDocument', 'getOpenDocuments',
   // === Excel ===
   'getActiveWorkbook', 'getCellValue', 'setCellValue', 'getRangeData', 'setRangeData',
   'setFormula', 'getFormula', 'setArrayFormula', 'diagnoseFormula',
