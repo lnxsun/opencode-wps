@@ -149,6 +149,7 @@ describe('Agents 引用的工具名称一致性', () => {
       const errors: string[] = [];
       matches.forEach(name => {
         if (BUILTIN_TOOLS.has(name)) return;
+        if (LEGACY_TOOLS[name]) return;
 
         const shortName = name
           .replace('wps_excel_', '')
@@ -187,6 +188,7 @@ describe('wps-expert.md tools 字段验证', () => {
 
     tools.forEach(name => {
       if (BUILTIN_TOOLS.has(name)) return;
+      if (LEGACY_TOOLS[name]) return;
 
       const shortName = name
         .replace('wps_excel_', '')

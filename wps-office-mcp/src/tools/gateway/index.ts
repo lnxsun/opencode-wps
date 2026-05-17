@@ -350,14 +350,14 @@ const COM_ACTIONS: ToolIndexItem[] = [
   { name: 'switchDocument', description: '切换文档', keywords: ['切换'], category: 'common', appType: WpsAppType.WRITER, paramsSchema: {} },
   { name: 'switchPresentation', description: '切换演示文稿', keywords: ['切换'], category: 'common', appType: WpsAppType.PRESENTATION, paramsSchema: {} },
   { name: 'switchWorkbook', description: '切换工作簿', keywords: ['切换'], category: 'common', appType: WpsAppType.SPREADSHEET, paramsSchema: {} },
-  { name: 'ping', description: '检测连接', keywords: ['检测'], category: 'common', appType: WpsAppType.WRITER, paramsSchema: {} },
-  { name: 'wireCheck', description: '检测连接', keywords: ['检测'], category: 'common', appType: WpsAppType.WRITER, paramsSchema: {} },
+  { name: 'ping', description: '检测 MCP Server 连接状态', keywords: ['检测', 'ping', '连接'], category: 'common', appType: WpsAppType.WRITER, paramsSchema: {} },
+  { name: 'wireCheck', description: '检测 WPS COM 连接状态', keywords: ['检测', 'COM', '连接'], category: 'common', appType: WpsAppType.WRITER, paramsSchema: {} },
   { name: 'placeholder', description: '占位符', keywords: ['占位符'], category: 'common', appType: WpsAppType.WRITER, paramsSchema: {} },
   { name: 'trim', description: '去除前后空格', keywords: ['空格'], category: 'common', appType: WpsAppType.WRITER, paramsSchema: {} },
   { name: 'underline', description: '添加下划线', keywords: ['下划线'], category: 'common', appType: WpsAppType.WRITER, paramsSchema: {} },
   { name: 'remove_duplicates', description: '删除重复行（cleanData 子命令）', keywords: ['去重', '重复行'], category: 'excel', appType: WpsAppType.SPREADSHEET, paramsSchema: { range: { type: 'string', description: '区域', required: true } } },
   { name: 'unify_date', description: '统一日期格式（cleanData 子命令）', keywords: ['日期', '统一'], category: 'excel', appType: WpsAppType.SPREADSHEET, paramsSchema: { range: { type: 'string', description: '区域', required: true } } },
-  { name: 'closeWorkbook', description: '保存工作簿', keywords: ['工作簿', '关闭'], category: 'excel', appType: WpsAppType.SPREADSHEET, paramsSchema: { save: { type: 'boolean', description: '是否保存', required: false } } },
+  { name: 'closeWorkbook', description: '关闭工作簿（可选择是否保存）', keywords: ['工作簿', '关闭', '保存'], category: 'excel', appType: WpsAppType.SPREADSHEET, paramsSchema: { save: { type: 'boolean', description: '保存后再关闭', required: false } } },
   // Export 工具
   { name: 'exportChartAsImage', description: '将图表导出为位图图片（PNG/JPG/GIF/BMP）', keywords: ['图表', '导出', '图片'], category: 'excel', appType: WpsAppType.SPREADSHEET, paramsSchema: { chartName: { type: 'string', description: '图表名称', required: true }, outputPath: { type: 'string', description: '输出路径', required: true }, format: { type: 'string', description: '图片格式', required: false }, sheet: { type: 'string', description: '工作表', required: false } } },
   { name: 'exportRangeAsImage', description: '将区域导出为位图图片（PNG/JPG/GIF/BMP）', keywords: ['区域', '导出', '图片'], category: 'excel', appType: WpsAppType.SPREADSHEET, paramsSchema: { range: { type: 'string', description: '区域地址', required: true }, outputPath: { type: 'string', description: '输出路径', required: true }, format: { type: 'string', description: '图片格式', required: false }, sheet: { type: 'string', description: '工作表', required: false } } },
@@ -405,9 +405,11 @@ export function searchTools(options: SearchOptions): SearchResult {
     filtered = filtered.sort((a, b) => {
       const aExact = a.name.toLowerCase() === q ? 1 : 0;
       const bExact = b.name.toLowerCase() === q ? 1 : 0;
+      if (aExact !== bExact) return bExact - aExact;
       const aStart = a.name.toLowerCase().startsWith(q) ? 1 : 0;
       const bStart = b.name.toLowerCase().startsWith(q) ? 1 : 0;
-      return bExact - aExact + bStart - aStart;
+      if (aStart !== bStart) return bStart - aStart;
+      return a.name.localeCompare(b.name);
     });
   }
   const results = filtered.slice(0, limit).map(tool => ({
