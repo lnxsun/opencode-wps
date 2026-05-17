@@ -26,8 +26,8 @@ import { wpsClient } from '../../client/wps-client';
 const mockedWpsClient = wpsClient as jest.Mocked<typeof wpsClient>;
 
 describe('TOOLS_INDEX 完整性验证', () => {
-    it('索引数量应为 237 个', () => {
-      expect(TOOLS_INDEX.length).toBe(237);
+    it('索引数量应为 240 个', () => {
+      expect(TOOLS_INDEX.length).toBe(240);
     });
 
   it('索引名称应该唯一（无重复）', () => {

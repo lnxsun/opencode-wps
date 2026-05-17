@@ -1,6 +1,6 @@
 /**
  * WPS Office COM Actions 索引
- * 共 236 个 COM Actions
+ * 共 239 个 COM Actions
  *
  * 工具名称映射说明：
  * - Gateway 使用短名称（如 setFont、addSlide）进行索引和搜索
@@ -104,6 +104,8 @@ const VERIFIED_TOOLS = new Set([
   'addTitleDecoration', 'addPageIndicator', 'addMasterElement',
   'startSlideShow', 'endSlideShow', 'autoLayout', 'smartDistribute',
   'create3DText', 'set3DDepth', 'set3DMaterial', 'set3DRotation',
+  // Export 工具 (Issue #15)
+  'exportChartAsImage', 'exportRangeAsImage', 'exportSlideAsImage',
 ]);
 
 // 计算索引中每个工具的验证状态
@@ -356,6 +358,10 @@ const COM_ACTIONS: ToolIndexItem[] = [
   { name: 'remove_duplicates', description: '删除重复行（cleanData 子命令）', keywords: ['去重', '重复行'], category: 'excel', appType: WpsAppType.SPREADSHEET, paramsSchema: { range: { type: 'string', description: '区域', required: true } } },
   { name: 'unify_date', description: '统一日期格式（cleanData 子命令）', keywords: ['日期', '统一'], category: 'excel', appType: WpsAppType.SPREADSHEET, paramsSchema: { range: { type: 'string', description: '区域', required: true } } },
   { name: 'closeWorkbook', description: '保存工作簿', keywords: ['工作簿', '关闭'], category: 'excel', appType: WpsAppType.SPREADSHEET, paramsSchema: { save: { type: 'boolean', description: '是否保存', required: false } } },
+  // Export 工具
+  { name: 'exportChartAsImage', description: '将图表导出为位图图片（PNG/JPG/GIF/BMP）', keywords: ['图表', '导出', '图片'], category: 'excel', appType: WpsAppType.SPREADSHEET, paramsSchema: { chartName: { type: 'string', description: '图表名称', required: true }, outputPath: { type: 'string', description: '输出路径', required: true }, format: { type: 'string', description: '图片格式', required: false }, sheet: { type: 'string', description: '工作表', required: false } } },
+  { name: 'exportRangeAsImage', description: '将区域导出为位图图片（PNG/JPG/GIF/BMP）', keywords: ['区域', '导出', '图片'], category: 'excel', appType: WpsAppType.SPREADSHEET, paramsSchema: { range: { type: 'string', description: '区域地址', required: true }, outputPath: { type: 'string', description: '输出路径', required: true }, format: { type: 'string', description: '图片格式', required: false }, sheet: { type: 'string', description: '工作表', required: false } } },
+  { name: 'exportSlideAsImage', description: '将幻灯片导出为位图图片（PNG/JPG/GIF/BMP）', keywords: ['幻灯片', '导出', '图片'], category: 'ppt', appType: WpsAppType.PRESENTATION, paramsSchema: { slideIndex: { type: 'number', description: '页码', required: true }, outputPath: { type: 'string', description: '输出路径', required: true }, format: { type: 'string', description: '图片格式', required: false }, width: { type: 'number', description: '宽度', required: false }, height: { type: 'number', description: '高度', required: false } } },
 ];
 
 export const TOOLS_INDEX: ToolIndexItem[] = COM_ACTIONS.map(tool => ({
