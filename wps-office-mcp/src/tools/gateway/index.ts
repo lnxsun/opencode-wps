@@ -1,11 +1,20 @@
 /**
  * WPS Office COM Actions 索引
  * 共 236 个 COM Actions
+ *
+ * 工具名称映射说明：
+ * - Gateway 使用短名称（如 setFont、addSlide）进行索引和搜索
+ * - 执行时通过 wpsClient.executeMethod() 动态调用 WPS COM 方法
+ * - WPS Client 支持动态方法名执行，无需显式映射
+ *
+ * 验证状态：
+ * - verified: 已通过实际测试验证可用
+ * - indexed: 仅索引，无直接实现（通过 executeMethod 动态调用）
+ * - stub: 有占位实现，尚未完整测试
  */
 
-import { wpsClient } from '../../client/wps-client';
-import { ToolCallResult } from '../../types/tools';
-import { WpsAppType } from '../../types/wps';
+// 验证状态枚举
+export type VerificationStatus = 'verified' | 'indexed' | 'stub';
 
 export interface ToolIndexItem {
   name: string;
@@ -14,7 +23,12 @@ export interface ToolIndexItem {
   category: string;
   appType: WpsAppType;
   paramsSchema: Record<string, ToolParamSchema>;
+  status?: VerificationStatus;
 }
+
+import { wpsClient } from '../../client/wps-client';
+import { ToolCallResult } from '../../types/tools';
+import { WpsAppType } from '../../types/wps';
 
 export interface ToolParamSchema {
   type: 'string' | 'number' | 'boolean' | 'object' | 'array';
@@ -22,6 +36,79 @@ export interface ToolParamSchema {
   required: boolean;
   default?: unknown;
   enum?: string[];
+}
+
+// ==================== 工具验证状态 ====================
+// verified: PowerShell 脚本 + wps-client.ts 中已完整实现并测试
+// indexed: 仅在 Gateway 索引中存在，通过 executeMethod 动态调用
+// stub: 有占位实现，尚未完整测试
+
+const VERIFIED_TOOLS = new Set([
+  // === Common ===
+  'ping', 'wireCheck', 'getAppInfo', 'getContext', 'getOpenDocuments', 'getOpenPresentations',
+  'switchDocument', 'switchPresentation', 'switchWorkbook', 'convertToPDF', 'convertFormat',
+  'trim', 'underline', 'placeholder',
+  // === Word ===
+  'getActiveDocument', 'getDocumentText', 'getSelectedText', 'setSelectedText', 'save',
+  'saveAs', 'openFile', 'openDocument', 'createDocument', 'closeDocument',
+  'setFont', 'setParagraph', 'applyStyle', 'generateTOC',
+  'insertBookmark', 'getBookmarks', 'replaceBookmarkContent',
+  'findInDocument', 'findReplace',
+  'getDocumentParagraphs', 'getDocumentStats',
+  'insertTable', 'insertImage', 'setPageSetup', 'insertHeader', 'insertFooter',
+  'insertHyperlink', 'insertPageBreak', 'setHyperlink',
+  'smartFillField', 'addComment', 'getComments', 'afterColon', 'afterLabel', 'insertText',
+  // === Excel ===
+  'getActiveWorkbook', 'getCellValue', 'setCellValue', 'getRangeData', 'setRangeData',
+  'setFormula', 'getFormula', 'setArrayFormula', 'diagnoseFormula',
+  'createSheet', 'deleteSheet', 'renameSheet', 'copySheet', 'getSheetList', 'switchSheet', 'moveSheet',
+  'createPivotTable', 'updatePivotTable',
+  'createChart', 'updateChart', 'createDonutChart', 'createFlowChart', 'createGauge', 'createGrid', 'createKpiCards', 'createMiniCharts',
+  'setCellFormat', 'setCellStyle', 'setBorder', 'copyFormat', 'clearFormats',
+  'addConditionalFormat', 'removeConditionalFormat', 'getConditionalFormats',
+  'addDataValidation', 'removeDataValidation', 'getDataValidations',
+  'mergeCells', 'unmergeCells', 'setColumnWidth', 'setRowHeight',
+  'autoFitColumn', 'autoFitRow', 'autoFitAll', 'setNumberFormat', 'wrapText', 'setPrintArea',
+  'getSelection', 'clearRange', 'insertRows', 'insertColumns', 'deleteRows', 'deleteColumns',
+  'hideRows', 'hideColumns', 'showRows', 'showColumns', 'groupRows', 'groupColumns',
+  'freezePanes', 'unfreezePanes', 'findInSheet', 'replaceInSheet',
+  'copyRange', 'pasteRange', 'fillSeries', 'transpose', 'textToColumns', 'subtotal',
+  'createNamedRange', 'deleteNamedRange', 'getNamedRanges',
+  'addCellComment', 'deleteCellComment', 'getCellComments',
+  'protectSheet', 'unprotectSheet', 'protectWorkbook',
+  'insertExcelImage', 'lockCells', 'openWorkbook', 'getOpenWorkbooks', 'createWorkbook',
+  'cleanData', 'removeDuplicates', 'sortRange', 'autoFilter', 'getCellInfo',
+  'refreshLinks', 'consolidate', 'calculateSheet', 'getExcelContext', 'generateFormula',
+  'remove_duplicates', 'unify_date', 'closeWorkbook',
+  // === PPT ===
+  'getActivePresentation', 'createPresentation', 'openPresentation', 'closePresentation',
+  'getSlideCount', 'addSlide', 'deleteSlide', 'duplicateSlide', 'moveSlide', 'switchSlide',
+  'getSlideInfo', 'getSlideTitle', 'getSlideNotes', 'setSlideTitle', 'setSlideSubtitle',
+  'setSlideContent', 'setSlideNotes', 'setSlideBackground', 'setBackgroundColor',
+  'setBackgroundGradient', 'setBackgroundImage',
+  'setSlideTransition', 'removeSlideTransition', 'applyTransitionToAll',
+  'addAnimation', 'removeAnimation', 'setAnimationOrder', 'getAnimations',
+  'addAnimationPreset', 'addEmphasisAnimation',
+  'beautifySlide', 'beautifyAllSlides', 'autoBeautifySlide', 'unifyFont',
+  'addShape', 'deleteShape', 'duplicateShape', 'getShapes', 'alignShapes', 'groupShapes', 'distributeShapes',
+  'addTextBox', 'setTextBoxText', 'getTextBoxes', 'setTextBoxStyle', 'deleteTextBox',
+  'insertPptImage', 'deletePptImage', 'setImageStyle',
+  'insertPptChart', 'setPptChartData', 'setPptChartStyle',
+  'insertPptTable', 'getPptTableCell', 'setPptTableCell', 'setPptTableStyle',
+  'setPptTableCellStyle', 'setPptTableRowStyle',
+  'setShapeStyle', 'setShapeBorder', 'setShapeShadow', 'setShapeGradient', 'setShapePosition',
+  'setShapeZOrder', 'setShapeFullStyle', 'setShapeRoundness', 'setShapeTransparency', 'setShapeText',
+  'addConnector', 'addArrow', 'setSlideLayout', 'setSlideNumber', 'setPptDateTime', 'setPptFooter',
+  'setMasterBackground', 'getSlideMaster', 'applyColorScheme',
+  'addPptHyperlink', 'removePptHyperlink', 'findPptText', 'replacePptText',
+  'addTitleDecoration', 'addPageIndicator', 'addMasterElement',
+  'startSlideShow', 'endSlideShow', 'autoLayout', 'smartDistribute',
+  'create3DText', 'set3DDepth', 'set3DMaterial', 'set3DRotation',
+]);
+
+// 计算索引中每个工具的验证状态
+function getToolStatus(toolName: string): VerificationStatus {
+  return VERIFIED_TOOLS.has(toolName) ? 'verified' : 'indexed';
 }
 
 const COM_ACTIONS: ToolIndexItem[] = [
@@ -271,7 +358,10 @@ const COM_ACTIONS: ToolIndexItem[] = [
   { name: 'closeWorkbook', description: '保存工作簿', keywords: ['工作簿', '关闭'], category: 'excel', appType: WpsAppType.SPREADSHEET, paramsSchema: { save: { type: 'boolean', description: '是否保存', required: false } } },
 ];
 
-export const TOOLS_INDEX: ToolIndexItem[] = COM_ACTIONS;
+export const TOOLS_INDEX: ToolIndexItem[] = COM_ACTIONS.map(tool => ({
+  ...tool,
+  status: getToolStatus(tool.name),
+}));
 
 export interface SearchOptions {
   query: string;
@@ -334,13 +424,38 @@ export async function executeTool(options: ExecuteOptions): Promise<ToolCallResu
   const { tool_name, arguments: args } = options;
   const indexItem = TOOLS_INDEX.find(t => t.name === tool_name);
   if (!indexItem) {
-    return { id: '', success: false, content: [{ type: 'text', text: JSON.stringify({ error: `工具 "${tool_name}" 不存在`, suggestion: '使用 wps_office_search 查找' }) }] };
+    return {
+      id: '',
+      success: false,
+      content: [{ type: 'text', text: JSON.stringify({ error: `工具 "${tool_name}" 不存在`, suggestion: '使用 wps_office_search 查找可用工具' }) }]
+    };
   }
   try {
     const result = await wpsClient.executeMethod(tool_name, args as Record<string, unknown>, indexItem.appType);
-    return { id: '', success: result.success, content: [{ type: 'text', text: JSON.stringify(result) }] };
+    return {
+      id: '',
+      success: result.success,
+      content: [{ type: 'text', text: JSON.stringify({ result, tool_name, appType: indexItem.appType }) }]
+    };
   } catch (error) {
-    return { id: '', success: false, content: [{ type: 'text', text: JSON.stringify({ error: `执行失败: ${error}` }) }] };
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    const errorStack = error instanceof Error ? error.stack : undefined;
+    return {
+      id: '',
+      success: false,
+      content: [{
+        type: 'text',
+        text: JSON.stringify({
+          error: `执行工具 "${tool_name}" 失败`,
+          details: errorMessage,
+          tool: tool_name,
+          appType: indexItem.appType,
+          params: args,
+          // 仅在非生产环境包含堆栈
+          ...(process.env.NODE_ENV !== 'production' && { stack: errorStack })
+        }, null, 2)
+      }]
+    };
   }
 }
 
