@@ -63,6 +63,8 @@ const HANDLER_PARAM_MAP: Record<string, Record<string, string>> = {
   setFont: { fontName: 'font_name', fontSize: 'font_size' },
   applyStyle: { styleName: 'style_name' },
   beautifySlide: { slideIndex: 'slide_index', colorScheme: 'color_scheme', beautifyAll: 'beautify_all' },
+  findInDocument: { text: 'find_text', matchCase: 'match_case', matchWholeWord: 'match_whole_word', maxResults: 'max_results' },
+  replaceBookmarkContent: { content: 'text' },
 };
 
 // 无工具需要跳过 handler 路由（所有 COM schema 参数名已与 handler inputSchema 对齐）
@@ -87,6 +89,10 @@ for (const tool of allTools) {
 const pdfTool = allTools.find(t => t.definition.name === 'wps_convert_to_pdf');
 if (pdfTool) {
   HANDLER_MAP.set('convertToPDF|wps', pdfTool.handler);
+}
+const paragraphsTool = allTools.find(t => t.definition.name === 'wps_word_get_paragraphs');
+if (paragraphsTool) {
+  HANDLER_MAP.set('getDocumentParagraphs|wps', paragraphsTool.handler);
 }
 
 const VERIFIED_TOOLS = new Set([
