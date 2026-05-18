@@ -52,7 +52,7 @@ jest.mock('../../client/wps-client', () => ({
     insertText: jest.fn().mockResolvedValue(true),
     getCellValue: jest.fn().mockResolvedValue(42),
     setCellValue: jest.fn().mockResolvedValue(true),
-    executeMethod: jest.fn().mockResolvedValue({ success: true }),
+    executeMethod: jest.fn().mockResolvedValue({ success: true, data: { settings: {} } }),
   },
 }));
 

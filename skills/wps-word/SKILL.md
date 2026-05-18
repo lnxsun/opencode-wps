@@ -319,13 +319,13 @@ wps_office_execute({
 ### 页面设置
 | 工具名称 | 功能 | 关键参数 |
 |---------|------|---------|
-| `setPageSetup` | 页面设置 | `pageWidth`, `pageHeight` |
+| `setPageSetup` | 页面设置 | `orientation`, `marginTop`, `marginBottom`, `marginLeft`, `marginRight` |
 
 ### 插入内容
 | 工具名称 | 功能 | 关键参数 |
 |---------|------|---------|
 | `insertTable` | 插入表格 | `rows`, `cols` |
-| `insertImage` | 插入图片 | `filePath` |
+| `insertImage` | 插入图片 | `imagePath`, `width`, `height` |
 | `insertHyperlink` | 插入超链接 | `text`, `address` |
 | `insertBookmark` | 插入书签 | `name` |
 

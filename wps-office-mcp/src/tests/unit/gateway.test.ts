@@ -195,25 +195,40 @@ describe('executeTool 执行功能', () => {
     expect(result.content[0].text).toContain('不存在');
   });
 
-  it('存在的工具名应调用 wpsClient.executeMethod', async () => {
+  it('存在的工具名, 无对应 TS handler 应透传 PS1', async () => {
     mockedWpsClient.executeMethod.mockResolvedValue({ success: true });
     const result = await executeTool({
-      tool_name: 'setFont',
-      arguments: { fontName: '微软雅黑', fontSize: 12 },
+      tool_name: 'openFile', // openFile ∈ COM_ACTIONS 但无 TS handler
+      arguments: {},
     });
     expect(mockedWpsClient.executeMethod).toHaveBeenCalledWith(
-      'setFont',
-      { fontName: '微软雅黑', fontSize: 12 },
+      'openFile',
+      {},
       expect.anything()
     );
     expect(result.success).toBe(true);
   });
 
-  it('executeMethod 异常应返回失败结果', async () => {
-    mockedWpsClient.executeMethod.mockRejectedValue(new Error('COM Error'));
+  it('存在的工具名, 有对应 TS handler 应走 handler 路径', async () => {
+    mockedWpsClient.executeMethod.mockResolvedValue({ success: true, data: { settings: { fontName: '微软雅黑' } } });
     const result = await executeTool({
       tool_name: 'setFont',
-      arguments: { fontName: '微软雅黑' },
+      arguments: { font_name: '微软雅黑', fontSize: 12 },
+    });
+    // setFont 有 TS handler，handler 内部会调用 wpsClient.executeMethod
+    expect(mockedWpsClient.executeMethod).toHaveBeenCalledWith(
+      'setFont',
+      expect.objectContaining({ fontName: '微软雅黑' }),
+      expect.anything()
+    );
+    expect(result.success).toBe(true);
+  });
+
+  it('无 TS handler 的工具 executeMethod 异常应返回失败结果', async () => {
+    mockedWpsClient.executeMethod.mockRejectedValue(new Error('COM Error'));
+    const result = await executeTool({
+      tool_name: 'openFile', // openFile 无 TS handler，走 PS1 兜底
+      arguments: {},
     });
     expect(result.success).toBe(false);
   });
