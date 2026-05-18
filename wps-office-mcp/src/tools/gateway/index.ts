@@ -27,16 +27,44 @@ export interface ToolIndexItem {
 }
 
 import { wpsClient } from '../../client/wps-client';
-import { ToolCallResult, ToolHandler } from '../../types/tools';
+import { ToolCallResult, ToolHandler, ToolInputSchema } from '../../types/tools';
 import { WpsAppType } from '../../types/wps';
 import { allTools } from '../index';
 
 export interface ToolParamSchema {
   type: 'string' | 'number' | 'boolean' | 'object' | 'array';
-  description: string;
+  description?: string;
   required: boolean;
   default?: unknown;
   enum?: string[];
+}
+
+// ==================== Schema 自动生成 ====================
+// 从注册工具定义自动生成 COM_ACTIONS 的 paramsSchema，消除双重定义
+// 纯 PS1 工具（无对应注册工具）仍使用硬编码 paramsSchema 作为兜底
+
+function reverseParamMap(forward: Record<string, string>): Record<string, string> {
+  const rev: Record<string, string> = {};
+  for (const [k, v] of Object.entries(forward)) rev[v] = k;
+  return rev;
+}
+
+function inputSchemaToParamsSchema(
+  inputSchema: ToolInputSchema,
+  revMap?: Record<string, string>
+): Record<string, ToolParamSchema> {
+  const requiredSet = new Set(inputSchema.required || []);
+  const params: Record<string, ToolParamSchema> = {};
+  for (const [key, prop] of Object.entries(inputSchema.properties || {})) {
+    const mappedKey = revMap?.[key] ?? key;
+    params[mappedKey] = {
+      type: prop.type,
+      description: prop.description,
+      required: requiredSet.has(key),
+    };
+    if (prop.enum) params[mappedKey].enum = prop.enum;
+  }
+  return params;
 }
 
 // ==================== 工具验证状态 ====================
@@ -95,6 +123,21 @@ if (pdfTool) {
 const paragraphsTool = allTools.find(t => t.definition.name === 'wps_word_get_paragraphs');
 if (paragraphsTool) {
   HANDLER_MAP.set('getDocumentParagraphs|wps', paragraphsTool.handler);
+}
+
+// 构建 schema 映射表：COM 短名 → paramsSchema
+// 优先从注册工具定义自动生成，消除 COM_ACTIONS 的 paramsSchema 双重定义
+const SCHEMA_MAP = new Map<string, Record<string, ToolParamSchema>>();
+for (const tool of allTools) {
+  const shortName = tool.definition.name.replace(/^wps_(word|excel|ppt|common)_/i, '');
+  const camelName = toCamelCase(shortName);
+  const revMap = reverseParamMap(HANDLER_PARAM_MAP[camelName] || {});
+  const schema = inputSchemaToParamsSchema(tool.definition.inputSchema, revMap);
+  if (Object.keys(schema).length > 0) SCHEMA_MAP.set(camelName, schema);
+}
+if (paragraphsTool) {
+  const schema = inputSchemaToParamsSchema(paragraphsTool.definition.inputSchema);
+  if (Object.keys(schema).length > 0) SCHEMA_MAP.set('getDocumentParagraphs', schema);
 }
 
 const VERIFIED_TOOLS = new Set([
@@ -472,7 +515,7 @@ export function searchTools(options: SearchOptions): SearchResult {
     description: tool.description.split('\n')[0],
     category: tool.category,
     appType: tool.appType,
-    params: tool.paramsSchema,
+    params: SCHEMA_MAP.get(tool.name) ?? tool.paramsSchema,
     example: `wps_office_execute('${tool.name}', {...})`,
   }));
   return { total: filtered.length, results, next_steps: "使用 wps_office_execute 执行" };
