@@ -2191,7 +2191,7 @@ switch ($Action) {
         $doc = $word.ActiveDocument
         if ($null -eq $doc) { Output-Json @{ success = $false; error = "No active document" }; exit }
         if (-not $p.keyword) { Output-Json @{ success = $false; error = "keyword required" }; exit }
-        if (-not $p.value) { Output-Json @{ success = $false; error = "value required" }; exit }
+        if ($null -eq $p.value) { Output-Json @{ success = $false; error = "value required（空字符串将清除该字段内容）" }; exit }
         $fillMode = if ($p.fillMode) { $p.fillMode.ToLower() } else { "auto" }
 
         # Step 1: Find the keyword

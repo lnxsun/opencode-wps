@@ -543,7 +543,7 @@ export async function executeTool(options: ExecuteOptions): Promise<ToolCallResu
   if (handler && !HANDLER_SKIP.has(tool_name)) {
     // 应用逐工具参数名映射（将 COM 参数名转为 handler 期望的参数名）
     const paramMap = HANDLER_PARAM_MAP[tool_name];
-    const mappedArgs = paramMap
+    const mappedArgs = paramMap && Object.keys(paramMap).length > 0
       ? Object.fromEntries(
           Object.entries(args).map(([k, v]) => [paramMap[k] ?? k, v])
         )
