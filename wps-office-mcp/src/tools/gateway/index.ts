@@ -65,6 +65,8 @@ const HANDLER_PARAM_MAP: Record<string, Record<string, string>> = {
   beautifySlide: { slideIndex: 'slide_index', colorScheme: 'color_scheme', beautifyAll: 'beautify_all' },
   findInDocument: { text: 'find_text', matchCase: 'match_case', matchWholeWord: 'match_whole_word', maxResults: 'max_results' },
   replaceBookmarkContent: { content: 'text' },
+  smartFillField: { fillMode: 'fill_mode' },
+  getDocumentParagraphs: { startParagraph: 'start_paragraph', endParagraph: 'end_paragraph' },
 };
 
 // 无工具需要跳过 handler 路由（所有 COM schema 参数名已与 handler inputSchema 对齐）
@@ -185,9 +187,9 @@ const COM_ACTIONS: ToolIndexItem[] = [
   { name: 'insertBookmark', description: '插入书签', keywords: ['书签'], category: 'word', appType: WpsAppType.WRITER, paramsSchema: { name: { type: 'string', description: '书签名称', required: true } } },
   { name: 'getBookmarks', description: '获取文档中所有书签', keywords: ['书签'], category: 'word', appType: WpsAppType.WRITER, paramsSchema: {} },
   { name: 'replaceBookmarkContent', description: '替换书签内容', keywords: ['书签', '替换'], category: 'word', appType: WpsAppType.WRITER, paramsSchema: { name: { type: 'string', description: '书签名称', required: true }, content: { type: 'string', description: '替换内容', required: true } } },
-  { name: 'findInDocument', description: '在文档中查找文本', keywords: ['查找'], category: 'word', appType: WpsAppType.WRITER, paramsSchema: { text: { type: 'string', description: '查找文本', required: true } } },
+  { name: 'findInDocument', description: '在文档中查找文本', keywords: ['查找'], category: 'word', appType: WpsAppType.WRITER, paramsSchema: { text: { type: 'string', description: '查找文本', required: true }, matchCase: { type: 'boolean', description: '区分大小写，默认false', required: false }, matchWholeWord: { type: 'boolean', description: '全词匹配，默认false', required: false }, maxResults: { type: 'number', description: '最大返回结果数，默认10', required: false } } },
   { name: 'findReplace', description: '查找替换', keywords: ['替换'], category: 'word', appType: WpsAppType.WRITER, paramsSchema: { find: { type: 'string', description: '查找内容', required: true }, replace: { type: 'string', description: '替换为', required: true } } },
-  { name: 'getDocumentParagraphs', description: '获取文档段落列表', keywords: ['段落'], category: 'word', appType: WpsAppType.WRITER, paramsSchema: {} },
+  { name: 'getDocumentParagraphs', description: '获取文档段落列表', keywords: ['段落'], category: 'word', appType: WpsAppType.WRITER, paramsSchema: { startParagraph: { type: 'number', description: '起始段落索引（从1开始），默认1', required: false }, endParagraph: { type: 'number', description: '结束段落索引，默认起始+49', required: false } } },
   { name: 'getDocumentStats', description: '获取文档统计信息', keywords: ['统计'], category: 'word', appType: WpsAppType.WRITER, paramsSchema: {} },
   { name: 'insertTable', description: '插入表格', keywords: ['表格'], category: 'word', appType: WpsAppType.WRITER, paramsSchema: { rows: { type: 'number', description: '行数', required: true }, cols: { type: 'number', description: '列数', required: true } } },
   { name: 'insertImage', description: '插入图片', keywords: ['图片'], category: 'word', appType: WpsAppType.WRITER, paramsSchema: { imagePath: { type: 'string', description: '图片文件路径', required: true }, width: { type: 'number', description: '图片宽度（磅），可选', required: false }, height: { type: 'number', description: '图片高度（磅），可选', required: false } } },
@@ -197,7 +199,7 @@ const COM_ACTIONS: ToolIndexItem[] = [
   { name: 'insertHyperlink', description: '插入超链接', keywords: ['超链接'], category: 'word', appType: WpsAppType.WRITER, paramsSchema: { text: { type: 'string', description: '链接文本', required: true }, address: { type: 'string', description: '链接地址', required: true } } },
   { name: 'insertPageBreak', description: '插入分页符', keywords: ['分页'], category: 'word', appType: WpsAppType.WRITER, paramsSchema: {} },
   { name: 'setHyperlink', description: '设置超链接', keywords: ['超链接'], category: 'word', appType: WpsAppType.WRITER, paramsSchema: { text: { type: 'string', description: '链接文本', required: true }, address: { type: 'string', description: '链接地址', required: true } } },
-  { name: 'smartFillField', description: '智能填写模板字段', keywords: ['模板', '填写'], category: 'word', appType: WpsAppType.WRITER, paramsSchema: { keyword: { type: 'string', description: '关键字', required: true }, value: { type: 'string', description: '填写值', required: true } } },
+  { name: 'smartFillField', description: '智能填写模板字段', keywords: ['模板', '填写'], category: 'word', appType: WpsAppType.WRITER, paramsSchema: { keyword: { type: 'string', description: '关键字', required: true }, value: { type: 'string', description: '填写值', required: true }, fillMode: { type: 'string', description: '填写模式: auto(自动), underline(下划线), afterColon(冒号后), afterLabel(标签后), placeholder(占位符)', enum: ['auto', 'underline', 'afterColon', 'afterLabel', 'placeholder'], required: false } } },
   { name: 'addComment', description: '添加批注', keywords: ['批注'], category: 'word', appType: WpsAppType.WRITER, paramsSchema: { text: { type: 'string', description: '批注内容', required: true } } },
   { name: 'getComments', description: '获取文档批注列表', keywords: ['批注'], category: 'word', appType: WpsAppType.WRITER, paramsSchema: {} },
   { name: 'afterColon', description: '冒号后填写', keywords: ['填写', '冒号'], category: 'word', appType: WpsAppType.WRITER, paramsSchema: { value: { type: 'string', description: '填写值', required: true } } },
