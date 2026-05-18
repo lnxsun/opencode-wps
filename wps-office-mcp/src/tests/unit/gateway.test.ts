@@ -26,8 +26,8 @@ import { wpsClient } from '../../client/wps-client';
 const mockedWpsClient = wpsClient as jest.Mocked<typeof wpsClient>;
 
 describe('TOOLS_INDEX 完整性验证', () => {
-    it('索引数量应为 240 个', () => {
-      expect(TOOLS_INDEX.length).toBe(240);
+    it('索引数量应为 238 个', () => {
+      expect(TOOLS_INDEX.length).toBe(238);
     });
 
   it('索引名称应该唯一（无重复）', () => {
@@ -45,9 +45,9 @@ describe('TOOLS_INDEX 完整性验证', () => {
     });
   });
 
-  it('Word 工具应至少有 35 个', () => {
+  it('Word 工具应至少有 33 个', () => {
     const wordTools = TOOLS_INDEX.filter(t => t.category === 'word');
-    expect(wordTools.length).toBeGreaterThanOrEqual(35);
+    expect(wordTools.length).toBeGreaterThanOrEqual(33);
   });
 
   it('Excel 工具应至少有 90 个', () => {

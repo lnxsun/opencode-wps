@@ -340,9 +340,7 @@ wps_office_execute({
 ### 模板填写
 | 工具名称 | 功能 | 关键参数 |
 |---------|------|---------|
-| `smartFillField` | 智能填写字段 | `keyword`, `value` |
-| `afterColon` | 冒号后填写 | `value` |
-| `afterLabel` | 标签后填写 | `value` |
+| `smartFillField` | 智能填写（支持 fillMode: auto/underline/afterColon/afterLabel/placeholder） | `keyword`, `value`, `fillMode` |
 
 ## 注意事项
 

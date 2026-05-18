@@ -1,6 +1,6 @@
 /**
  * WPS Office COM Actions 索引
- * 共 239 个 COM Actions
+ * 共 238 个 COM Actions（afterColon/afterLabel 已移除，改用 smartFillField fillMode）
  *
  * 工具名称映射说明：
  * - Gateway 使用短名称（如 setFont、addSlide）进行索引和搜索
@@ -154,7 +154,7 @@ const VERIFIED_TOOLS = new Set([
   'getDocumentParagraphs', 'getDocumentStats',
   'insertTable', 'insertImage', 'setPageSetup', 'insertHeader', 'insertFooter',
   'insertHyperlink', 'insertPageBreak', 'setHyperlink',
-  'smartFillField', 'addComment', 'getComments', 'afterColon', 'afterLabel', 'insertText',
+  'smartFillField', 'addComment', 'getComments', 'insertText',
   'switchDocument', 'getOpenDocuments',
   // === Excel ===
   'getActiveWorkbook', 'getCellValue', 'setCellValue', 'getRangeData', 'setRangeData',
@@ -245,8 +245,6 @@ const COM_ACTIONS: ToolIndexItem[] = [
   { name: 'smartFillField', description: '智能填写模板字段', keywords: ['模板', '填写'], category: 'word', appType: WpsAppType.WRITER, paramsSchema: { keyword: { type: 'string', description: '关键字', required: true }, value: { type: 'string', description: '填写值', required: true }, fillMode: { type: 'string', description: '填写模式: auto(自动), underline(下划线), afterColon(冒号后), afterLabel(标签后), placeholder(占位符)', enum: ['auto', 'underline', 'afterColon', 'afterLabel', 'placeholder'], required: false } } },
   { name: 'addComment', description: '添加批注', keywords: ['批注'], category: 'word', appType: WpsAppType.WRITER, paramsSchema: { text: { type: 'string', description: '批注内容', required: true } } },
   { name: 'getComments', description: '获取文档批注列表', keywords: ['批注'], category: 'word', appType: WpsAppType.WRITER, paramsSchema: {} },
-  { name: 'afterColon', description: '冒号后填写', keywords: ['填写', '冒号'], category: 'word', appType: WpsAppType.WRITER, paramsSchema: { value: { type: 'string', description: '填写值', required: true } } },
-  { name: 'afterLabel', description: '标签后填写', keywords: ['填写', '标签'], category: 'word', appType: WpsAppType.WRITER, paramsSchema: { value: { type: 'string', description: '填写值', required: true } } },
   { name: 'insertText', description: '插入文本', keywords: ['文本', '插入'], category: 'word', appType: WpsAppType.WRITER, paramsSchema: { text: { type: 'string', description: '文本内容', required: true } } },
 
   // Excel 操作 (~120)
