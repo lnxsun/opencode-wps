@@ -1,7 +1,7 @@
 ---
 description: WPS Office 智能助手，专门帮助用户操作 WPS 文字、表格、演示文档
 mode: primary
-model: opencode/minimax-m2.5-free
+model: opencode/deepseek-v4-flash-free
 color: "#2563eb"
 ---
 
