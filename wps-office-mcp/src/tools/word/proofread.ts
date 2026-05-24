@@ -212,6 +212,33 @@ export const replaceRangeHandler: ToolHandler = async (
     };
   }
 
+  if (typeof start_pos !== 'number' || typeof end_pos !== 'number' || !Number.isInteger(start_pos) || !Number.isInteger(end_pos)) {
+    return {
+      id: uuidv4(),
+      success: false,
+      content: [{ type: 'text', text: '起始和结束位置必须是整数！' }],
+      error: '位置参数类型错误',
+    };
+  }
+
+  if (start_pos < 0 || end_pos < 0) {
+    return {
+      id: uuidv4(),
+      success: false,
+      content: [{ type: 'text', text: '位置参数不能为负数！' }],
+      error: '位置参数为负数',
+    };
+  }
+
+  if (start_pos >= end_pos) {
+    return {
+      id: uuidv4(),
+      success: false,
+      content: [{ type: 'text', text: '起始位置必须小于结束位置！' }],
+      error: '位置范围无效',
+    };
+  }
+
   if (text == null) {
     return {
       id: uuidv4(),
@@ -332,12 +359,12 @@ function runBasicProofreading(text: string, baseOffset: number = 0): ProofreadIs
   const rules: Rule[] = [
     // ===== 的/得/地 混淆 =====
     {
-      pattern: /(狠|很|真|非|极|异|格|大|更|最|顶|十|万、)的(好|坏|快|慢|多|少|高|低|长|短|大|小|厚|薄|深|浅|早|晚|对|像|开心|难过|高兴|努力)/g,
+      pattern: /(狠|很|真|非|极|异|格|大|更|最|顶|十|万)的(好|坏|快|慢|多|少|高|低|长|短|大|小|厚|薄|深|浅|早|晚|对|像|开心|难过|高兴|努力)/g,
       type: '的得混淆',
       getSuggestion: (m) => m.replace('的', '得'),
     },
     {
-      pattern: /动词|形容|努力|飞快|慢慢|静静|默默|悄悄|使劲|不断|不停|一口|一致|大力|全力|肆意|不停的/g,
+      pattern: /(?:(?:动词|形容|努力|飞快|慢慢|静静|默默|悄悄|使劲|不断|不停|一口|一致|大力|全力|肆意)的|不停的)/g,
       type: '的地混淆',
       getSuggestion: (m) => m.replace('的', '地'),
     },
@@ -354,8 +381,10 @@ function runBasicProofreading(text: string, baseOffset: number = 0): ProofreadIs
     },
 
     // ===== 在/再 混淆 =====
+    // 只保留确定性高的替换（在次→再次、在来→再来），
+    // 避免误报正确用法（如"正在做"、"在考虑"）
     {
-      pattern: /在(说|做|写|看|次|来|见|会|考虑|研究|审核|确认|决定)/g,
+      pattern: /在(次|来)/g,
       type: '在再混淆',
       getSuggestion: (m) => '再' + m.substring(1),
     },
@@ -463,8 +492,10 @@ function runBasicProofreading(text: string, baseOffset: number = 0): ProofreadIs
     },
 
     // ===== 常见错别字模式 =====
+    // 即/既混淆：即然→既然（应为"既然"）、即而→既而（应为"既而"）
+    // 但 即使、即便、即刻、即将 等都是正确写法，不替换
     {
-      pattern: /即(然|便|使|刻|时|将|成|而|位|日|夜|早|晚)/g,
+      pattern: /即(然|而)/g,
       type: '即既混淆',
       getSuggestion: (m) => '既' + m.substring(1),
     },
