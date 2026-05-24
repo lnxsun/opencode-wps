@@ -471,7 +471,7 @@ function runBasicProofreading(text: string, baseOffset: number = 0): ProofreadIs
     {
       pattern: /被(广大|众多)所/g,
       type: '句式冗余',
-      getSuggestion: (m) => '被' + m.substring(m.length - 1),
+      getSuggestion: () => '被',
     },
 
     // ===== 过于口语化 =====
@@ -550,9 +550,9 @@ function runBasicProofreading(text: string, baseOffset: number = 0): ProofreadIs
       pattern: /(.然后)/g,
       type: '口语化',
       getSuggestion: (m) => {
-        if (m[1] === '。') return '。随后';
-        if (m[1] === '，') return '，接着';
-        return m[0];
+        if (m[0] === '。') return '。随后';
+        if (m[0] === '，') return '，接着';
+        return m;
       },
     },
     // "就是说"在正式文档中可优化
@@ -567,11 +567,10 @@ function runBasicProofreading(text: string, baseOffset: number = 0): ProofreadIs
       type: '口语化',
       getSuggestion: () => '等',
     },
-    // "特(别|非常)+形容词" → "十分"
     {
       pattern: /特别(好|大|多|快|高|长|重要|明显|突出|优秀)/g,
       type: '口语化',
-      getSuggestion: (m) => '十分' + m[1],
+      getSuggestion: (m) => '十分' + m.substring(2),
     },
 
     // ===== 常见错别字模式 =====
@@ -604,7 +603,7 @@ function runBasicProofreading(text: string, baseOffset: number = 0): ProofreadIs
     {
       pattern: /(知识|所有|著作|专利|商标|许可)(权)力/g,
       type: '法律术语',
-      getSuggestion: (m) => m[0] + '利',
+      getSuggestion: (m) => m.replace(/权力$/, '权利'),
     },
     {
       pattern: /权力(维护|保护|保障|归属)/g,
@@ -774,7 +773,7 @@ function runBasicProofreading(text: string, baseOffset: number = 0): ProofreadIs
     {
       pattern: /以下([一二三四五六七八九十两])(控制|方面|类型|方式|阶段|部分|模块|方法|条件|要求|类别|层次|层面)/g,
       type: '少字',
-      getSuggestion: (m) => m[0].replace(m[1], m[1] + '种'),
+      getSuggestion: (m) => m.replace(/([一二三四五六七八九十两])/, '$1种'),
     },
 
     // ===== 评测/测评 混淆 =====
