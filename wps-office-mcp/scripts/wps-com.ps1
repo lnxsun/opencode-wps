@@ -1857,8 +1857,7 @@ switch ($Action) {
         $doc = $word.ActiveDocument
         if ($null -eq $doc) { Output-Json @{ success = $false; error = "No active document" }; exit }
         $text = $doc.Content.Text
-        if ($text.Length -gt 10000) { $text = $text.Substring(0, 10000) + "...(truncated)" }
-        Output-Json @{ success = $true; data = @{ text = $text; length = $doc.Content.Text.Length } }
+        Output-Json @{ success = $true; data = @{ text = $text; length = $text.Length } }
     }
 
     "getOpenDocuments" {
@@ -2130,7 +2129,7 @@ switch ($Action) {
         $doc = $word.ActiveDocument
         if ($null -eq $doc) { Output-Json @{ success = $false; error = "No active document" }; exit }
         $startIdx = if ($null -ne $p.startParagraph) { [int]$p.startParagraph } else { 1 }
-        $endIdx = if ($null -ne $p.endParagraph) { [int]$p.endParagraph } else { [Math]::Min($doc.Paragraphs.Count, $startIdx + 49) }
+        $endIdx = if ($null -ne $p.endParagraph) { [int]$p.endParagraph } else { [Math]::Min($doc.Paragraphs.Count, $startIdx + 99) }
         if ($endIdx -gt $doc.Paragraphs.Count) { $endIdx = $doc.Paragraphs.Count }
         $paragraphs = @()
         for ($i = $startIdx; $i -le $endIdx; $i++) {
@@ -2138,7 +2137,7 @@ switch ($Action) {
             $text = $para.Range.Text
             # Remove trailing paragraph marks
             $text = $text.TrimEnd("`r`n", "`r", "`n")
-            if ($text.Length -gt 200) { $text = $text.Substring(0, 200) + "..." }
+            if ($text.Length -gt 500) { $text = $text.Substring(0, 500) + "..." }
             $styleName = ""
             try { $styleName = $para.Range.Style.NameLocal } catch { $styleName = "" }
             $paragraphs += @{ index = $i; text = $text; style = $styleName; start = $para.Range.Start; end = $para.Range.End }
@@ -2164,12 +2163,8 @@ switch ($Action) {
             $matchStart = $searchRange.Start
             $matchEnd = $searchRange.End
             $matchText = $searchRange.Text
-            # Find paragraph index
-            $paraIdx = 0
-            for ($pi = 1; $pi -le $doc.Paragraphs.Count; $pi++) {
-                $pr = $doc.Paragraphs.Item($pi).Range
-                if ($matchStart -ge $pr.Start -and $matchStart -le $pr.End) { $paraIdx = $pi; break }
-            }
+            # Find paragraph index: use Range(0, matchStart).Paragraphs.Count (O(1) instead of O(n))
+            $paraIdx = $doc.Range(0, $matchStart).Paragraphs.Count
             # Get context (50 chars before and after)
             $ctxStart = [Math]::Max(0, $matchStart - 50)
             $ctxEnd = [Math]::Min($doc.Content.End, $matchEnd + 50)

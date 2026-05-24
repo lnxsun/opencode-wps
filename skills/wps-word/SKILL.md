@@ -295,7 +295,7 @@ wps_office_execute({
 ### 文本操作
 | 工具名称 | 功能 | 关键参数 |
 |---------|------|---------|
-| `getDocumentText` | 获取文档全文 | - |
+| `getDocumentText` | 获取文档全文（⚠️ 不要将全文显示在回复中，只摘要） | - |
 | `insertText` | 插入文本 | `text` |
 | `findReplace` | 查找替换 | `find`, `replace` |
 | `getDocumentParagraphs` | 获取段落列表 | - |
@@ -369,6 +369,196 @@ wps_office_execute({
 1. **字体兼容**：考虑用户电脑是否安装指定字体
 2. **版本兼容**：考虑不同版本 WPS/Office 的差异
 3. **格式保存**：提醒注意保存格式（.docx/.doc/.wps）
+
+## 5. 文档校对（Proofreading）
+
+**新增 4 个校对专用工具（通过 `wps_office_execute` 调用，无需 search）：**
+
+| # | 工具名称 | 调用方式 | 功能描述 |
+|---|---------|---------|---------|
+| 1 | `enableTrackChanges` | `wps_office_execute({tool_name:"enableTrackChanges", arguments:{enable:true}})` | 开启/关闭修订模式（**校对前必须先开启**） |
+| 2 | `getTrackChangesStatus` | `wps_office_execute({tool_name:"getTrackChangesStatus", arguments:{}})` | 查看修订模式状态和当前修订数量 |
+| 3 | `replaceRange` | `wps_office_execute({tool_name:"replaceRange", arguments:{startPos, endPos, text}})` | 按字符位置范围精确替换文本（修订模式下跟踪） |
+| 4 | `proofreadBasic` | `wps_office_execute({tool_name:"proofreadBasic", arguments:{text, startOffset}})` | **零 token 基础校对**：用正则规则检测错别字/语病 |
+
+### 校对工作流程
+
+当用户说"帮我校对文档"、"检查错别字"、"审校文章"时，采用**交互式分批校对**策略，每轮用户确认后进入下一轮：
+
+```
+┌────────────────────────────────────────────────────────────┐
+│ 第0步：获取文档信息 + 获取全量文本                         │
+│ wps_get_active_document + getDocumentText                   │
+│ 评估文档总字数 → 按上下文限制动态计算每部分大小             │
+├────────────────────────────────────────────────────────────┤
+│ 第1步：开启修订模式                                        │
+│ enableTrackChanges → getTrackChangesStatus 确认             │
+├────────────────────────────────────────────────────────────┤
+│ ┌─ 对每个部分交互进行（共 ? 轮） ───────────────────┐     │
+│ │ 第N轮：MCP 基础校对 + AI 智能校对 + 替换           │     │
+│ │ proofreadBasic(partText) → replaceRange(issues)     │     │
+│ │ 展示本部分结果 + 待用户确认的问题                   │     │
+│ │ 提示"输入「继续」进入第N+1部分"                     │     │
+│ └────────────────────────────────────────────────────┘     │
+├────────────────────────────────────────────────────────────┤
+│ 最后一步：所有部分完成后，生成完整校对报告到文档同目录.md    │
+└────────────────────────────────────────────────────────────┘
+```
+
+### 交互式校对步骤
+
+#### 第0步：获取文档信息和全量文本
+
+```javascript
+// 获取文档基本信息（含 paragraphCount / wordCount）
+const docInfo = wps_get_active_document()
+
+// 获取全量文本（一次获取，后续拆分）
+wps_office_search({ query: "获取文本", category: "word" })
+const fullTextResp = wps_office_execute({ tool_name: "getDocumentText", arguments: {} })
+const fullText = fullTextResp.data.text  // 完整文档内容，段落间用 \r 分隔
+
+// ⚠️ 重要：不要在回复中显示全量文本！fullText 可能几万字，显示它会占满上下文。
+//        只显示摘要信息（字数、段落数），需要展示内容时用小段引述。
+
+// 计算各部分大小：评估文档总量，预留上下文给系统指令和历史对话
+// 规则：每部分 ~3000~5000 字符（约 2000~3500 tokens，留给系统指令和历史的余量）
+//       最少 15 段一部分（避免太碎），最多 30 部分（避免轮次过多）
+const allParas = fullText.split('\r')
+const totalChars = fullText.length
+const charsPerPart = 4000  // 每部分目标字符数，根据模型上下文调整
+let totalParts = Math.ceil(totalChars / charsPerPart)
+totalParts = Math.max(3, Math.min(30, totalParts))    // 最少 3 部分，最多 30 部分
+totalParts = Math.min(totalParts, allParas.length)      // 不超过段落数
+const partSize = Math.ceil(allParas.length / totalParts)
+```
+
+#### 第1步：开启修订模式
+
+```javascript
+wps_office_execute({ tool_name: "enableTrackChanges", arguments: { enable: true } })
+wps_office_execute({ tool_name: "getTrackChangesStatus", arguments: {} })
+```
+
+#### 第N轮（N=1..totalParts）：处理一个部分
+
+**重要**：`proofreadBasic` 必须优先于 AI 分析调用。它用 ~40 条正则规则零 token 检测错别字/重复/冗余/口语化/漏字。
+
+```javascript
+// 1. 提取本部分文本和起始偏移
+const startParaIdx = (N - 1) * partSize
+const endParaIdx = Math.min(N * partSize, allParas.length)
+const partParas = allParas.slice(startParaIdx, endParaIdx)
+
+// 计算本部分在文档中的绝对起始偏移：
+// 前面的段落字符数 + 段落分隔符 \r 的数量
+const startOffset = allParas.slice(0, startParaIdx).reduce((sum, p) => sum + p.length + 1, 0)
+const partText = partParas.join('\r')
+
+// 2. MCP 基础校对（零 token）
+const proofResult = wps_office_execute({
+  tool_name: "proofreadBasic",
+  arguments: {
+    text: partText,
+    startOffset: startOffset  // 告诉工具这个文本块在文档中的绝对起始位置
+  }
+})
+// 返回 { issues: [{ offset, length, original, suggestion, type, context }] }
+// offset 已是文档内的绝对字符偏移（proofreadBasic 内部加上 startOffset）
+
+// 3. 区分确定性问题与不确定性问题
+//    - MCP issues 全部可靠，直接自动修复
+//    - AI 分析后发现的不确定问题，罗列给用户确认
+const mcpIssues = proofResult.issues || []  // MCP 正则匹配的问题，直接修
+
+// 4. 自动修复确定性问题
+const sorted = [...mcpIssues].sort((a, b) => b.offset - a.offset)
+for (const issue of sorted) {
+  wps_office_execute({
+    tool_name: "replaceRange",
+    arguments: {
+      startPos: issue.offset,
+      endPos: issue.offset + issue.length,
+      text: issue.suggestion
+    }
+  })
+}
+
+// 5. AI 检查本部分文本（MCP 未覆盖的问题）
+//    检查：术语一致性、编号体系、事实性错误、格式问题
+//    - 确信的 → replaceRange 直接修复
+//    - 不确定的 → 列入"待确认"列表
+```
+
+**展示结果给用户：**
+
+```
+【第 N/totalParts 部分】段落 startParaIdx+1 ~ endParaIdx（共 allParas.length 段）
+✅ MCP 基础校对：自动修复 X 处
+   • 原文"xxx" → 改为"yyy"（错误类型）
+   • ...
+✅ AI 智能校对：自动修复 X 处
+   • ...
+❓ 待确认：X 处（请您手动确认）
+   • 段落 P：原文"xxx" → 建议改为"yyy"（原因说明）
+   • ...
+
+下一部分将校对段落 startParaIdx+1+partSize ~ ...（共约 X 段）
+输入「继续」进入下一部分校对。
+```
+
+#### 最后一步：生成完整校对报告
+
+所有部分完成后，生成 Markdown 校对报告，**写入文档同目录的 `.校对报告.md`**：
+
+```markdown
+# 校对报告
+
+- **文档**：报告.docx
+- **校对时间**：2026-05-24 15:30
+- **总字数**：12,345
+- **修订总数**：28
+- **待确认**：3 处
+
+## 已修复的问题
+
+| # | 位置 | 原文 | 修改为 | 问题类型 | 检测方式 |
+|---|------|------|--------|---------|---------|
+| 1 | 段落45 | 处于私利 | 出于私利 | 错别字 | MCP |
+| 2 | 段落122 | 2.1.2总监理工程师业绩 | 2.1.3总监理工程师业绩 | 编号重复 | AI |
+
+## 待确认问题
+
+| # | 位置 | 原文 | 建议 | 说明 |
+|---|------|------|------|------|
+| 1 | 段落327 | 甲方 | 采购人 | 全文统一用"采购人"，此处用"甲方"不一致 |
+
+## 统计摘要
+
+| 类型 | 数量 |
+|------|------|
+| MCP 基础校对 | 18 处 |
+| AI 智能校对 | 10 处 |
+| **已修复合计** | **28 处** |
+| **待确认** | **3 处** |
+
+> 所有自动修改均在修订模式下进行，可通过 WPS 的"审阅 > 修订"查看详情。
+```
+
+使用 `wps_office_execute({ tool_name: "getDocumentText", arguments: {} })` 获取文档路径（FullName），将 `.校对报告.md` 写入同目录。
+
+### 校对注意事项
+
+1. **必须先开启修订模式**：`enableTrackChanges` — 最重要的安全措施
+2. **交互式分部分**：根据文档字数动态计算，每部分 ~4000 字符（≈3000 tokens），最少 3 部分最多 30 部分
+3. **用 `getDocumentText` 获取全文后拆分**：一次获取全文，按 `\r` 拆分段落，再分组
+4. **MCP 基础校对必须先于 AI 分析**：`proofreadBasic` 零 token 修复常见问题
+5. **MCP issues 全部自动修复**：正则匹配精度高，无需用户确认
+6. **AI 发现的不确定问题仅列出不修改**：由用户决定是否手动修改
+7. **精确替换**：使用 `replaceRange` 而非 `findReplace`
+8. **降序替换**：按 offset 降序执行，避免位置漂移
+9. **offset 是文档绝对字符位置**：`proofreadBasic` 返回的 offset 已包含 startOffset
+10. **工具名都是 COM 短名**：`enableTrackChanges`、`getTrackChangesStatus`、`proofreadBasic`、`replaceRange`
 
 ## 快捷操作提示
 
