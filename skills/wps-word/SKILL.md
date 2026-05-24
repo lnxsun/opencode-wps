@@ -451,8 +451,9 @@ wps_word_proofread_basic({
   start_offset: currentBatchStartOffset
 })
 
-// 返回发现的问题列表，逐一用 replace_range 修复
-for (issue in foundIssues) {
+// 按 offset 降序处理替换，避免位置漂移（后面的替换先执行）
+const sorted = [...foundIssues].sort((a, b) => b.offset - a.offset)
+for (const issue of sorted) {
   wps_word_replace_range({
     start_pos: issue.offset,
     end_pos: issue.offset + issue.length,

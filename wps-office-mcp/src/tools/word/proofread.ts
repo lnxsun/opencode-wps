@@ -61,7 +61,7 @@ export const enableTrackChangesHandler: ToolHandler = async (
       active: boolean;
     }>(
       'enableTrackChanges',
-      { enable: enable !== false },
+      { enable: enable === true },
       WpsAppType.WRITER
     );
 
