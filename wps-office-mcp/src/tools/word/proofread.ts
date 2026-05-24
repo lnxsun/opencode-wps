@@ -509,6 +509,88 @@ function runBasicProofreading(text: string, baseOffset: number = 0): ProofreadIs
       type: '的地得混淆',
       getSuggestion: () => '做得',
     },
+
+    // ===== 合同/法律术语常见错误 =====
+    // 签定→签订（仅限合同签署语境）
+    {
+      pattern: /签定(合同|协议|合约|约定)/g,
+      type: '法律术语',
+      getSuggestion: (m) => '签订' + m.substring(2),
+    },
+    // 权力→权利（法律/知识产权语境）
+    {
+      pattern: /(知识|所有|著作|专利|商标|许可)(权)力/g,
+      type: '法律术语',
+      getSuggestion: (m) => m[0] + '利',
+    },
+    {
+      pattern: /权力(维护|保护|保障|归属)/g,
+      type: '法律术语',
+      getSuggestion: (m) => '权利' + m.substring(2),
+    },
+
+    // ===== 工程/技术术语常见错误 =====
+    {
+      pattern: /隐蔽性工程/g,
+      type: '工程术语',
+      getSuggestion: () => '隐蔽工程',
+    },
+    {
+      pattern: /算数(错误|问题|计算|统计)/g,
+      type: '常见错别字',
+      getSuggestion: (m) => '算术' + m.substring(2),
+    },
+
+    // ===== 数字量词搭配不当 =====
+    {
+      pattern: /([2-9])大(方面|部分|模块|功能|内容|阶段|类型|类别|层次|层面)/g,
+      type: '量词搭配',
+      getSuggestion: (m) => m[0].replace(/(\d)大/, '$1个'),
+    },
+
+    // ===== 中文标点规范 =====
+    // 英文冒号在中文文本中
+    {
+      pattern: /([\u4e00-\u9fff]):([\u4e00-\u9fff])/g,
+      type: '中文标点',
+      getSuggestion: (m) => m[0].replace(':', '：'),
+    },
+    // 英文逗号在中文文本中
+    {
+      pattern: /([\u4e00-\u9fff]),([\u4e00-\u9fff])/g,
+      type: '中文标点',
+      getSuggestion: (m) => m[0].replace(',', '，'),
+    },
+    // 分号误用为冒号场景
+    {
+      pattern: /(包括|以下|如下|例如|比如|主要有)(的|以下)?；(?!\s)/g,
+      type: '中文标点',
+      getSuggestion: (m) => m.replace('；', '：'),
+    },
+
+    // ===== 赘字/多余字 =====
+    {
+      pattern: /的程度(很|不|非常|比较|过于|极为)/g,
+      type: '赘字',
+      getSuggestion: (m) => '程度' + m[2],
+    },
+    {
+      pattern: /偏离程度的很/g,
+      type: '赘字',
+      getSuggestion: () => '偏离程度很',
+    },
+
+    // ===== 评测/测评 混淆 =====
+    {
+      pattern: /安全评测/g,
+      type: '常见错别字',
+      getSuggestion: () => '安全测评',
+    },
+    {
+      pattern: /软件评测/g,
+      type: '常见错别字',
+      getSuggestion: () => '软件测评',
+    },
   ];
 
   for (const rule of rules) {
