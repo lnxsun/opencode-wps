@@ -631,6 +631,34 @@ function runBasicProofreading(text: string, baseOffset: number = 0): ProofreadIs
       getSuggestion: (m) => m[0].replace(/(\d)大/, '$1个'),
     },
 
+    // ===== "其它"→"其他" =====
+    // 现代汉语中"其他"已统括"其它"，除法律条文外建议统一
+    {
+      pattern: /其它(人|事|物|方面|单位|情况|问题|费用|知识产权|的|，|。|；|：)/g,
+      type: '用词统一',
+      getSuggestion: (m) => '其他' + m[1],
+    },
+
+    // ===== 多余点号 =====
+    // "3.2.2.2. .总监理" → 多余空格+点号
+    {
+      pattern: /\. \./g,
+      type: '多余点号',
+      getSuggestion: () => '.',
+    },
+    // 连续2+中文句号
+    {
+      pattern: /([\u4e00-\u9fff])(\.\.|。\.)/g,
+      type: '多余点号',
+      getSuggestion: (m) => m[1] + '.',
+    },
+    // 句号后直接跟中文（标准编号如GB/T内带"."的不在此列）
+    {
+      pattern: /([\u4e00-\u9fff])\。\.([\u4e00-\u9fff])/g,
+      type: '多余点号',
+      getSuggestion: (m) => m[1] + '。' + m[2],
+    },
+
     // ===== 中文标点规范 =====
     // 英文冒号在中文文本中
     {
@@ -650,6 +678,8 @@ function runBasicProofreading(text: string, baseOffset: number = 0): ProofreadIs
       type: '中文标点',
       getSuggestion: (m) => m.replace('；', '：'),
     },
+    // 中文正文中英文句点不应直接跟随中文（排除标准编号如GB/T）
+    // 此场景过于复杂，留AI处理
 
     // ===== 多字（赘字/冗余） =====
     // 冗余"的"
