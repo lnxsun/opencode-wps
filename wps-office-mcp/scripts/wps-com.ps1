@@ -2444,7 +2444,7 @@ switch ($Action) {
             $range = $doc.Range([int]$p.startPos, [int]$p.endPos)
             $originalText = $range.Text
             $range.Text = $p.text
-            Output-Json @{ success = $true; data = @{ startPos = [int]$p.startPos; endPos = [int]$p.startPos + $p.text.Length; originalText = $originalText.TrimEnd("`r`n", "`r", "`n"); newText = $p.text } }
+            Output-Json @{ success = $true; data = @{ startPos = [int]$p.startPos; endPos = [int]$p.startPos + $p.text.Length; originalText = $originalText.TrimEnd(); newText = $p.text } }
         } catch {
             Output-Json @{ success = $false; error = "Failed to replace range: $($_.Exception.Message)" }
         }
