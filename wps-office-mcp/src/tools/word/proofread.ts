@@ -474,7 +474,7 @@ function runBasicProofreading(text: string, baseOffset: number = 0): ProofreadIs
       getSuggestion: (m) => '被' + m.substring(m.length - 1),
     },
 
-    // ===== 常见口语/网络用语 =====
+    // ===== 过于口语化 =====
     {
       pattern: /好的吧/g,
       type: '口语化',
@@ -489,6 +489,89 @@ function runBasicProofreading(text: string, baseOffset: number = 0): ProofreadIs
       pattern: /那样子/g,
       type: '口语化',
       getSuggestion: () => '那样',
+    },
+    // "搞"在正式文档中应替换
+    {
+      pattern: /去搞/g,
+      type: '口语化',
+      getSuggestion: () => '处理',
+    },
+    {
+      pattern: /在搞/g,
+      type: '口语化',
+      getSuggestion: () => '在处理',
+    },
+    {
+      pattern: /搞(定|完|好|妥)/g,
+      type: '口语化',
+      getSuggestion: () => '完成',
+    },
+    // "弄"在正式文档中应替换
+    {
+      pattern: /弄(好|完|妥|出来)/g,
+      type: '口语化',
+      getSuggestion: () => '完成',
+    },
+    {
+      pattern: /去弄/g,
+      type: '口语化',
+      getSuggestion: () => '处理',
+    },
+    // "啥"太口语化
+    {
+      pattern: /(干|有|说|做)啥/g,
+      type: '口语化',
+      getSuggestion: (m) => m[0].replace('啥', '什么'),
+    },
+    {
+      pattern: /啥(都|也|的|呀)/g,
+      type: '口语化',
+      getSuggestion: (m) => '什' + '么' + m[1],
+    },
+    // "挺"在正式文档中应替换
+    {
+      pattern: /挺(好|大|多|快|高|长|难|重|重要|不错|合适|特别|关键)/g,
+      type: '口语化',
+      getSuggestion: (m) => '很' + m.substring(1),
+    },
+    // "反正"太口语化
+    {
+      pattern: /(这|那)反正/g,
+      type: '口语化',
+      getSuggestion: (m) => m[0].includes('这') ? '这无论如何' : '那无论如何',
+    },
+    {
+      pattern: /反正(说|就是|都|也)/g,
+      type: '口语化',
+      getSuggestion: (m) => '无论' + (m[1] === '说' ? '如何' : m[1]),
+    },
+    // "然后"过多
+    {
+      pattern: /(.然后)/g,
+      type: '口语化',
+      getSuggestion: (m) => {
+        if (m[1] === '。') return '。随后';
+        if (m[1] === '，') return '，接着';
+        return m[0];
+      },
+    },
+    // "就是说"在正式文档中可优化
+    {
+      pattern: /就是(说|讲)/g,
+      type: '口语化',
+      getSuggestion: () => '即',
+    },
+    // "什么的"在正式文档中应替换
+    {
+      pattern: /什么的/g,
+      type: '口语化',
+      getSuggestion: () => '等',
+    },
+    // "特(别|非常)+形容词" → "十分"
+    {
+      pattern: /特别(好|大|多|快|高|长|重要|明显|突出|优秀)/g,
+      type: '口语化',
+      getSuggestion: (m) => '十分' + m[1],
     },
 
     // ===== 常见错别字模式 =====
@@ -568,16 +651,100 @@ function runBasicProofreading(text: string, baseOffset: number = 0): ProofreadIs
       getSuggestion: (m) => m.replace('；', '：'),
     },
 
-    // ===== 赘字/多余字 =====
-    {
-      pattern: /的程度(很|不|非常|比较|过于|极为)/g,
-      type: '赘字',
-      getSuggestion: (m) => '程度' + m[2],
-    },
+    // ===== 多字（赘字/冗余） =====
+    // 冗余"的"
     {
       pattern: /偏离程度的很/g,
-      type: '赘字',
+      type: '多字',
       getSuggestion: () => '偏离程度很',
+    },
+    {
+      pattern: /的的程度/g,
+      type: '多字',
+      getSuggestion: () => '的程度',
+    },
+    {
+      pattern: /进行了一次/g,
+      type: '多字',
+      getSuggestion: (m) => m.replace('进行了一次', '进行了'),
+    },
+    // 冗余"到"
+    {
+      pattern: /涉及到/g,
+      type: '多字',
+      getSuggestion: () => '涉及',
+    },
+    {
+      pattern: /付诸于/g,
+      type: '多字',
+      getSuggestion: () => '付诸',
+    },
+    {
+      pattern: /诉诸于/g,
+      type: '多字',
+      getSuggestion: () => '诉诸',
+    },
+    // 冗余"来/去"
+    {
+      pattern: /归结为(说|讲)是/g,
+      type: '多字',
+      getSuggestion: () => '归结为',
+    },
+    // 冗余"说"
+    {
+      pattern: /也就是说/g,
+      type: '多字',
+      getSuggestion: () => '即',
+    },
+    // "进行"冗余
+    {
+      pattern: /进行(研究|分析|讨论|审查|调查|检查|测试|验证|处理|整改|排查|评估)/g,
+      type: '多字',
+      getSuggestion: (m) => m.substring(2),
+    },
+    // 冗余判断
+    {
+      pattern: /并非是/g,
+      type: '多字',
+      getSuggestion: () => '并非',
+    },
+    {
+      pattern: /必须要/g,
+      type: '多字',
+      getSuggestion: () => '必须',
+    },
+    {
+      pattern: /全部都/g,
+      type: '多字',
+      getSuggestion: () => '全部',
+    },
+    {
+      pattern: /进一步地/g,
+      type: '多字',
+      getSuggestion: () => '进一步',
+    },
+    {
+      pattern: /现如今/g,
+      type: '多字',
+      getSuggestion: () => '如今',
+    },
+    {
+      pattern: /最为(重要|关键|核心|突出|显著)/g,
+      type: '多字',
+      getSuggestion: (m) => '最' + m[1],
+    },
+    {
+      pattern: /更是(这样|如此)/g,
+      type: '多字',
+      getSuggestion: () => '更是如此',
+    },
+
+    // ===== 少字（缺字） =====
+    // 数字缺少量词（以下三→以下三种）
+    {
+      pattern: /以下([一二三四五六七八九十两])(控制|方面|类型|方式|阶段|部分|模块|方法|条件|要求|类别|层次|层面)/g,
+      type: '少字',
+      getSuggestion: (m) => m[0].replace(m[1], m[1] + '种'),
     },
 
     // ===== 评测/测评 混淆 =====
