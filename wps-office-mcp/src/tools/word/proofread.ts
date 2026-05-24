@@ -1,0 +1,581 @@
+/**
+ * Input: 文档校对工具参数
+ * Output: 校对结果和修订跟踪
+ * Pos: Word 校对工具实现。一旦我被修改，请更新我的头部注释，以及所属文件夹的md。
+ * Word校对Tools - 文档校对与修订模块
+ * 处理文档校对、修订模式控制、精确范围替换等操作
+ *
+ * 包含：
+ * - wps_word_enable_track_changes: 开启/关闭修订模式
+ * - wps_word_get_track_changes_status: 获取修订模式状态
+ * - wps_word_replace_range: 按字符范围替换文本（修订模式下跟踪）
+ * - wps_word_proofread_basic: 基础文本校对（正则检测错别字/语病）
+ */
+
+import { v4 as uuidv4 } from 'uuid';
+import {
+  ToolDefinition,
+  ToolHandler,
+  ToolCallResult,
+  ToolCategory,
+  RegisteredTool,
+} from '../../types/tools';
+import { wpsClient } from '../../client/wps-client';
+import { WpsAppType } from '../../types/wps';
+
+/**
+ * 开启/关闭修订模式
+ * 在执行校对修改前必须先开启修订模式，确保所有修改可追溯
+ */
+export const enableTrackChangesDefinition: ToolDefinition = {
+  name: 'wps_word_enable_track_changes',
+  description: `开启或关闭Word文档的修订模式（Track Changes）。
+在执行校对修改前必须先开启修订模式，确保所有修改可追溯。
+
+使用场景：
+- "开始校对，开启修订模式"
+- "关闭修订模式"
+- "开启修订，我要开始改文档了"`,
+  category: ToolCategory.DOCUMENT,
+  inputSchema: {
+    type: 'object',
+    properties: {
+      enable: {
+        type: 'boolean',
+        description: 'true=开启修订模式，false=关闭修订模式。默认true',
+      },
+    },
+    required: ['enable'],
+  },
+};
+
+export const enableTrackChangesHandler: ToolHandler = async (
+  args: Record<string, unknown>
+): Promise<ToolCallResult> => {
+  const { enable } = args as { enable: boolean };
+
+  try {
+    const response = await wpsClient.executeMethod<{
+      success: boolean;
+      trackChanges: boolean;
+      active: boolean;
+    }>(
+      'enableTrackChanges',
+      { enable: enable !== false },
+      WpsAppType.WRITER
+    );
+
+    if (response.success && response.data) {
+      const status = response.data.active ? '已开启' : '已关闭';
+      return {
+        id: uuidv4(),
+        success: true,
+        content: [
+          {
+            type: 'text',
+            text: `修订模式${status}！所有后续修改将被跟踪记录。`,
+          },
+        ],
+      };
+    }
+    return {
+      id: uuidv4(),
+      success: false,
+      content: [{ type: 'text', text: `设置修订模式失败: ${response.error}` }],
+      error: response.error,
+    };
+  } catch (error) {
+    const errMsg = error instanceof Error ? error.message : String(error);
+    return {
+      id: uuidv4(),
+      success: false,
+      content: [{ type: 'text', text: `设置修订模式出错: ${errMsg}` }],
+      error: errMsg,
+    };
+  }
+};
+
+/**
+ * 获取修订模式状态
+ */
+export const getTrackChangesStatusDefinition: ToolDefinition = {
+  name: 'wps_word_get_track_changes_status',
+  description: `获取当前文档的修订模式状态。
+
+使用场景：
+- "看看修订模式开了没"
+- "当前文档有多少处修订"
+- "检查修订状态"`,
+  category: ToolCategory.DOCUMENT,
+  inputSchema: {
+    type: 'object',
+    properties: {},
+  },
+};
+
+export const getTrackChangesStatusHandler: ToolHandler = async (
+  _args: Record<string, unknown>
+): Promise<ToolCallResult> => {
+  try {
+    const response = await wpsClient.executeMethod<{
+      success: boolean;
+      trackChanges: boolean;
+      revisionCount: number;
+    }>(
+      'getTrackChangesStatus',
+      {},
+      WpsAppType.WRITER
+    );
+
+    if (response.success && response.data) {
+      const d = response.data;
+      const status = d.trackChanges ? '已开启' : '已关闭';
+      return {
+        id: uuidv4(),
+        success: true,
+        content: [
+          {
+            type: 'text',
+            text: `修订模式: ${status}\n当前修订数量: ${d.revisionCount}`,
+          },
+        ],
+      };
+    }
+    return {
+      id: uuidv4(),
+      success: false,
+      content: [{ type: 'text', text: `获取修订状态失败: ${response.error}` }],
+      error: response.error,
+    };
+  } catch (error) {
+    const errMsg = error instanceof Error ? error.message : String(error);
+    return {
+      id: uuidv4(),
+      success: false,
+      content: [{ type: 'text', text: `获取修订状态出错: ${errMsg}` }],
+      error: errMsg,
+    };
+  }
+};
+
+/**
+ * 按字符范围替换文本（修订模式下跟踪）
+ * 在校对时用于精确替换指定范围的内容
+ */
+export const replaceRangeDefinition: ToolDefinition = {
+  name: 'wps_word_replace_range',
+  description: `按字符范围精确替换Word文档中的文本。
+在修订模式下，此操作会自动产生修订标记。
+
+使用场景：
+- 校对时替换指定位置的错别字
+- 精确替换某一段落中的文本
+- 在已知字符起止位置时替换内容
+
+注意：请先调用 wps_word_enable_track_changes 开启修订模式。`,
+  category: ToolCategory.DOCUMENT,
+  inputSchema: {
+    type: 'object',
+    properties: {
+      start_pos: {
+        type: 'number',
+        description: '起始字符位置（从0开始）',
+      },
+      end_pos: {
+        type: 'number',
+        description: '结束字符位置',
+      },
+      text: {
+        type: 'string',
+        description: '替换后的文本内容',
+      },
+    },
+    required: ['start_pos', 'end_pos', 'text'],
+  },
+};
+
+export const replaceRangeHandler: ToolHandler = async (
+  args: Record<string, unknown>
+): Promise<ToolCallResult> => {
+  const { start_pos, end_pos, text } = args as {
+    start_pos: number;
+    end_pos: number;
+    text: string;
+  };
+
+  if (start_pos === undefined || end_pos === undefined) {
+    return {
+      id: uuidv4(),
+      success: false,
+      content: [{ type: 'text', text: '必须指定起始和结束位置！' }],
+      error: '缺少位置参数',
+    };
+  }
+
+  if (text == null) {
+    return {
+      id: uuidv4(),
+      success: false,
+      content: [{ type: 'text', text: '替换文本不能为空！' }],
+      error: '替换文本为空',
+    };
+  }
+
+  try {
+    const response = await wpsClient.executeMethod<{
+      success: boolean;
+      startPos: number;
+      endPos: number;
+      originalText: string;
+      newText: string;
+    }>(
+      'replaceRange',
+      { startPos: start_pos, endPos: end_pos, text },
+      WpsAppType.WRITER
+    );
+
+    if (response.success && response.data) {
+      const d = response.data;
+      return {
+        id: uuidv4(),
+        success: true,
+        content: [
+          {
+            type: 'text',
+            text: `替换成功！\n原文: "${d.originalText}"\n修改为: "${d.newText}"\n位置: ${d.startPos}-${d.endPos}`,
+          },
+        ],
+      };
+    }
+    return {
+      id: uuidv4(),
+      success: false,
+      content: [{ type: 'text', text: `替换失败: ${response.error}` }],
+      error: response.error,
+    };
+  } catch (error) {
+    const errMsg = error instanceof Error ? error.message : String(error);
+    return {
+      id: uuidv4(),
+      success: false,
+      content: [{ type: 'text', text: `替换出错: ${errMsg}` }],
+      error: errMsg,
+    };
+  }
+};
+
+/**
+ * 基础文本校对工具
+ * 使用正则规则快速检测中文文本中的常见问题
+ * 不需调用AI，零token成本
+ */
+export const proofreadBasicDefinition: ToolDefinition = {
+  name: 'wps_word_proofread_basic',
+  description: `对中文文本进行基础校对，检测常见问题。
+使用正则规则快速检测，零token成本。
+
+检测范围：
+- 常见易混淆字（的/得/地、在/再、的/地 等）
+- 重复字符（如"了了"、"的的"）
+- 重复标点（如。。、，，、！！、？？）
+- 中英文标点混用
+- 常见错误搭配
+- 数字前后异常空格
+- 常见网络用语/拼写错误
+
+返回每个问题的位置、原文、建议修改和问题类型。
+
+使用场景：
+- 校对前先做基础检查
+- 批量处理段落文本
+- 快速定位文档中的常见错误`,
+  category: ToolCategory.DOCUMENT,
+  inputSchema: {
+    type: 'object',
+    properties: {
+      text: {
+        type: 'string',
+        description: '要校对的文本内容',
+      },
+      start_offset: {
+        type: 'number',
+        description: '文本在文档中的起始偏移位置，用于定位问题在文档中的准确位置',
+      },
+    },
+    required: ['text'],
+  },
+};
+
+/**
+ * 基础校对规则引擎
+ * 返回检测到的问题列表
+ */
+interface ProofreadIssue {
+  offset: number;
+  length: number;
+  original: string;
+  suggestion: string;
+  type: string;
+  context: string;
+}
+
+function runBasicProofreading(text: string, baseOffset: number = 0): ProofreadIssue[] {
+  const issues: ProofreadIssue[] = [];
+  const offset = baseOffset || 0;
+
+  type Rule = {
+    pattern: RegExp;
+    type: string;
+    getSuggestion: (match: string) => string;
+  };
+
+  const rules: Rule[] = [
+    // ===== 的/得/地 混淆 =====
+    {
+      pattern: /(狠|很|真|非|极|异|格|大|更|最|顶|十|万、)的(好|坏|快|慢|多|少|高|低|长|短|大|小|厚|薄|深|浅|早|晚|对|像|开心|难过|高兴|努力)/g,
+      type: '的得混淆',
+      getSuggestion: (m) => m.replace('的', '得'),
+    },
+    {
+      pattern: /动词|形容|努力|飞快|慢慢|静静|默默|悄悄|使劲|不断|不停|一口|一致|大力|全力|肆意|不停的/g,
+      type: '的地混淆',
+      getSuggestion: (m) => m.replace('的', '地'),
+    },
+    // 常见"的得地"上下文模式
+    {
+      pattern: /(做|搞|弄|写|说|画|跑|跳|走|看|听|吃|喝)的(太|很|非常|比较|极为|十分|挺|有点|有些)/g,
+      type: '的得混淆',
+      getSuggestion: (m) => m.replace(/(做|搞|弄|写|说|画|跑|跳|走|看|听|吃|喝)的/, '$1得'),
+    },
+    {
+      pattern: /(笑|哭|叫|闹|做)的(合不拢嘴|不停|不亦乐乎|很|出神)/g,
+      type: '的得混淆',
+      getSuggestion: (m) => m.replace(/(笑|哭|叫|闹|做)的/, '$1得'),
+    },
+
+    // ===== 在/再 混淆 =====
+    {
+      pattern: /在(说|做|写|看|次|来|见|会|考虑|研究|审核|确认|决定)/g,
+      type: '在再混淆',
+      getSuggestion: (m) => '再' + m.substring(1),
+    },
+
+    // ===== 重复字符 =====
+    {
+      pattern: /([\u4e00-\u9fff])\1{2,}/g,
+      type: '重复字符',
+      getSuggestion: (m) => m[0],
+    },
+
+    // ===== 重复标点 =====
+    {
+      pattern: /([，。；：、！？]){2,}/g,
+      type: '重复标点',
+      getSuggestion: (m) => m[0],
+    },
+    {
+      pattern: /(\.\.\.+|……+)\.*/g,
+      type: '重复标点',
+      getSuggestion: () => '……',
+    },
+    {
+      pattern: /(---|—————)/g,
+      type: '重复标点',
+      getSuggestion: () => '——',
+    },
+
+    // ===== 中英文标点混用 =====
+    {
+      pattern: /[a-zA-Z]+[，]/g,
+      type: '中英混排',
+      getSuggestion: (m) => m.replace('，', ','),
+    },
+    {
+      pattern: /[，][a-zA-Z]+/g,
+      type: '中英混排',
+      getSuggestion: (m) => m.replace('，', ','),
+    },
+    {
+      pattern: /[。][a-zA-Z]/g,
+      type: '中英混排',
+      getSuggestion: (m) => m.replace('。', '.'),
+    },
+
+    // ===== 数字前后异常空格 =====
+    {
+      pattern: /(\d) ([,.;:!?])/g,
+      type: '数字空格',
+      getSuggestion: (m) => m.replace(' ', ''),
+    },
+    {
+      pattern: /([,.;:!?]) (\d)/g,
+      type: '数字空格',
+      getSuggestion: (m) => m.replace(' ', ''),
+    },
+
+    // ===== 常见错误搭配 =====
+    {
+      pattern: /的原因是因为/g,
+      type: '句式冗余',
+      getSuggestion: () => '是因为',
+    },
+    {
+      pattern: /的原因是由于/g,
+      type: '句式冗余',
+      getSuggestion: () => '是由于',
+    },
+    {
+      pattern: /大约(左右|上下)/g,
+      type: '句式冗余',
+      getSuggestion: (m) => m.includes('左右') ? '大约' : '大约',
+    },
+    {
+      pattern: /目的是为了/g,
+      type: '句式冗余',
+      getSuggestion: () => '是为了',
+    },
+    {
+      pattern: /可以(说|看成|认为)是/g,
+      type: '句式冗余',
+      getSuggestion: (m) => '可' + m.substring(2),
+    },
+    {
+      pattern: /被(广大|众多)所/g,
+      type: '句式冗余',
+      getSuggestion: (m) => '被' + m.substring(m.length - 1),
+    },
+
+    // ===== 常见口语/网络用语 =====
+    {
+      pattern: /好的吧/g,
+      type: '口语化',
+      getSuggestion: () => '好的',
+    },
+    {
+      pattern: /这样子/g,
+      type: '口语化',
+      getSuggestion: () => '这样',
+    },
+    {
+      pattern: /那样子/g,
+      type: '口语化',
+      getSuggestion: () => '那样',
+    },
+
+    // ===== 常见错别字模式 =====
+    {
+      pattern: /即(然|便|使|刻|时|将|成|而|位|日|夜|早|晚)/g,
+      type: '即既混淆',
+      getSuggestion: (m) => '既' + m.substring(1),
+    },
+    {
+      pattern: /变的/g,
+      type: '的地得混淆',
+      getSuggestion: () => '变得',
+    },
+    {
+      pattern: /做的/g,
+      type: '的地得混淆',
+      getSuggestion: () => '做得',
+    },
+  ];
+
+  for (const rule of rules) {
+    let match: RegExpExecArray | null;
+    const regex = new RegExp(rule.pattern.source, 'g');
+    while ((match = regex.exec(text)) !== null) {
+      const orig = match[0];
+      const suggestion = rule.getSuggestion(orig);
+      if (orig !== suggestion) {
+        const start = match.index;
+        const beforeCtx = text.substring(Math.max(0, start - 10), start);
+        const afterCtx = text.substring(start + orig.length, start + orig.length + 10);
+        issues.push({
+          offset: offset + start,
+          length: orig.length,
+          original: orig,
+          suggestion,
+          type: rule.type,
+          context: `...${beforeCtx}[${orig}]${afterCtx}...`,
+        });
+      }
+    }
+  }
+
+  return issues;
+}
+
+export const proofreadBasicHandler: ToolHandler = async (
+  args: Record<string, unknown>
+): Promise<ToolCallResult> => {
+  const { text, start_offset } = args as {
+    text: string;
+    start_offset?: number;
+  };
+
+  if (!text || text.trim() === '') {
+    return {
+      id: uuidv4(),
+      success: false,
+      content: [{ type: 'text', text: '文本内容不能为空！' }],
+      error: '文本内容为空',
+    };
+  }
+
+  try {
+    const baseOffset = typeof start_offset === 'number' ? start_offset : 0;
+    const issues = runBasicProofreading(text, baseOffset);
+
+    if (issues.length === 0) {
+      return {
+        id: uuidv4(),
+        success: true,
+        content: [
+          {
+            type: 'text',
+            text: '基础校对完成，未发现明显问题。',
+          },
+        ],
+      };
+    }
+
+    const lines = issues.map(
+      (issue, i) =>
+        `${i + 1}. [${issue.type}] 位置 ${issue.offset}\n` +
+        `   原文: "${issue.original}"\n` +
+        `   建议: "${issue.suggestion}"\n` +
+        `   上下文: ${issue.context}`
+    );
+
+    return {
+      id: uuidv4(),
+      success: true,
+      content: [
+        {
+          type: 'text',
+          text: `基础校对完成，发现 ${issues.length} 个问题：\n\n${lines.join('\n\n')}`,
+        },
+      ],
+    };
+  } catch (error) {
+    const errMsg = error instanceof Error ? error.message : String(error);
+    return {
+      id: uuidv4(),
+      success: false,
+      content: [{ type: 'text', text: `基础校对出错: ${errMsg}` }],
+      error: errMsg,
+    };
+  }
+};
+
+/**
+ * 导出所有校对相关的Tools
+ */
+export const proofreadTools: RegisteredTool[] = [
+  { definition: enableTrackChangesDefinition, handler: enableTrackChangesHandler },
+  { definition: getTrackChangesStatusDefinition, handler: getTrackChangesStatusHandler },
+  { definition: replaceRangeDefinition, handler: replaceRangeHandler },
+  { definition: proofreadBasicDefinition, handler: proofreadBasicHandler },
+];
+
+export default proofreadTools;
