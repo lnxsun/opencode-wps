@@ -239,7 +239,7 @@ export const replaceRangeHandler: ToolHandler = async (
     };
   }
 
-  if (text == null) {
+  if (text == null || text === '') {
     return {
       id: uuidv4(),
       success: false,
@@ -545,15 +545,11 @@ function runBasicProofreading(text: string, baseOffset: number = 0): ProofreadIs
       type: '口语化',
       getSuggestion: (m) => '无论' + (m[1] === '说' ? '如何' : m[1]),
     },
-    // "然后"过多
+    // "然后"过多（仅在句号/逗号后）
     {
-      pattern: /(.然后)/g,
+      pattern: /([。，])然后/g,
       type: '口语化',
-      getSuggestion: (m) => {
-        if (m[0] === '。') return '。随后';
-        if (m[0] === '，') return '，接着';
-        return m;
-      },
+      getSuggestion: (m) => m[1] === '。' ? '。随后' : '，接着',
     },
     // "就是说"在正式文档中可优化
     {
@@ -694,7 +690,7 @@ function runBasicProofreading(text: string, baseOffset: number = 0): ProofreadIs
     },
     {
       pattern: /进行了一次/g,
-      type: '多字',
+      type: '口语化',
       getSuggestion: (m) => m.replace('进行了一次', '进行了'),
     },
     // 冗余"到"
@@ -728,7 +724,7 @@ function runBasicProofreading(text: string, baseOffset: number = 0): ProofreadIs
     // "进行"冗余
     {
       pattern: /进行(研究|分析|讨论|审查|调查|检查|测试|验证|处理|整改|排查|评估)/g,
-      type: '多字',
+      type: '口语化',
       getSuggestion: (m) => m.substring(2),
     },
     // 冗余判断
@@ -762,11 +758,7 @@ function runBasicProofreading(text: string, baseOffset: number = 0): ProofreadIs
       type: '多字',
       getSuggestion: (m) => '最' + m[1],
     },
-    {
-      pattern: /更是(这样|如此)/g,
-      type: '多字',
-      getSuggestion: () => '更是如此',
-    },
+
 
     // ===== 少字（缺字） =====
     // 数字缺少量词（以下三→以下三种）
