@@ -20,7 +20,7 @@ Skills 是 AI 的"技能包"，告诉 AI：
 | Skill | 目录 | 说明 |
 |-------|------|------|
 | **wps-excel** | `skills/wps-excel/` | Excel 操作技能 |
-| **wps-word** | `skills/wps-word/` | Word 操作技能 |
+| **wps-word** | `skills/wps-word/` | Word 操作技能（含文档校对） |
 | **wps-ppt** | `skills/wps-ppt/` | PPT 操作技能 |
 | **wps-office** | `skills/wps-office/` | 通用 WPS 操作技能 |
 
@@ -107,6 +107,17 @@ AI 识别：使用 wps-word skill
 1. 获取当前选区
 2. 调用 `wps_word_apply_style` 应用"标题 1"样式
 3. 返回成功
+
+### 校对场景（Word）
+
+用户输入："帮我校对这篇文档"
+
+AI 识别：使用 wps-word skill（校对子流程）
+1. 调用 `wps_word_enable_track_changes` 开启修订模式
+2. 分批读取段落，调用 `wps_word_proofread_basic` 检测错别字/语病
+3. 对检测到的问题，调用 `wps_word_replace_range` 精确修复
+4. 复杂问题调用 `wps_word_get_track_changes_status` 确认修订数量
+5. 生成 `.校对报告.md` 保存到文档目录
 
 ### PPT 场景
 

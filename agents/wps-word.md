@@ -41,7 +41,7 @@ tools:
 | 9 | `wps_cache_data` | 缓存数据到 MCP Server |
 | 10 | `wps_get_cached_data` | 从 MCP Server 获取缓存数据 |
 | 11 | `wps_office_search` | 搜索 COM Actions 索引（**必须先用此工具搜索**） |
-| 16 | `wps_word_proofread_basic` | 基础文本校对（零 token 检测错别字/语病） |
+| 12 | `wps_office_execute` | 执行搜索到的工具（**搜索后用此执行**） |
 
 ## 专注领域
 
