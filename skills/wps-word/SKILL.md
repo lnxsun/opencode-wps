@@ -370,6 +370,152 @@ wps_office_execute({
 2. **版本兼容**：考虑不同版本 WPS/Office 的差异
 3. **格式保存**：提醒注意保存格式（.docx/.doc/.wps）
 
+## 5. 文档校对（Proofreading）
+
+**新增 4 个校对专用工具（Word 工具，可直接使用，无需 search）：**
+
+| # | 工具名称 | 功能描述 |
+|---|---------|---------|
+| 1 | `wps_word_enable_track_changes` | 开启/关闭修订模式（**校对前必须先开启**） |
+| 2 | `wps_word_get_track_changes_status` | 查看修订模式状态和当前修订数量 |
+| 3 | `wps_word_replace_range` | 按字符位置范围精确替换文本（修订模式下跟踪） |
+| 4 | `wps_word_proofread_basic` | **零 token 基础校对**：用正则规则检测错别字/语病 |
+
+### 校对工作流程
+
+当用户说"帮我校对文档"、"检查错别字"、"审校文章"时，严格遵循以下流程：
+
+```
+┌─────────────────────────────────────────────────┐
+│ 第1步：获取文档信息 │
+│ 调用 wps_get_active_document / getDocumentStats  │
+│ 调用 wps_word_get_paragraphs 了解段落结构        │
+├─────────────────────────────────────────────────┤
+│ 第2步：开启修订模式 │
+│ 调用 wps_word_enable_track_changes(true)         │
+│ 调用 wps_word_get_track_changes_status 确认      │
+├─────────────────────────────────────────────────┤
+│ 第3步：分批校对（按段落分批，每批 ~20 段）      │
+│ ┌───────────────────────────────────────┐       │
+│ │ 3a. MCP 基础校对（零 token）          │       │
+│ │ 调用 proofreadBasic → 正则检测        │       │
+│ │ 发现的问题直接 replace_range 修复     │       │
+│ ├───────────────────────────────────────┤       │
+│ │ 3b. AI 智能校对（按需）               │       │
+│ │ 分析语句通顺、事实错误、用户自定义需求 │       │
+│ │ 发现的问题直接 replace_range 修复     │       │
+│ ├───────────────────────────────────────┤       │
+│ │ 3c. 记录本次问题到报告               │       │
+│ └───────────────────────────────────────┘       │
+├─────────────────────────────────────────────────┤
+│ 第4步：生成校对报告 │
+│ 最后一批完成后，整理报告写入文档同目录 .md 文件 │
+├─────────────────────────────────────────────────┤
+│ 第5步：关闭修订模式（可选）                      │
+│ 告知用户已完成，可查看修订记录                   │
+└─────────────────────────────────────────────────┘
+```
+
+### Step 1: 获取文档上下文
+
+```javascript
+wps_get_active_document()
+wps_office_search({ query: "统计", category: "word" })
+wps_office_execute({ tool_name: "getDocumentStats", arguments: {} })
+wps_office_search({ query: "段落", category: "word" })
+wps_office_execute({ tool_name: "getDocumentParagraphs", arguments: { startParagraph: 1, endParagraph: 9999 } })
+```
+
+### Step 2: 开启修订模式
+
+```javascript
+// 必须先开启修订模式！
+wps_word_enable_track_changes({ enable: true })
+
+// 确认状态
+wps_word_get_track_changes_status({})
+```
+
+### Step 3: 分批校对
+
+按段落分批，每批约 20 段进行以下操作：
+
+**3a. MCP 基础校对** — 零 token 成本：
+```javascript
+// 获取当前批次的段落文本（合并为一个文本块）
+const batchText = paragraphs.map(p => p.text).join('\n')
+
+// 传入段落起始偏移位置 + 文本
+wps_word_proofread_basic({
+  text: batchText,
+  start_offset: currentBatchStartOffset
+})
+
+// 按 offset 降序处理替换，避免位置漂移（后面的替换先执行）
+const sorted = [...foundIssues].sort((a, b) => b.offset - a.offset)
+for (const issue of sorted) {
+  wps_word_replace_range({
+    start_pos: issue.offset,
+    end_pos: issue.offset + issue.length,
+    text: issue.suggestion
+  })
+}
+```
+
+**3b. AI 智能校对** — 分析段落文本，检查：
+- **语句通顺性**：句式是否通顺、有无歧义
+- **事实性错误**：明显的实时性错误（如过时的年份、数据）
+- **用户自定义需求**：用户指定了需要检查的内容
+- **MCP 未覆盖的错别字**：基础校对未识别的问题
+
+对每个发现的问题，记录后调用 `wps_word_replace_range` 修复。
+
+### Step 4: 生成校对报告
+
+最后一批完成后，生成 Markdown 格式的校对报告，**写入文档同目录的 `.校对报告.md` 文件**。
+
+报告格式示例：
+
+```markdown
+# 校对报告
+
+- **文档**：报告.docx
+- **校对时间**：2026-05-24 15:30
+- **总字数**：12,345
+- **修订总数**：28
+
+## 发现的问题
+
+| # | 位置 | 原文 | 修改为 | 问题类型 | 检测方式 |
+|---|------|------|--------|---------|---------|
+| 1 | 段落3 | 发明了很多 | 发明了很多 | 重复字符 | MCP |
+| 2 | 段落8 | 这个方案非常好 | 这个方案非常好 | "的"多余 | MCP |
+| 3 | 段落15 | 今年营收100亿 | 2025年营收100亿 | 事实性错误 | AI |
+
+## 统计摘要
+
+| 类型 | 数量 |
+|------|------|
+| MCP 基础校对 | 18 处 |
+| AI 智能校对 | 10 处 |
+| **合计** | **28 处** |
+| 全部已修复 | ✅ |
+
+> 所有修改均在修订模式下进行，可通过 WPS 的"审阅 > 修订"查看详情。
+```
+
+使用 `wps_word_get_document_text` 获取文档路径（FullName），将 `.校对报告.md` 写入同目录。
+
+### 校对注意事项
+
+1. **必须先开启修订模式**：`wps_word_enable_track_changes(true)` — 这是最重要的安全措施
+2. **精确替换**：使用 `wps_word_replace_range` 而非 `findReplace` 进行精确位置替换
+3. **位置计算**：注意段落文本的 offset 是文档内的绝对字符位置
+4. **分批策略**：每批 ~20 段，避免超 token 上限
+5. **报告保存**：保存在文档同目录，文件名 `{文档名}.校对报告.md`
+6. **用户确认**：批量修改前简要说明发现的问题类型和数量
+7. **保存文档**：校对完成后提示用户保存文档（Ctrl+S）
+
 ## 快捷操作提示
 
 在完成操作后，可以提醒用户常用快捷键：

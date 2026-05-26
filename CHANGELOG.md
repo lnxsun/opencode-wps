@@ -13,6 +13,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 测试套件（security.test.js, utils.test.js, launcher.test.js）
 - CONTRIBUTING.md 贡献指南
 - Agent Skill 调用优先级指引
+- **Word 文档校对功能**（混合 MCP 基础校对 + AI 智能校对）
+  - 4 个校对专用 MCP 工具：`wps_word_enable_track_changes`、`wps_word_get_track_changes_status`、`wps_word_replace_range`、`wps_word_proofread_basic`
+  - 基础校对规则引擎（零 token 正则检测错别字/重复字符/常见语病）
+  - 修订模式（Track Changes）支持，所有修改可追溯
+  - Markdown 校对报告自动生成（文档同目录）
+  - 从真实校对报告提炼的 30+ 条正则规则
 
 ### Changed
 - 安装脚本输出更详细的状态信息

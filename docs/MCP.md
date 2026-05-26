@@ -141,7 +141,7 @@ MCP 使用 JSON-RPC 2.0 消息格式：
 
 - **14 个内置工具** — 启动时直接注册（`wps_check_connection`、`wps_get_cell_value` 等）
 - **2 个 Gateway 工具** — `wps_office_search` 搜索、`wps_office_execute` 执行
-- **231 个注册工具** — 未注册到 MCP 但作为 TS handler 供 Gateway 优先调用（含参数校验、类型安全、详细错误信息）
+- **235 个注册工具** — 未注册到 MCP 但作为 TS handler 供 Gateway 优先调用（含参数校验、类型安全、详细错误信息）
 - **240 个 COM Actions** — Gateway 索引，无 TS handler 时透传 PS1 脚本执行 COM API
 
 **执行路径（`wps_office_execute`）：**
@@ -158,7 +158,7 @@ MCP 使用 JSON-RPC 2.0 消息格式：
 | 类别 | 数量 | 例子 |
 |------|------|------|
 | Excel 工具 | ~100 | 读取单元格、写入公式、创建图表、导出图片 |
-| Word 工具 | ~35 | 插入文本、应用样式、生成目录、添加页眉 |
+| Word 工具 | ~39 | 插入文本、应用样式、生成目录、添加页眉、文档校对 |
 | PPT 工具 | ~120 | 添加幻灯片、设置动画、美化、导出幻灯片 |
 
 ---

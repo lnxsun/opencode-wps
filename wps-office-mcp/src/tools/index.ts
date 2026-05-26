@@ -29,7 +29,7 @@ import { commonTools } from './common';
  *
  * 直接注册工具分类：
  *   Excel (82个):   公式/数据/图表/透视表/工作表/格式化/工作簿/高级数据
- *   Word   (28个):  格式化(5)/内容(14)/文档管理(9)
+ *   Word   (32个):  格式化(5)/内容(14)/文档管理(9)/校对(4)
  *   PPT   (112个):  幻灯片/幻灯片操作/演示文稿管理/文本框/动画/背景/图片/表格/形状
  *   Common (9个):   转换/通用
  */
@@ -70,6 +70,7 @@ export {
 export {
   formatTools,
   contentTools,
+  proofreadTools,
   applyStyleDefinition,
   applyStyleHandler,
   setFontDefinition,

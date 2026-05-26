@@ -95,6 +95,8 @@ const HANDLER_PARAM_MAP: Record<string, Record<string, string>> = {
   replaceBookmarkContent: { content: 'text' },
   smartFillField: { fillMode: 'fill_mode' },
   getDocumentParagraphs: { startParagraph: 'start_paragraph', endParagraph: 'end_paragraph' },
+  replaceRange: { startPos: 'start_pos', endPos: 'end_pos' },
+  proofreadBasic: { startOffset: 'start_offset' },
 };
 
 // 无工具需要跳过 handler 路由（所有 COM schema 参数名已与 handler inputSchema 对齐）
@@ -156,6 +158,8 @@ const VERIFIED_TOOLS = new Set([
   'insertHyperlink', 'insertPageBreak', 'setHyperlink',
   'smartFillField', 'addComment', 'getComments', 'insertText',
   'switchDocument', 'getOpenDocuments',
+  // === Word: Proofreading ===
+  'enableTrackChanges', 'getTrackChangesStatus', 'replaceRange', 'proofreadBasic',
   // === Excel ===
   'getActiveWorkbook', 'getCellValue', 'setCellValue', 'getRangeData', 'setRangeData',
   'setFormula', 'getFormula', 'setArrayFormula', 'diagnoseFormula',
@@ -246,6 +250,12 @@ const COM_ACTIONS: ToolIndexItem[] = [
   { name: 'addComment', description: '添加批注', keywords: ['批注'], category: 'word', appType: WpsAppType.WRITER, paramsSchema: { text: { type: 'string', description: '批注内容', required: true } } },
   { name: 'getComments', description: '获取文档批注列表', keywords: ['批注'], category: 'word', appType: WpsAppType.WRITER, paramsSchema: {} },
   { name: 'insertText', description: '插入文本', keywords: ['文本', '插入'], category: 'word', appType: WpsAppType.WRITER, paramsSchema: { text: { type: 'string', description: '文本内容', required: true } } },
+
+  // Word: 校对操作 (4)
+  { name: 'enableTrackChanges', description: '开启/关闭修订模式', keywords: ['修订', '校对', 'track'], category: 'word', appType: WpsAppType.WRITER, paramsSchema: { enable: { type: 'boolean', description: 'true开启/false关闭', required: true } } },
+  { name: 'getTrackChangesStatus', description: '获取修订模式状态', keywords: ['修订', '状态'], category: 'word', appType: WpsAppType.WRITER, paramsSchema: {} },
+  { name: 'replaceRange', description: '按字符范围替换文本', keywords: ['替换', '范围', '校对'], category: 'word', appType: WpsAppType.WRITER, paramsSchema: { startPos: { type: 'number', description: '起始位置', required: true }, endPos: { type: 'number', description: '结束位置', required: true }, text: { type: 'string', description: '替换文本', required: true } } },
+  { name: 'proofreadBasic', description: '基础文本校对（零token）', keywords: ['校对', '错别字', '检查'], category: 'word', appType: WpsAppType.WRITER, paramsSchema: { text: { type: 'string', description: '要校对的文本', required: true }, startOffset: { type: 'number', description: '偏移位置', required: false } } },
 
   // Excel 操作 (~120)
   { name: 'getActiveWorkbook', description: '获取当前工作簿信息', keywords: ['工作簿', '当前'], category: 'excel', appType: WpsAppType.SPREADSHEET, paramsSchema: {} },

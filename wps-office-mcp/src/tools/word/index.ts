@@ -12,6 +12,7 @@ import { RegisteredTool } from '../../types/tools';
 import { formatTools } from './format';
 import { contentTools } from './content';
 import { documentTools } from './document';
+import { proofreadTools } from './proofread';
 
 /**
  * 所有Word相关的Tools
@@ -24,12 +25,14 @@ export const wordTools: RegisteredTool[] = [
   ...formatTools,
   ...contentTools,
   ...documentTools,
+  ...proofreadTools,
 ];
 
 // 分别导出，方便按需使用
 export { formatTools } from './format';
 export { contentTools } from './content';
 export { documentTools } from './document';
+export { proofreadTools } from './proofread';
 
 // 导出单独的定义和处理器，方便测试
 export {
