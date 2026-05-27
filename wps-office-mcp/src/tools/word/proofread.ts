@@ -521,7 +521,7 @@ function runBasicProofreading(text: string, baseOffset: number = 0): ProofreadIs
     {
       pattern: /(干|有|说|做)啥/g,
       type: '口语化',
-      getSuggestion: (m) => m[0].replace('啥', '什么'),
+      getSuggestion: (m) => m.replace('啥', '什么'),
     },
     {
       pattern: /啥(都|也|的|呀)/g,
@@ -543,13 +543,13 @@ function runBasicProofreading(text: string, baseOffset: number = 0): ProofreadIs
     {
       pattern: /反正(说|就是|都|也)/g,
       type: '口语化',
-      getSuggestion: (m) => '无论' + (m[1] === '说' ? '如何' : m[1]),
+      getSuggestion: (m) => '无论' + (m.substring(2) === '说' ? '如何' : m.substring(2)),
     },
     // "然后"过多（仅在句号/逗号后）
     {
       pattern: /([。，])然后/g,
       type: '口语化',
-      getSuggestion: (m) => m[1] === '。' ? '。随后' : '，接着',
+      getSuggestion: (m) => m.startsWith('。') ? '。随后' : '，接着',
     },
     // "就是说"在正式文档中可优化
     {
@@ -623,7 +623,7 @@ function runBasicProofreading(text: string, baseOffset: number = 0): ProofreadIs
     {
       pattern: /([2-9])大(方面|部分|模块|功能|内容|阶段|类型|类别|层次|层面)/g,
       type: '量词搭配',
-      getSuggestion: (m) => m[0].replace(/(\d)大/, '$1个'),
+      getSuggestion: (m) => m.replace(/(\d)大/, '$1个'),
     },
 
     // ===== "其它"→"其他" =====
@@ -631,7 +631,7 @@ function runBasicProofreading(text: string, baseOffset: number = 0): ProofreadIs
     {
       pattern: /其它(人|事|物|方面|单位|情况|问题|费用|知识产权|的|，|。|；|：)/g,
       type: '用词统一',
-      getSuggestion: (m) => '其他' + m[1],
+      getSuggestion: (m) => '其他' + m.substring(2),
     },
 
     // ===== 多余点号 =====
