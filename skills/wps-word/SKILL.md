@@ -381,39 +381,79 @@ wps_office_execute({
 | 3 | `wps_word_replace_range` | 按字符位置范围精确替换文本（修订模式下跟踪） |
 | 4 | `wps_word_proofread_basic` | **零 token 基础校对**：用正则规则检测错别字/语病 |
 
-### 校对工作流程
+### ⚠️ 校对纪律（硬性规则，违者工作无效）
 
-当用户说"帮我校对文档"、"检查错别字"、"审校文章"时，严格遵循以下流程：
+1. **必须先出分批计划，后跑校对**。没做分批计划就开始读段落 = 违规。
+2. **每批处理 >= 200 段**（除非文档总段数 < 200）。禁止用 20 段、50 段的小批次浪费轮次。
+3. **批次必须连续，禁止跳跃**。从第 1 段开始，逐批推进，直到最后一段。
+4. **未处理完所有批次之前，严禁生成校对报告**。提前出报告 = 报告无效。
+5. **每完成一批，更新进度**（如 `[3/8] 批次完成`），让自己和用户都知道还有多少。
+
+### 分批校对计划表（执行校对前必须先填写）
 
 ```
-┌─────────────────────────────────────────────────┐
-│ 第1步：获取文档信息 │
-│ 调用 wps_get_active_document / getDocumentStats  │
-│ 调用 wps_word_get_paragraphs 了解段落结构        │
-├─────────────────────────────────────────────────┤
-│ 第2步：开启修订模式 │
-│ 调用 wps_word_enable_track_changes(true)         │
-│ 调用 wps_word_get_track_changes_status 确认      │
-├─────────────────────────────────────────────────┤
-│ 第3步：分批校对（按段落分批，每批 ~20 段）      │
-│ ┌───────────────────────────────────────┐       │
-│ │ 3a. MCP 基础校对（零 token）          │       │
-│ │ 调用 proofreadBasic → 正则检测        │       │
-│ │ 发现的问题直接 replace_range 修复     │       │
-│ ├───────────────────────────────────────┤       │
-│ │ 3b. AI 智能校对（按需）               │       │
-│ │ 分析语句通顺、事实错误、用户自定义需求 │       │
-│ │ 发现的问题直接 replace_range 修复     │       │
-│ ├───────────────────────────────────────┤       │
-│ │ 3c. 记录本次问题到报告               │       │
-│ └───────────────────────────────────────┘       │
-├─────────────────────────────────────────────────┤
-│ 第4步：生成校对报告 │
-│ 最后一批完成后，整理报告写入文档同目录 .md 文件 │
-├─────────────────────────────────────────────────┤
-│ 第5步：关闭修订模式（可选）                      │
-│ 告知用户已完成，可查看修订记录                   │
-└─────────────────────────────────────────────────┘
+分批校对计划
+══════════════
+文档总段数:    {getDocumentParagraphs 获取的总段数}
+每批段数:      200（最后一批可能不足 200）
+总批次数:      ceil(总段数 / 200)
+当前进度:      0 / 总批次数
+══════════════
+```
+
+把这段计划表输出在对话中，**然后再开始执行第一批**。未输出计划表就执行工具 → 违规。
+
+### 校对工作流程
+
+```
+┌──────────────────────────────────────────────────────┐
+│ 第0步：输出分批计划表（必须先做！）                   │
+│ 计算 总段数 / 每批200段 / 总批次数 / 当前进度 0/N   │
+├──────────────────────────────────────────────────────┤
+│ 第1步：获取文档信息                                  │
+│ 调用 wps_get_active_document / getDocumentStats       │
+│ 调用 getDocumentParagraphs 了解段落结构               │
+├──────────────────────────────────────────────────────┤
+│ 第2步：开启修订模式                                  │
+│ 调用 wps_word_enable_track_changes(true)              │
+│ 调用 wps_word_get_track_changes_status 确认           │
+├──────────────────────────────────────────────────────┤
+│ 第3步：分批校对（循环，每批 ~200 段）                │
+│ for batch = 1 to N:                                  │
+│ ┌──────────────────────────────────────────┐         │
+│ │ 3a. 获取本批段落文本                     │         │
+│ │ getDocumentParagraphs(                    │         │
+│ │   start: (batch-1)*200 + 1,              │         │
+│ │   end:   min(batch*200, totalParagraphs)) │         │
+│ ├──────────────────────────────────────────┤         │
+│ │ 3b. MCP 基础校对（零 token）             │         │
+│ │ proofreadBasic({text, startOffset})      │         │
+│ │ 按 offset 降序 replaceRange 修复         │         │
+│ ├──────────────────────────────────────────┤         │
+│ │ 3c. AI 智能校对（按需，分析本批文本）   │         │
+│ │ 发现的问题 replaceRange 修复             │         │
+│ ├──────────────────────────────────────────┤         │
+│ │ 3d. 更新进度：[batch/N] 完成             │         │
+│ └──────────────────────────────────────────┘         │
+├──────────────────────────────────────────────────────┤
+│ 第4步：全部 N 批完成后 → 生成校对报告               │
+│ 写入文档同目录的 .校对报告.md                         │
+├──────────────────────────────────────────────────────┤
+│ 第5步：提示用户保存文档，查看修订记录                │
+└──────────────────────────────────────────────────────┘
+```
+
+### Step 0: 输出分批校对计划
+
+```javascript
+// 获取文档总字数
+wps_get_active_document()
+
+// 获取段落结构（一次性获取全量段落索引）
+wps_office_execute({ tool_name: "getDocumentParagraphs", arguments: { startParagraph: 1, endParagraph: 99999 } })
+
+// 根据 paragraphCount 计算批次数
+// 输出计划表后再进入 Step 1
 ```
 
 ### Step 1: 获取文档上下文
@@ -422,8 +462,6 @@ wps_office_execute({
 wps_get_active_document()
 wps_office_search({ query: "统计", category: "word" })
 wps_office_execute({ tool_name: "getDocumentStats", arguments: {} })
-wps_office_search({ query: "段落", category: "word" })
-wps_office_execute({ tool_name: "getDocumentParagraphs", arguments: { startParagraph: 1, endParagraph: 9999 } })
 ```
 
 ### Step 2: 开启修订模式
@@ -436,33 +474,41 @@ wps_word_enable_track_changes({ enable: true })
 wps_word_get_track_changes_status({})
 ```
 
-### Step 3: 分批校对
+### Step 3: 分批校对（核心循环）
 
-按段落分批，每批约 20 段进行以下操作：
+每批处理 ~200 段，严格按以下步骤执行：
 
-**3a. MCP 基础校对** — 零 token 成本：
+**3a. 获取本批段落文本：**
 ```javascript
-// 获取当前批次的段落文本（合并为一个文本块）
-const batchText = paragraphs.map(p => p.text).join('\n')
+wps_office_execute({
+  tool_name: "getDocumentParagraphs",
+  arguments: {
+    start_paragraph: (batch - 1) * 200 + 1,
+    end_paragraph: Math.min(batch * 200, totalParagraphs)
+  }
+})
+```
 
-// 传入段落起始偏移位置 + 文本
+**3b. MCP 基础校对** — 零 token 成本：
+```javascript
+// 合并本批段落文本，传入起始偏移
 wps_word_proofread_basic({
   text: batchText,
-  start_offset: currentBatchStartOffset
+  startOffset: currentBatchStartOffset  // 文档内绝对字符偏移
 })
 
-// 按 offset 降序处理替换，避免位置漂移（后面的替换先执行）
+// 按 offset 降序处理替换，避免位置漂移
 const sorted = [...foundIssues].sort((a, b) => b.offset - a.offset)
 for (const issue of sorted) {
   wps_word_replace_range({
-    start_pos: issue.offset,
-    end_pos: issue.offset + issue.length,
+    startPos: issue.offset,
+    endPos: issue.offset + issue.length,
     text: issue.suggestion
   })
 }
 ```
 
-**3b. AI 智能校对** — 分析段落文本，检查：
+**3c. AI 智能校对** — 分析本批段落文本，检查：
 - **语句通顺性**：句式是否通顺、有无歧义
 - **事实性错误**：明显的实时性错误（如过时的年份、数据）
 - **用户自定义需求**：用户指定了需要检查的内容
@@ -470,9 +516,20 @@ for (const issue of sorted) {
 
 对每个发现的问题，记录后调用 `wps_word_replace_range` 修复。
 
+**3d. 更新进度**：在回复中输出当前进度，例如 `[3/8] 批次完成 ✓`
+
+### 文档过大时的用户确认
+
+如果 `总批次数 > 5`（即文档超过 ~1000 段），必须先询问用户：
+> "文档共 XXXX 段，分 N 批校对，预计需要较长时间，是否继续？"
+
+用户确认后再执行。
+
 ### Step 4: 生成校对报告
 
-最后一批完成后，生成 Markdown 格式的校对报告，**写入文档同目录的 `.校对报告.md` 文件**。
+**只有所有 N 批都处理完毕（进度 = N/N）** 才能生成报告。缺少任何一批就出报告 = 违规。
+
+报告写入文档同目录的 `.校对报告.md` 文件。
 
 报告格式示例：
 
@@ -504,16 +561,20 @@ for (const issue of sorted) {
 > 所有修改均在修订模式下进行，可通过 WPS 的"审阅 > 修订"查看详情。
 ```
 
-使用 `wps_word_get_document_text` 获取文档路径（FullName），将 `.校对报告.md` 写入同目录。
+### Step 5: 收尾
+
+1. 提示用户保存文档（Ctrl+S）
+2. 告知可在"审阅 > 修订"中查看每处修改
+3. 如需撤销可在"修订"选项卡中选择"接受/拒绝"
 
 ### 校对注意事项
 
 1. **必须先开启修订模式**：`wps_word_enable_track_changes(true)` — 这是最重要的安全措施
 2. **精确替换**：使用 `wps_word_replace_range` 而非 `findReplace` 进行精确位置替换
 3. **位置计算**：注意段落文本的 offset 是文档内的绝对字符位置
-4. **分批策略**：每批 ~20 段，避免超 token 上限
+4. **分批纪律**：每批 ~200 段，禁止用小批次反复。禁止跳跃批次。禁止提前出报告。
 5. **报告保存**：保存在文档同目录，文件名 `{文档名}.校对报告.md`
-6. **用户确认**：批量修改前简要说明发现的问题类型和数量
+6. **用户确认**：大量批次（>5批）需先问用户是否继续
 7. **保存文档**：校对完成后提示用户保存文档（Ctrl+S）
 
 ## 快捷操作提示
