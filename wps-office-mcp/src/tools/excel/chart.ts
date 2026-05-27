@@ -703,14 +703,14 @@ export const exportRangeAsImageHandler: ToolHandler = async (
   };
 
   // 校验 range 格式（与 createChart 保持一致）
-  if (!range || !/^[A-Z]+[0-9]+(:[A-Z]+[0-9]+)?$/i.test(range)) {
+  if (!range || !/^\$?[A-Z]+\$?\d+(:\$?[A-Z]+\$?\d+)?$/i.test(range)) {
     return {
       id: uuidv4(),
       success: false,
       content: [
         {
           type: 'text',
-          text: `区域格式无效，应为类似 A1:F20 的格式，当前传入: ${range}`,
+          text: `区域格式无效，应为类似 A1:F20 或 $A$1:$B$2 的格式，当前传入: ${range}`,
         },
       ],
       error: '区域格式无效',

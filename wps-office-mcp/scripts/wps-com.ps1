@@ -1109,27 +1109,29 @@ switch ($Action) {
     "exportChartAsImage" {
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; exit }
-        $sheet = if ($p.sheet) { $excel.ActiveWorkbook.Sheets.Item($p.sheet) } else { $excel.ActiveSheet }
+        $wb = $excel.ActiveWorkbook
+        if ($null -eq $wb) { Output-Json @{ success = $false; error = "No active workbook" }; exit }
+        $sheet = if ($p.sheet) { $wb.Sheets.Item($p.sheet) } else { $excel.ActiveSheet }
         $outputPath = if ($p.outputPath) { $p.outputPath } else { $p.path }
         if ([string]::IsNullOrEmpty($outputPath)) { Output-Json @{ success = $false; error = "Missing outputPath" }; exit }
         $chartName = $p.chartName
         if ([string]::IsNullOrEmpty($chartName)) { Output-Json @{ success = $false; error = "Missing chartName" }; exit }
         $rawFormat = if ($p.format) { $p.format.ToString().ToUpper() } else { "PNG" }
-        $filterName = if ($rawFormat -eq "JPEG") { "JPG" } else { $rawFormat }
         $chartObj = $sheet.ChartObjects($chartName)
-        $chartObj.Chart.Export($outputPath, $filterName)
-        Output-Json @{ success = $true; data = @{ chartName = $chartName; outputPath = $outputPath; format = $filterName } }
+        $chartObj.Chart.Export($outputPath, $rawFormat)
+        Output-Json @{ success = $true; data = @{ chartName = $chartName; outputPath = $outputPath; format = $rawFormat } }
     }
 
     "exportRangeAsImage" {
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; exit }
-        $sheet = if ($p.sheet) { $excel.ActiveWorkbook.Sheets.Item($p.sheet) } else { $excel.ActiveSheet }
+        $wb = $excel.ActiveWorkbook
+        if ($null -eq $wb) { Output-Json @{ success = $false; error = "No active workbook" }; exit }
+        $sheet = if ($p.sheet) { $wb.Sheets.Item($p.sheet) } else { $excel.ActiveSheet }
         $outputPath = if ($p.outputPath) { $p.outputPath } else { $p.path }
         if ([string]::IsNullOrEmpty($outputPath)) { Output-Json @{ success = $false; error = "Missing outputPath" }; exit }
         if ([string]::IsNullOrEmpty($p.range)) { Output-Json @{ success = $false; error = "Missing range" }; exit }
         $rawFormat = if ($p.format) { $p.format.ToString().ToUpper() } else { "PNG" }
-        $filterName = if ($rawFormat -eq "JPEG") { "JPG" } else { $rawFormat }
         $range = $sheet.Range($p.range)
         $tempChart = $null
         try {
@@ -1137,10 +1139,10 @@ switch ($Action) {
             $tempChart = $sheet.ChartObjects().Add(0, 0, $range.Width, $range.Height)
             $tempChart.Activate()
             $tempChart.Chart.Paste()
-            $tempChart.Chart.Export($outputPath, $filterName)
+            $tempChart.Chart.Export($outputPath, $rawFormat)
             $tempChart.Delete()
             $tempChart = $null
-            Output-Json @{ success = $true; data = @{ range = $p.range; outputPath = $outputPath; format = $filterName } }
+            Output-Json @{ success = $true; data = @{ range = $p.range; outputPath = $outputPath; format = $rawFormat } }
         } catch {
             if ($null -ne $tempChart) { try { $tempChart.Delete() } catch {} }
             Output-Json @{ success = $false; error = "导出区域为图片失败: $($_.Exception.Message)" }
