@@ -9,6 +9,27 @@ var opencodeProcess = null;
 var opencodeCwd = '';
 var dockedPid = 0;
 
+// ===== 启动时清理孤儿 MCP 进程 =====
+function cleanupOrphanedMcp() {
+    try {
+        var execSync = require('child_process').execSync;
+        // 用 PowerShell Get-Process 按命令行路径查找，无 % 转义问题
+        var psCmd = 'Get-Process -Name node | Where-Object { $_.CommandLine -match ''\\\\wps-office-mcp\\\\dist\\\\index\\.js'' } | ForEach-Object { $_.Id }';
+        var out = execSync('powershell -NoProfile -Command "' + psCmd + '"', {
+            encoding: 'utf8',
+            timeout: 5000
+        });
+        var lines = out.split('\n');
+        for (var i = 0; i < lines.length; i++) {
+            var pid = parseInt(lines[i].trim(), 10);
+            if (pid > 0 && !isNaN(pid)) {
+                try { execSync('taskkill /F /PID ' + pid + ' 2>nul', { shell: 'cmd.exe', stdio: 'ignore', timeout: 3000 }); } catch(e) {}
+            }
+        }
+    } catch(e) { /* no orphaned processes */ }
+}
+cleanupOrphanedMcp();
+
 function parseBody(req, callback) {
     var body = '';
     req.on('data', function(chunk) { body += chunk; });
@@ -122,8 +143,8 @@ function stopOpenCodeByPort(port) {
                 var parts = line.split(/\s+/);
                 var localAddr = parts[1] || '';
                 // 检查是否为指定端口
-                var addrPort = localAddr.split(':');
-                var listenPort = parseInt(addrPort[addrAddr.length - 1], 10);
+                var addrParts = localAddr.split(':');
+                var listenPort = parseInt(addrParts[addrParts.length - 1], 10);
                 
                 if (listenPort === port) {
                     var pid = parseInt(parts[parts.length - 1], 10);
@@ -296,6 +317,21 @@ function dockWindow(callback, data) {
     })
 }
 
+// ===== 崩溃自动恢复 =====
+process.on('uncaughtException', function(err) {
+    console.error('[launcher] CRASH: ' + (err && err.message || err));
+    try {
+        var pidFile = path.join(__dirname, 'opencode.pid');
+        try { fs.unlinkSync(pidFile); } catch(e) {}
+    } catch(e) {}
+    // 释放端口，让计划任务/VBS 自动重新拉起
+    server.close();
+    process.exit(1);
+});
+process.on('unhandledRejection', function(reason) {
+    console.error('[launcher] Unhandled Rejection: ' + (reason && reason.message || reason));
+});
+
 var server = http.createServer(function(req, res) {
     if (req.method === 'OPTIONS') {
         sendJSON(res, 200, {});
@@ -324,6 +360,11 @@ var server = http.createServer(function(req, res) {
             cwd: opencodeCwd,
             pid: opencodeProcess ? opencodeProcess.pid : null
         });
+        return;
+    }
+
+    if (req.method === 'GET' && url === '/health') {
+        sendJSON(res, 200, { healthy: true, uptime: process.uptime() });
         return;
     }
 
