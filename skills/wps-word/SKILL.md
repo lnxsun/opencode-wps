@@ -412,7 +412,6 @@ wps_office_execute({
 ├──────────────────────────────────────────────────────┤
 │ 第1步：获取文档信息                                  │
 │ 调用 wps_get_active_document / getDocumentStats       │
-│ 调用 getDocumentParagraphs 了解段落结构               │
 ├──────────────────────────────────────────────────────┤
 │ 第2步：开启修订模式                                  │
 │ 调用 wps_word_enable_track_changes(true)              │
@@ -450,7 +449,7 @@ wps_office_execute({
 wps_get_active_document()
 
 // 获取段落结构（一次性获取全量段落索引）
-wps_office_execute({ tool_name: "getDocumentParagraphs", arguments: { startParagraph: 1, endParagraph: 99999 } })
+wps_office_execute({ tool_name: "getDocumentParagraphs", arguments: { start_paragraph: 1, end_paragraph: 99999 } })
 
 // 根据 paragraphCount 计算批次数
 // 输出计划表后再进入 Step 1
