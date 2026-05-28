@@ -725,7 +725,7 @@ export const getParagraphsHandler: ToolHandler = async (
       const totalCount = data.totalCount;
       const returnedCount = data.returnedCount;
       const lines = paragraphs.map(
-        (p: { index: number; text: string; style: string; start: number; end: number }) => `[${p.index}] (${p.style}) ${p.text}`
+        (p: { index: number; text: string; style: string; start: number; end: number }) => `[${p.index}] (${p.style}) [${p.start}-${p.end}] ${p.text}`
       );
       return {
         id: uuidv4(),
