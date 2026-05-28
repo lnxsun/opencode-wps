@@ -2,7 +2,7 @@
 
 OpenCode Skills 定义 AI 在特定领域的操作能力和工作流程。
 
-> 本项目为 WPS Office 定义了 4 个 Skills：wps-excel、wps-word、wps-ppt、wps-office
+> 本项目为 WPS Office 定义了 5 个 Skills：wps-excel、wps-word、wps-ppt、wps-office、wps-proofread
 
 ---
 
@@ -20,8 +20,9 @@ Skills 是 AI 的"技能包"，告诉 AI：
 | Skill | 目录 | 说明 |
 |-------|------|------|
 | **wps-excel** | `skills/wps-excel/` | Excel 操作技能 |
-| **wps-word** | `skills/wps-word/` | Word 操作技能（含文档校对） |
+| **wps-word** | `skills/wps-word/` | Word 操作技能 |
 | **wps-ppt** | `skills/wps-ppt/` | PPT 操作技能 |
+| **wps-proofread** | `skills/wps-proofread/` | 文档校对技能 |
 | **wps-office** | `skills/wps-office/` | 通用 WPS 操作技能 |
 
 ---
@@ -112,12 +113,12 @@ AI 识别：使用 wps-word skill
 
 用户输入："帮我校对这篇文档"
 
-AI 识别：使用 wps-word skill（校对子流程）
-1. 调用 `wps_word_enable_track_changes` 开启修订模式
-2. 分批读取段落，调用 `wps_word_proofread_basic` 检测错别字/语病
-3. 对检测到的问题，调用 `wps_word_replace_range` 精确修复
-4. 复杂问题调用 `wps_word_get_track_changes_status` 确认修订数量
-5. 生成 `.校对报告.md` 保存到文档目录
+AI 识别：使用 `wps-proofread` skill（独立校对技能）
+1. 输出分批校对计划表（总段数 / 每批 200 段 / 总批次数）
+2. 调用 `enableTrackChanges` 开启修订模式
+3. 分批读取段落（每批 ~200 段），调用 `proofreadBasic` 检测问题
+4. 按 offset 降序调用 `replaceRange` 精确修复
+5. 所有批次完成后生成 `.校对报告.md` 保存到文档目录
 
 ### PPT 场景
 
@@ -185,4 +186,5 @@ AI 识别：使用 wps-ppt skill
 | `skills/wps-word/SKILL.md` | Word Skill 定义 |
 | `skills/wps-ppt/SKILL.md` | PPT Skill 定义 |
 | `skills/wps-office/SKILL.md` | 通用 WPS Skill 定义 |
+| `skills/wps-proofread/SKILL.md` | 文档校对 Skill 定义 |
 | `AGENTS.md` | Agent 与 Skill 关系 |

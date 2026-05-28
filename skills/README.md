@@ -8,6 +8,7 @@ skills/           ← 源文件（此目录，被 git 跟踪）
     wps-word/
     wps-ppt/
     wps-office/
+    wps-proofread/       # 文档校对技能
 
 ↓ 安装后复制到 ↓
 

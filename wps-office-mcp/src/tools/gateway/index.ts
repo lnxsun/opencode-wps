@@ -253,7 +253,7 @@ const COM_ACTIONS: ToolIndexItem[] = [
 
   // Word: 校对操作 (4)
   { name: 'enableTrackChanges', description: '开启/关闭修订模式', keywords: ['修订', '校对', 'track'], category: 'word', appType: WpsAppType.WRITER, paramsSchema: { enable: { type: 'boolean', description: 'true开启/false关闭', required: true } } },
-  { name: 'getTrackChangesStatus', description: '获取修订模式状态', keywords: ['修订', '状态'], category: 'word', appType: WpsAppType.WRITER, paramsSchema: {} },
+  { name: 'getTrackChangesStatus', description: '获取修订模式状态', keywords: ['修订', '状态', '校对'], category: 'word', appType: WpsAppType.WRITER, paramsSchema: {} },
   { name: 'replaceRange', description: '按字符范围替换文本', keywords: ['替换', '范围', '校对'], category: 'word', appType: WpsAppType.WRITER, paramsSchema: { startPos: { type: 'number', description: '起始位置', required: true }, endPos: { type: 'number', description: '结束位置', required: true }, text: { type: 'string', description: '替换文本', required: true } } },
   { name: 'proofreadBasic', description: '基础文本校对（零token）', keywords: ['校对', '错别字', '检查'], category: 'word', appType: WpsAppType.WRITER, paramsSchema: { text: { type: 'string', description: '要校对的文本', required: true }, startOffset: { type: 'number', description: '偏移位置', required: false } } },
 

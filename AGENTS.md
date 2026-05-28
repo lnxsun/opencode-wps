@@ -31,7 +31,7 @@ npm run mcp:install      # 安装 MCP 依赖
 opencode-wps/
 ├── opencode-wps/         # WPS JS 加载项 (main.js, taskpane.html, ribbon.xml)
 ├── wps-office-mcp/       # MCP 服务器 (TypeScript, 240 个 COM Actions + 14 内置工具)
-├── skills/               # 4 个 OpenCode Skills (wps-excel/word/ppt/office)
+├── skills/               # 5 个 OpenCode Skills (wps-excel/word/ppt/office/proofread)
 │   └── README.md        # ⚠️ 必须先读：skills 修改流程
 ├── agents/               # 自定义 Agents (wps-expert + 3 个子 agents)
 └── install-addons.js     # 一键安装脚本 (6 步)
