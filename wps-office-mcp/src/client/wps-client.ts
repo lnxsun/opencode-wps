@@ -145,7 +145,7 @@ async function execWpsAction(action: string, params: Record<string, unknown> = {
 }
 
 // 超时时间（毫秒）
-const COM_TIMEOUT = 5000;
+const COM_TIMEOUT = 30000;
 
 /**
  * 带超时和重试的WPS调用
