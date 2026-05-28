@@ -14,7 +14,7 @@ function cleanupOrphanedMcp() {
     try {
         var execSync = require('child_process').execSync;
         // 用 PowerShell Get-Process 按命令行路径查找，无 % 转义问题
-        var psCmd = 'Get-Process -Name node | Where-Object { $_.CommandLine -match ''\\\\wps-office-mcp\\\\dist\\\\index\\.js'' } | ForEach-Object { $_.Id }';
+        var psCmd = "Get-Process -Name node | Where-Object { $_.CommandLine -match 'wps-office-mcp\\\\dist\\\\index\\\\.js' } | ForEach-Object { $_.Id }";
         var out = execSync('powershell -NoProfile -Command "' + psCmd + '"', {
             encoding: 'utf8',
             timeout: 5000
