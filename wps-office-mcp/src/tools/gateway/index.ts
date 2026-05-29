@@ -159,7 +159,7 @@ const VERIFIED_TOOLS = new Set([
   'smartFillField', 'addComment', 'getComments', 'insertText',
   'switchDocument', 'getOpenDocuments',
   // === Word: Proofreading ===
-  'enableTrackChanges', 'getTrackChangesStatus', 'replaceRange', 'proofreadBasic',
+  'enableTrackChanges', 'getTrackChangesStatus', 'replaceRange', 'proofreadBasic', 'proofreadBatch',
   // === Excel ===
   'getActiveWorkbook', 'getCellValue', 'setCellValue', 'getRangeData', 'setRangeData',
   'setFormula', 'getFormula', 'setArrayFormula', 'diagnoseFormula',
@@ -256,6 +256,7 @@ const COM_ACTIONS: ToolIndexItem[] = [
   { name: 'getTrackChangesStatus', description: '获取修订模式状态', keywords: ['修订', '状态', '校对'], category: 'word', appType: WpsAppType.WRITER, paramsSchema: {} },
   { name: 'replaceRange', description: '按字符范围替换文本', keywords: ['替换', '范围', '校对'], category: 'word', appType: WpsAppType.WRITER, paramsSchema: { startPos: { type: 'number', description: '起始位置', required: true }, endPos: { type: 'number', description: '结束位置', required: true }, text: { type: 'string', description: '替换文本', required: true } } },
   { name: 'proofreadBasic', description: '基础文本校对（零token）', keywords: ['校对', '错别字', '检查'], category: 'word', appType: WpsAppType.WRITER, paramsSchema: { text: { type: 'string', description: '要校对的文本', required: true }, startOffset: { type: 'number', description: '偏移位置', required: false } } },
+  { name: 'proofreadBatch', description: '分批校对（复合工具，内部自动执行获取段落+校对+修复全流程）', keywords: ['校对', '批', 'batch'], category: 'word', appType: WpsAppType.WRITER, paramsSchema: { start_paragraph: { type: 'number', description: '起始段落号', required: true }, end_paragraph: { type: 'number', description: '结束段落号', required: true } } },
 
   // Excel 操作 (~120)
   { name: 'getActiveWorkbook', description: '获取当前工作簿信息', keywords: ['工作簿', '当前'], category: 'excel', appType: WpsAppType.SPREADSHEET, paramsSchema: {} },

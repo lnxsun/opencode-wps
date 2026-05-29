@@ -870,6 +870,188 @@ export const proofreadBasicHandler: ToolHandler = async (
 };
 
 /**
+ * 复合工具：分批校对
+ * 一个调用 = 获取段落 + proofreadBasic + replaceRange 全流程
+ * AI 只需循环调用 proofread_batch(start, end)，无法跳过任何步骤
+ */
+export const proofreadBatchDefinition: ToolDefinition = {
+  name: 'wps_word_proofread_batch',
+  description: `对指定段落范围执行完整校对流程（获取段落→基础校对→自动修复）。
+一个调用 = 一个批次的完整校对，内部自动处理 startOffset 计算和 replaceRange 修复。
+
+使用方式：
+- 每批调用一次，范围不超过 200 段
+- 从第 1 段开始，逐批推进到文档末尾
+- 返回本批发现的问题数和修复数
+
+返回：本批段落范围、发现的问题详情、修复结果。`,
+  category: ToolCategory.DOCUMENT,
+  inputSchema: {
+    type: 'object',
+    properties: {
+      start_paragraph: {
+        type: 'number',
+        description: '起始段落号（从1开始）',
+      },
+      end_paragraph: {
+        type: 'number',
+        description: '结束段落号（含），最大不超过 start+199',
+      },
+    },
+    required: ['start_paragraph', 'end_paragraph'],
+  },
+};
+
+export const proofreadBatchHandler: ToolHandler = async (
+  args: Record<string, unknown>
+): Promise<ToolCallResult> => {
+  const { start_paragraph, end_paragraph } = args as {
+    start_paragraph: number;
+    end_paragraph: number;
+  };
+
+  if (!start_paragraph || !end_paragraph) {
+    return {
+      id: uuidv4(),
+      success: false,
+      content: [{ type: 'text', text: '必须指定 start_paragraph 和 end_paragraph！' }],
+      error: '缺少参数',
+    };
+  }
+
+  const count = end_paragraph - start_paragraph + 1;
+  if (count > 200) {
+    return {
+      id: uuidv4(),
+      success: false,
+      content: [{ type: 'text', text: `单批最多 200 段，当前请求 ${count} 段。请缩小范围。` }],
+      error: '批次过大',
+    };
+  }
+
+  if (start_paragraph < 1 || end_paragraph < start_paragraph) {
+    return {
+      id: uuidv4(),
+      success: false,
+      content: [{ type: 'text', text: '段落范围无效！start_paragraph 必须 ≥ 1，且 ≤ end_paragraph。' }],
+      error: '参数无效',
+    };
+  }
+
+  try {
+    // Step 1: 获取段落（含字符偏移信息）
+    const paraResponse = await wpsClient.executeMethod<{
+      paragraphs: Array<{ index: number; text: string; style: string; start: number; end: number }>;
+      totalCount: number;
+      returnedCount: number;
+    }>(
+      'getDocumentParagraphs',
+      { startParagraph: start_paragraph, endParagraph: end_paragraph },
+      WpsAppType.WRITER
+    );
+
+    if (!paraResponse.success || !paraResponse.data) {
+      return {
+        id: uuidv4(),
+        success: false,
+        content: [{ type: 'text', text: `获取段落失败: ${paraResponse.error}` }],
+        error: paraResponse.error,
+      };
+    }
+
+    const { paragraphs, totalCount, returnedCount } = paraResponse.data;
+
+    if (!paragraphs || paragraphs.length === 0) {
+      return {
+        id: uuidv4(),
+        success: true,
+        content: [{ type: 'text', text: `段落 ${start_paragraph}-${end_paragraph}：无内容，跳过。` }],
+      };
+    }
+
+    // Step 2: 计算 startOffset（本批第一段的字符起始位置）
+    const batchStartOffset = paragraphs[0].start;
+
+    // Step 3: 合并文本
+    const batchText = paragraphs.map((p) => p.text).join('\n');
+
+    // Step 4: 基础校对（本地执行，零 token）
+    const issues = runBasicProofreading(batchText, batchStartOffset);
+
+    // Step 5: 过滤掉口语化建议（正式公文用语）
+    const fixableIssues = issues.filter((issue) => issue.type !== '口语化');
+
+    // Step 6: 按 offset 降序 replaceRange 修复（避免位置漂移）
+    let fixedCount = 0;
+    const fixedDetails: string[] = [];
+
+    const sortedIssues = [...fixableIssues].sort((a, b) => b.offset - a.offset);
+
+    for (const issue of sortedIssues) {
+      try {
+        const replaceResult = await wpsClient.executeMethod<{
+          success: boolean;
+          originalText: string;
+          newText: string;
+        }>(
+          'replaceRange',
+          {
+            startPos: issue.offset,
+            endPos: issue.offset + issue.length,
+            text: issue.suggestion,
+          },
+          WpsAppType.WRITER
+        );
+
+        if (replaceResult.success) {
+          fixedCount++;
+          fixedDetails.push(
+            `✅ "${issue.original}" → "${issue.suggestion}" [${issue.type}] (位置 ${issue.offset})`
+          );
+        } else {
+          fixedDetails.push(
+            `❌ "${issue.original}" → 修复失败: ${replaceResult.error}`
+          );
+        }
+      } catch (e) {
+        const errMsg = e instanceof Error ? e.message : String(e);
+        fixedDetails.push(`❌ "${issue.original}" → 修复异常: ${errMsg}`);
+      }
+    }
+
+    // Step 7: 构造返回摘要
+    const skippedCount = issues.length - fixableIssues.length;
+    const lines: string[] = [];
+    lines.push(`📦 批次 ${start_paragraph}-${end_paragraph}（${returnedCount}/${totalCount} 段）校对完成`);
+    lines.push(`   发现 ${issues.length} 个问题，修复 ${fixedCount} 个`);
+
+    if (skippedCount > 0) {
+      lines.push(`   （${skippedCount} 个口语化建议已跳过）`);
+    }
+
+    if (fixedDetails.length > 0) {
+      lines.push('');
+      lines.push('详情：');
+      fixedDetails.forEach((d) => lines.push(`  ${d}`));
+    }
+
+    return {
+      id: uuidv4(),
+      success: true,
+      content: [{ type: 'text', text: lines.join('\n') }],
+    };
+  } catch (error) {
+    const errMsg = error instanceof Error ? error.message : String(error);
+    return {
+      id: uuidv4(),
+      success: false,
+      content: [{ type: 'text', text: `批次校对出错: ${errMsg}` }],
+      error: errMsg,
+    };
+  }
+};
+
+/**
  * 导出所有校对相关的Tools
  */
 export const proofreadTools: RegisteredTool[] = [
@@ -877,6 +1059,7 @@ export const proofreadTools: RegisteredTool[] = [
   { definition: getTrackChangesStatusDefinition, handler: getTrackChangesStatusHandler },
   { definition: replaceRangeDefinition, handler: replaceRangeHandler },
   { definition: proofreadBasicDefinition, handler: proofreadBasicHandler },
+  { definition: proofreadBatchDefinition, handler: proofreadBatchHandler },
 ];
 
 export default proofreadTools;
