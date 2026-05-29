@@ -25,6 +25,13 @@ let trackChangesOn = false;    // enableTrackChanges(true) 已调
 export default async () => {
   return {
     "tool.execute.before": async (input, output) => {
+      // 内置 MCP 工具：wps_get_active_document() → wps-office_wps_get_active_document
+      if (input.name === "wps-office_wps_get_active_document") {
+        docInfoFetched = true;
+        return;
+      }
+
+      // 仅拦截走 wps_office_execute 网关的调用
       if (input.name !== "wps-office_wps_office_execute") return;
 
       const toolName = input.args?.tool_name;
@@ -128,6 +135,13 @@ export default async () => {
           throw new Error(
             `【分批插件】请先调用 enableTrackChanges(true) 开启修订模式，` +
             `再执行替换操作。所有修改必须在修订模式下进行。`
+          );
+        }
+        // findReplace 不支持修订标记，在批处理流程中禁用
+        if (toolName === "findReplace" && batchStarted) {
+          throw new Error(
+            `【分批插件】分批校对流程中禁止使用 findReplace（不支持修订标记）。` +
+            `请改用 replaceRange 进行替换。`
           );
         }
         if (toolName === "replaceRange" && !proofreadDone) {
