@@ -34,9 +34,7 @@ opencode-wps/
 ├── skills/               # 5 个 OpenCode Skills (wps-excel/word/ppt/office/proofread)
 │   └── README.md        # ⚠️ 必须先读：skills 修改流程
 ├── agents/               # 自定义 Agents (wps-expert + 3 个子 agents)
-├── .opencode/            # OpenCode 项目配置（Agent 定义 / 插件）
-│   └── plugin/           # 自动发现插件（enforce-batch.js 等）
-└── install-addons.js     # 一键安装脚本 (6 步)
+└── install-addons.js     # 一键安装脚本 (7 步)
 ```
 
 ## WPS Agents 功能
@@ -69,12 +67,11 @@ opencode-wps/
 1. **修改 skills** → 改 `skills/` → 运行 `node install-addons.js` → git commit
 2. **修改 MCP** → 改 `wps-office-mcp/src/` → `npm run build` → git commit
 3. **修改 Agents** → 改 `~/.config/opencode/agents/` → 重启服务 → git commit
-4. **修改插件** → 改 `.opencode/plugin/` → 重启 OpenCode 服务 → git commit（插件自动发现，无需 install-addons.js）
-5. **重要：永远不要修改以下目录**（它们是安装产物，不是源文件）：
+4. **重要：永远不要修改以下目录**（它们是安装产物，不是源文件）：
    - ❌ `~/.opencode/skills/` 或 `%USERPROFILE%\.opencode\skills\`
    - ❌ `%APPDATA%\kingsoft\wps\jsaddons\`
    - ❌ `~/.config/opencode/opencode.json`
-6. **每次修改后**检查：`git status` 确保修改已提交
+5. **每次修改后**检查：`git status` 确保修改已提交
 
 ## Launcher 服务管理
 
@@ -100,18 +97,6 @@ OpenCode 通过 Launcher 进程管理自动启动：
 5. WPS 必须运行才能进行 MCP 操作
 6. Skills 不生效 → 检查是否运行了 `node install-addons.js` 同步
 7. Agents 不显示 → 重启 OpenCode 服务让新 agents 生效
-
-## OpenCode 插件
-
-`.opencode/plugin/` 下的文件会被 OpenCode 自动发现（无需注册配置）。
-
-### enforce-batch.js
-
-作用：在 `tool.execute.before` hook 中拦截 `wps_office_execute` 的 `getDocumentParagraphs` 调用，自动裁剪超过 200 段的请求范围。
-
-解决：AI 一次性请求 500/1000/1600 段导致 COM 超时的问题。**这是系统级的强制分段，AI 无法绕过。**
-
-修改插件后需要重启 OpenCode 服务生效。
 
 ## 参考文档
 - README.md — 完整项目文档
