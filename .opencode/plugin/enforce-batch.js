@@ -1,7 +1,7 @@
 /**
  * enforce-batch.js — 强制分批校对插件
  *
- * 拦截 wps_office_execute 调用，在 MCP 层之前执行校验：
+ * 拦截所有 MCP 工具调用，检验分批校对规则：
  *
  * 规则 1：getDocumentParagraphs 单次请求不得超过 200 段
  * 规则 2：getDocumentParagraphs 必须从第 1 段开始，逐批推进（禁止跳跃；
@@ -11,9 +11,19 @@
  * 规则 5：必须先获取文档信息并开始分批，才允许校对
  * 规则 6：修改前必须开启修订模式（enableTrackChanges(true)）
  *
- * 注意：findReplace 不支持修订模式跟踪。即使通过了修订模式检查，
- *      实际替换也不会产生修订标记。SKILL.md 已禁用 findReplace 用于校对修复。
+ * 重要：所有有双路径（独立 MCP 工具 + 网关）的操作，一律强制走网关。
+ *       直接调用独立 MCP 工具的请求会被拒绝，并提示改用 wps_office_execute。
  */
+
+// 有对应网关工具的双路径 MCP 工具名
+const DIRECT_TO_GATEWAY = {
+  "wps-office_wps_get_active_document":     "getActiveDocument",
+  "wps-office_wps_insert_text":             "insertText",
+  "wps-office_wps_get_active_workbook":     "getActiveWorkbook",
+  "wps-office_wps_get_cell_value":          "getCellValue",
+  "wps-office_wps_set_cell_value":          "setCellValue",
+  "wps-office_wps_get_active_presentation": "getActivePresentation",
+};
 
 let prevEnd = 0;
 let docInfoFetched = false;    // getActiveDocument 已调
@@ -25,10 +35,13 @@ let trackChangesOn = false;    // enableTrackChanges(true) 已调
 export default async () => {
   return {
     "tool.execute.before": async (input, output) => {
-      // 内置 MCP 工具：wps_get_active_document() → wps-office_wps_get_active_document
-      if (input.name === "wps-office_wps_get_active_document") {
-        docInfoFetched = true;
-        return;
+      // ── 强制走网关：拦截所有双路径独立 MCP 工具 ──
+      const gatewayName = DIRECT_TO_GATEWAY[input.name];
+      if (gatewayName) {
+        throw new Error(
+          `【分批插件】请通过网关调用 ${gatewayName}，不要直接调用 ${input.name}。` +
+          `使用方法：wps_office_execute({ tool_name: "${gatewayName}", arguments: {...} })`
+        );
       }
 
       // 仅拦截走 wps_office_execute 网关的调用
@@ -37,7 +50,7 @@ export default async () => {
       const toolName = input.args?.tool_name;
       const toolArgs = input.args?.arguments || {};
 
-      // ── 跟踪 getActiveDocument ──
+      // ── 跟踪 getActiveDocument（只有走网关才能到达这里）──
       if (toolName === "getActiveDocument") {
         docInfoFetched = true;
         return;
