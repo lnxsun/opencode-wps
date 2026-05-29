@@ -4,18 +4,23 @@
  * 拦截 wps_office_execute 调用，在 MCP 层之前执行校验：
  *
  * 规则 1：getDocumentParagraphs 单次请求不得超过 200 段
- * 规则 2：getDocumentParagraphs 必须从第 1 段开始，逐批推进（禁止跳跃）
- * 规则 3：proofreadBasic 必须传入正确的 startOffset（从段落 [start-end] 提取）
- * 规则 4：replaceRange 必须在 proofreadBasic 之后调用（禁止无校对直接修复）
- * 规则 5：文档 >200 段落时，必须先获取文档信息并开始分批，才允许校对
+ * 规则 2：getDocumentParagraphs 必须从第 1 段开始，逐批推进（禁止跳跃；
+ *         允许调回第 1 段重新开始——会重置所有状态）
+ * 规则 3：proofreadBasic 必须传入正确的 startOffset
+ * 规则 4：replaceRange / findReplace 必须在 proofreadBasic 之后调用
+ * 规则 5：必须先获取文档信息并开始分批，才允许校对
  * 规则 6：修改前必须开启修订模式（enableTrackChanges(true)）
+ *
+ * 注意：findReplace 不支持修订模式跟踪。即使通过了修订模式检查，
+ *      实际替换也不会产生修订标记。SKILL.md 已禁用 findReplace 用于校对修复。
  */
 
 let prevEnd = 0;
-let proofreadDone = false;
-let docInfoFetched = false;   // getActiveDocument 已调
-let batchStarted = false;     // getDocumentParagraphs 至少调过一次
-let trackChangesOn = false;   // enableTrackChanges(true) 已调
+let docInfoFetched = false;    // getActiveDocument 已调
+let batchStarted = false;      // getDocumentParagraphs 至少调过一次
+let batchCount = 0;            // 已处理的批次数（区分首批/后续）
+let proofreadDone = false;     // 当前批是否已调过 proofreadBasic
+let trackChangesOn = false;    // enableTrackChanges(true) 已调
 
 export default async () => {
   return {
@@ -39,9 +44,16 @@ export default async () => {
 
       // ── 规则 1 + 2：getDocumentParagraphs ──
       if (toolName === "getDocumentParagraphs") {
-        const start = toolArgs.start_paragraph || 1;
-        const end = toolArgs.end_paragraph || (start + 49);
+        const start = toolArgs.start_paragraph ?? 1;
+        const end = toolArgs.end_paragraph ?? (start + 49);
         const count = end - start + 1;
+
+        if (start < 1) {
+          throw new Error(`【分批插件】start_paragraph 必须 ≥ 1（当前值: ${start}）。`);
+        }
+        if (end < start) {
+          throw new Error(`【分批插件】end_paragraph（${end}）必须 ≥ start_paragraph（${start}）。`);
+        }
 
         // 规则 1：单次最多 200 段
         if (count > 200) {
@@ -54,21 +66,27 @@ export default async () => {
 
         // 规则 2：批次必须连续（从第 1 段开始，逐批推进）
         if (prevEnd > 0 && start !== prevEnd + 1) {
-          if (start !== 1) {
+          // 允许调回第 1 段重新开始（重置所有校对状态）
+          if (start === 1) {
+            proofreadDone = false;
+            batchCount = 0;
+          } else {
             throw new Error(
               `【分批插件】批次不连续：上一批结束于段落 ${prevEnd}，` +
-              `当前批从段落 ${start} 开始。批次必须从 ${prevEnd + 1} 开始逐批推进。`
+              `当前批从段落 ${start} 开始。批次必须从 ${prevEnd + 1} 开始逐批推进，` +
+              `或从第 1 段重新开始。`
             );
           }
         }
 
         prevEnd = end;
         batchStarted = true;
+        batchCount++;
         proofreadDone = false;
         return;
       }
 
-      // ── 规则 5：必须先获取文档信息 + 启动分批（仅文档 >200 段时）──
+      // ── 规则 5：必须先获取文档信息 + 启动分批 ──
       if (toolName === "proofreadBasic") {
         if (!docInfoFetched) {
           throw new Error(
@@ -93,9 +111,10 @@ export default async () => {
             `必须传入本批第一段的字符起始位置（从 getDocumentParagraphs 返回的 [start-end] 中提取）。`
           );
         }
-        if (prevEnd > 200 && so === 0) {
+        // 第二批及以后时，startOffset=0 一定是错的
+        if (batchCount > 1 && so === 0) {
           throw new Error(
-            `【分批插件】proofreadBasic startOffset=0 但当前不在文档开头。` +
+            `【分批插件】proofreadBasic startOffset=0 但不在文档开头（第 ${batchCount} 批）。` +
             `startOffset 应该从 getDocumentParagraphs 返回的本批第一段 [start] 值中取得。`
           );
         }
@@ -103,15 +122,15 @@ export default async () => {
         return;
       }
 
-      // ── 规则 6 + 4：replaceRange ──
-      if (toolName === "replaceRange") {
+      // ── 规则 6 + 4：replaceRange / findReplace ──
+      if (toolName === "replaceRange" || toolName === "findReplace") {
         if (!trackChangesOn) {
           throw new Error(
             `【分批插件】请先调用 enableTrackChanges(true) 开启修订模式，` +
             `再执行替换操作。所有修改必须在修订模式下进行。`
           );
         }
-        if (!proofreadDone) {
+        if (toolName === "replaceRange" && !proofreadDone) {
           throw new Error(
             `【分批插件】replaceRange 必须在同一批的 proofreadBasic 之后调用。` +
             `请先对当前批次执行 proofreadBasic 完成校对，再修复问题。`
