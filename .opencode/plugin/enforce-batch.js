@@ -7,10 +7,15 @@
  * 规则 2：getDocumentParagraphs 必须从第 1 段开始，逐批推进（禁止跳跃）
  * 规则 3：proofreadBasic 必须传入正确的 startOffset（从段落 [start-end] 提取）
  * 规则 4：replaceRange 必须在 proofreadBasic 之后调用（禁止无校对直接修复）
+ * 规则 5：文档 >200 段落时，必须先获取文档信息并开始分批，才允许校对
+ * 规则 6：修改前必须开启修订模式（enableTrackChanges(true)）
  */
 
-let prevEnd = 0;        // 上一批的结束段落号
-let proofreadDone = false;  // 当前批是否已调过 proofreadBasic
+let prevEnd = 0;
+let proofreadDone = false;
+let docInfoFetched = false;   // getActiveDocument 已调
+let batchStarted = false;     // getDocumentParagraphs 至少调过一次
+let trackChangesOn = false;   // enableTrackChanges(true) 已调
 
 export default async () => {
   return {
@@ -19,6 +24,18 @@ export default async () => {
 
       const toolName = input.args?.tool_name;
       const toolArgs = input.args?.arguments || {};
+
+      // ── 跟踪 getActiveDocument ──
+      if (toolName === "getActiveDocument") {
+        docInfoFetched = true;
+        return;
+      }
+
+      // ── 跟踪 enableTrackChanges ──
+      if (toolName === "enableTrackChanges") {
+        trackChangesOn = toolArgs.enable === true;
+        return;
+      }
 
       // ── 规则 1 + 2：getDocumentParagraphs ──
       if (toolName === "getDocumentParagraphs") {
@@ -37,7 +54,6 @@ export default async () => {
 
         // 规则 2：批次必须连续（从第 1 段开始，逐批推进）
         if (prevEnd > 0 && start !== prevEnd + 1) {
-          // 允许重新从头开始（回到第 1 段）
           if (start !== 1) {
             throw new Error(
               `【分批插件】批次不连续：上一批结束于段落 ${prevEnd}，` +
@@ -47,10 +63,28 @@ export default async () => {
         }
 
         prevEnd = end;
-        proofreadDone = false;  // 新批次，重置校对状态
+        batchStarted = true;
+        proofreadDone = false;
+        return;
       }
 
-      // ── 规则 3：proofreadBasic ──
+      // ── 规则 5：必须先获取文档信息 + 启动分批（仅文档 >200 段时）──
+      if (toolName === "proofreadBasic") {
+        if (!docInfoFetched) {
+          throw new Error(
+            `【分批插件】请先调用 getActiveDocument 了解文档总段落数，` +
+            `输出分批校对计划后，再开始校对。`
+          );
+        }
+        if (!batchStarted) {
+          throw new Error(
+            `【分批插件】请先调用 getDocumentParagraphs 获取第一批段落，` +
+            `确认分批计划后，再调 proofreadBasic。未输出分批计划前不得开始校对。`
+          );
+        }
+      }
+
+      // ── 规则 3：proofreadBasic startOffset 校验 ──
       if (toolName === "proofreadBasic") {
         const so = toolArgs.startOffset;
         if (so === undefined || so === null) {
@@ -59,7 +93,6 @@ export default async () => {
             `必须传入本批第一段的字符起始位置（从 getDocumentParagraphs 返回的 [start-end] 中提取）。`
           );
         }
-        // 非首批时，startOffset 不应该为 0（文档开头才是 0）
         if (prevEnd > 200 && so === 0) {
           throw new Error(
             `【分批插件】proofreadBasic startOffset=0 但当前不在文档开头。` +
@@ -67,10 +100,17 @@ export default async () => {
           );
         }
         proofreadDone = true;
+        return;
       }
 
-      // ── 规则 4：replaceRange ──
+      // ── 规则 6 + 4：replaceRange ──
       if (toolName === "replaceRange") {
+        if (!trackChangesOn) {
+          throw new Error(
+            `【分批插件】请先调用 enableTrackChanges(true) 开启修订模式，` +
+            `再执行替换操作。所有修改必须在修订模式下进行。`
+          );
+        }
         if (!proofreadDone) {
           throw new Error(
             `【分批插件】replaceRange 必须在同一批的 proofreadBasic 之后调用。` +
