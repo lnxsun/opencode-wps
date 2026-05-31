@@ -79,6 +79,7 @@ export default async () => {
       // ── 执行后钩子：输出成功后才提交可变状态 ──
     "tool.execute.after": async (input, output) => {
       if (input.name !== "wps-office_wps_office_execute") return;
+      if (output?.isError) return;  // 明确失败的调用不提交任何状态
 
       const toolName = input.args?.tool_name;
 
@@ -286,7 +287,7 @@ export default async () => {
           );
         }
         // 偏移量验证：replaceRange 必须在本批字符范围内
-        if (toolName === "replaceRange" && proofreadCalledThisBatch && batchStartOffset !== null) {
+        if (toolName === "replaceRange" && batchStartOffset !== null) {
           const startPos = toolArgs.startPos;
           const endPos = toolArgs.endPos;
           if (startPos !== undefined && startPos < batchStartOffset) {
