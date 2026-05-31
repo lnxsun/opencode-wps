@@ -97,6 +97,7 @@ const HANDLER_PARAM_MAP: Record<string, Record<string, string>> = {
   getDocumentParagraphs: { startParagraph: 'start_paragraph', endParagraph: 'end_paragraph' },
   replaceRange: { startPos: 'start_pos', endPos: 'end_pos' },
   proofreadBasic: { startOffset: 'start_offset' },
+  getDocumentTextByRange: { startOffset: 'start_offset' },
 };
 
 // 无工具需要跳过 handler 路由（所有 COM schema 参数名已与 handler inputSchema 对齐）
@@ -148,7 +149,7 @@ const VERIFIED_TOOLS = new Set([
   'switchDocument', 'switchPresentation', 'switchWorkbook', 'convertToPDF', 'convertFormat',
   'trim', 'underline', 'placeholder',
   // === Word ===
-  'getActiveDocument', 'getDocumentText', 'getSelectedText', 'setSelectedText', 'save',
+  'getActiveDocument', 'getDocumentText', 'getDocumentTextByRange', 'getSelectedText', 'setSelectedText', 'save',
   'saveAs', 'openFile', 'openDocument', 'createDocument', 'closeDocument',
   'setFont', 'setParagraph', 'applyStyle', 'generateTOC',
   'insertBookmark', 'getBookmarks', 'replaceBookmarkContent',
@@ -219,6 +220,7 @@ const COM_ACTIONS: ToolIndexItem[] = [
   // Word 操作 (~35)
   { name: 'getActiveDocument', description: '获取当前活动的 WPS 文档信息', keywords: ['文档', '当前'], category: 'word', appType: WpsAppType.WRITER, paramsSchema: {} },
   { name: 'getDocumentText', description: '获取文档全部文本内容', keywords: ['文本', '内容'], category: 'word', appType: WpsAppType.WRITER, paramsSchema: {} },
+  { name: 'getDocumentTextByRange', description: '按字符偏移读取文档原始文本', keywords: ['文本', '偏移', '读取'], category: 'word', appType: WpsAppType.WRITER, paramsSchema: { startOffset: { type: 'number', description: '起始字符偏移', required: false }, length: { type: 'number', description: '读取字符数', required: false } } },
   { name: 'getSelectedText', description: '获取选中的文本', keywords: ['选中', '选区'], category: 'word', appType: WpsAppType.WRITER, paramsSchema: {} },
   { name: 'setSelectedText', description: '设置选中的文本内容', keywords: ['设置', '文本'], category: 'word', appType: WpsAppType.WRITER, paramsSchema: { text: { type: 'string', description: '文本内容', required: true } } },
   { name: 'save', description: '保存当前文档', keywords: ['保存'], category: 'word', appType: WpsAppType.WRITER, paramsSchema: {} },

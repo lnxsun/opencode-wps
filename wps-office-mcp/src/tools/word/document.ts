@@ -350,6 +350,87 @@ export const getDocumentTextHandler: ToolHandler = async (
 };
 
 /**
+ * 按字符偏移读取文档原始文本
+ */
+export const getDocumentTextByRangeDefinition: ToolDefinition = {
+  name: 'wps_word_get_document_text_by_range',
+  description: `按字符偏移读取 Word 文档的原始文本内容。
+
+用于校对流程：先用 getDocumentParagraphs 获取段落 [start-end]，
+再用此工具获取精确文本，传给 proofreadBasic。
+
+使用场景：
+- "读取文档从第100个字符开始的200个字符"
+- "获取本批段落范围的原始文本"
+- "获取段落 1-200 的完整文本（包含空段落）"`,
+  category: ToolCategory.DOCUMENT,
+  inputSchema: {
+    type: 'object',
+    properties: {
+      start_offset: {
+        type: 'number',
+        description: '起始字符偏移位置，默认 0（从文档开头）',
+      },
+      length: {
+        type: 'number',
+        description: '要读取的字符数，默认读取到文档末尾',
+      },
+    },
+  },
+};
+
+export const getDocumentTextByRangeHandler: ToolHandler = async (
+  args: Record<string, unknown>
+): Promise<ToolCallResult> => {
+  const { start_offset, length } = args as { start_offset?: number; length?: number };
+
+  try {
+    const execParams: Record<string, unknown> = {};
+    if (start_offset != null) execParams.startOffset = start_offset;
+    if (length != null) execParams.length = length;
+
+    const response = await wpsClient.executeMethod<{
+      text: string;
+      startOffset: number;
+      length: number;
+      docLength: number;
+    }>(
+      'getDocumentTextByRange',
+      execParams,
+      WpsAppType.WRITER
+    );
+
+    if (response.success && response.data) {
+      return {
+        id: uuidv4(),
+        success: true,
+        content: [{
+          type: 'text',
+          text: `文档文本 (偏移 ${response.data.startOffset}, ` +
+            `长度 ${response.data.length}，` +
+            `文档总长 ${response.data.docLength}):\n\n${response.data.text}`,
+        }],
+      };
+    } else {
+      return {
+        id: uuidv4(),
+        success: false,
+        content: [{ type: 'text', text: `读取失败: ${response.error}` }],
+        error: response.error,
+      };
+    }
+  } catch (error) {
+    const errMsg = error instanceof Error ? error.message : String(error);
+    return {
+      id: uuidv4(),
+      success: false,
+      content: [{ type: 'text', text: `读取出错: ${errMsg}` }],
+      error: errMsg,
+    };
+  }
+};
+
+/**
  * 设置页眉内容
  */
 export const insertHeaderDefinition: ToolDefinition = {
@@ -724,6 +805,7 @@ export const documentTools: RegisteredTool[] = [
   { definition: switchDocumentDefinition, handler: switchDocumentHandler },
   { definition: openDocumentDefinition, handler: openDocumentHandler },
   { definition: getDocumentTextDefinition, handler: getDocumentTextHandler },
+  { definition: getDocumentTextByRangeDefinition, handler: getDocumentTextByRangeHandler },
   { definition: insertHeaderDefinition, handler: insertHeaderHandler },
   { definition: insertFooterDefinition, handler: insertFooterHandler },
   { definition: generateDocTocDefinition, handler: generateDocTocHandler },

@@ -3,16 +3,24 @@
  *
  * 拦截所有 MCP 工具调用，检验分批校对规则：
  *
+ * ── 流程规则 ──
  * 规则 1：getDocumentParagraphs 单次请求不得超过 200 段
- * 规则 2：getDocumentParagraphs 必须从第 1 段开始，逐批推进（禁止跳跃；
- *         允许调回第 1 段重新开始——会重置所有状态）
- * 规则 3：proofreadBasic 必须传入正确的 startOffset
- * 规则 4：replaceRange / findReplace 必须在 proofreadBasic 之后调用
+ * 规则 2：getDocumentParagraphs 必须从第 1 段开始，逐批推进
+ * 规则 3：proofreadBasic 必须传入正确的 startOffset（与段落 [start] 一致）
+ * 规则 4：replaceRange 必须在 proofreadBasic 之后调用
  * 规则 5：必须先获取文档信息并开始分批，才允许校对
  * 规则 6：修改前必须开启修订模式（enableTrackChanges(true)）
  *
+ * ── 数据正确性规则（tool.execute.after 从输出解析）──
+ * 规则 7：每批只准调 1 次 proofreadBasic（禁止拆子块）
+ * 规则 8：startOffset 必须等于本批第一段的 [start] 值
+ * 规则 9：text.length 必须等于本批最后一段 [end] - startOffset
+ *         （禁止跳过空段落，必须传完整文本）
+ *
+ * 规则 7-9 依赖 getDocumentText 工具提供精确文档子串。
+ * 如果 AI 手动拼接文本（跳过空段落），规则 9 会拒绝。
+ *
  * 重要：所有有双路径（独立 MCP 工具 + 网关）的操作，一律强制走网关。
- *       直接调用独立 MCP 工具的请求会被拒绝，并提示改用 wps_office_execute。
  */
 
 // 有对应网关工具的双路径 MCP 工具名
@@ -26,16 +34,66 @@ const DIRECT_TO_GATEWAY = {
 };
 
 let prevEnd = 0;
-let docInfoFetched = false;    // getActiveDocument 已调
-let batchStarted = false;      // getDocumentParagraphs 至少调过一次
-let batchCount = 0;            // 已处理的批次数（区分首批/后续）
-let proofreadDone = false;     // 当前批是否已调过 proofreadBasic
-let trackChangesOn = false;    // enableTrackChanges(true) 已调
+let docInfoFetched = false;        // getActiveDocument 已调
+let batchStarted = false;          // getDocumentParagraphs 至少调过一次
+let batchCount = 0;                // 已处理的批次数
+let proofreadDone = false;         // 当前批是否已调过 proofreadBasic
+let trackChangesOn = false;        // enableTrackChanges(true) 已调
+
+// 规则 7-9 所需状态（从 getDocumentParagraphs 输出解析）
+let batchStartOffset = null;       // 本批第一段的 [start]
+let batchEndOffset = null;         // 本批最后一段的 [end]
+let proofreadCalledThisBatch = false;  // 本批是否已调过 proofreadBasic
+
+// 从 getDocumentParagraphs 输出字符串中提取 [start-end] 数组
+function parseParagraphRanges(outputText) {
+  const regex = /\[(\d+)-(\d+)\]/g;
+  const matches = [];
+  let m;
+  while ((m = regex.exec(outputText)) !== null) {
+    matches.push({ start: parseInt(m[1], 10), end: parseInt(m[2], 10) });
+  }
+  return matches;
+}
+
+// 从钩子 output 中提取文本
+function getOutputText(output) {
+  if (!output) return '';
+  const result = output.result || output;
+  if (typeof result === 'string') return result;
+  if (typeof result?.text === 'string') return result.text;
+  if (Array.isArray(result?.content)) {
+    const textBlock = result.content.find(c => c?.type === 'text');
+    if (textBlock?.text) return textBlock.text;
+  }
+  if (Array.isArray(result)) {
+    const textBlock = result.find(c => c?.type === 'text');
+    if (textBlock?.text) return textBlock.text;
+  }
+  return '';
+}
 
 export default async () => {
   return {
+    // ── 执行后钩子：解析 getDocumentParagraphs 输出 ──
+    "tool.execute.after": async (input, output) => {
+      if (input.name !== "wps-office_wps_office_execute") return;
+      if (input.args?.tool_name !== "getDocumentParagraphs") return;
+
+      const outText = getOutputText(output);
+      if (!outText) return;
+
+      const ranges = parseParagraphRanges(outText);
+      if (ranges.length === 0) return;
+
+      batchStartOffset = ranges[0].start;
+      batchEndOffset = ranges[ranges.length - 1].end;
+      proofreadCalledThisBatch = false;
+    },
+
+    // ── 执行前钩子：所有规则校验 ──
     "tool.execute.before": async (input, output) => {
-      // ── 强制走网关：拦截所有双路径独立 MCP 工具 ──
+      // 强制走网关：拦截所有双路径独立 MCP 工具
       const gatewayName = DIRECT_TO_GATEWAY[input.name];
       if (gatewayName) {
         throw new Error(
@@ -50,7 +108,7 @@ export default async () => {
       const toolName = input.args?.tool_name;
       const toolArgs = input.args?.arguments || {};
 
-      // ── 跟踪 getActiveDocument（只有走网关才能到达这里）──
+      // ── 跟踪 getActiveDocument ──
       if (toolName === "getActiveDocument") {
         docInfoFetched = true;
         return;
@@ -84,10 +142,10 @@ export default async () => {
           );
         }
 
-        // 规则 2：批次必须连续（从第 1 段开始，逐批推进）
+        // 规则 2：批次必须连续
         if (prevEnd > 0 && start !== prevEnd + 1) {
-          // 允许调回第 1 段重新开始（重置所有校对状态）
           if (start === 1) {
+            // 允许调回第 1 段重新开始
             proofreadDone = false;
             batchCount = 0;
           } else {
@@ -122,8 +180,9 @@ export default async () => {
         }
       }
 
-      // ── 规则 3：proofreadBasic startOffset 校验 ──
+      // ── 规则 3 + 7 + 8 + 9：proofreadBasic ──
       if (toolName === "proofreadBasic") {
+        // 规则 3：startOffset 必须传
         const so = toolArgs.startOffset;
         if (so === undefined || so === null) {
           throw new Error(
@@ -131,13 +190,40 @@ export default async () => {
             `必须传入本批第一段的字符起始位置（从 getDocumentParagraphs 返回的 [start-end] 中提取）。`
           );
         }
-        // 第二批及以后时，startOffset=0 一定是错的
-        if (batchCount > 1 && so === 0) {
+
+        // 规则 7：每批只准调 1 次
+        if (proofreadCalledThisBatch) {
           throw new Error(
-            `【分批插件】proofreadBasic startOffset=0 但不在文档开头（第 ${batchCount} 批）。` +
-            `startOffset 应该从 getDocumentParagraphs 返回的本批第一段 [start] 值中取得。`
+            `【分批插件】本批已调过 proofreadBasic，禁止再次调用。` +
+            `每批只准调 1 次 proofreadBasic。如果要跳过子块，请使用 ` +
+            `getDocumentText 获取完整文本后一次性传入。`
           );
         }
+
+        // 规则 8：startOffset 必须等于本批第一段的 [start]
+        if (batchStartOffset !== null && so !== batchStartOffset) {
+          throw new Error(
+            `【分批插件】proofreadBasic startOffset=${so} 与本批第一段起始位置 ` +
+            `${batchStartOffset} 不匹配。startOffset 必须等于 ` +
+            `getDocumentParagraphs 返回的本批第一段 [start] 值。`
+          );
+        }
+
+        // 规则 9：text.length 必须等于本批最后一段 [end] - startOffset
+        if (batchEndOffset !== null) {
+          const text = toolArgs.text || '';
+          const expectedLen = batchEndOffset - so;
+          if (text.length !== expectedLen) {
+            throw new Error(
+              `【分批插件】proofreadBasic 传入文本长度 ${text.length} 与本批 ` +
+              `字符范围 ${so}-${batchEndOffset}（长度 ${expectedLen}）不匹配。` +
+              `请用 getDocumentText(startOffset=${so}, length=${expectedLen}) ` +
+              `获取精确文本后再调用 proofreadBasic。`
+            );
+          }
+        }
+
+        proofreadCalledThisBatch = true;
         proofreadDone = true;
         return;
       }
@@ -150,7 +236,6 @@ export default async () => {
             `再执行替换操作。所有修改必须在修订模式下进行。`
           );
         }
-        // findReplace 不支持修订标记，在批处理流程中禁用
         if (toolName === "findReplace" && batchStarted) {
           throw new Error(
             `【分批插件】分批校对流程中禁止使用 findReplace（不支持修订标记）。` +
