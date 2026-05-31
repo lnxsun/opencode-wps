@@ -105,10 +105,7 @@ export default async () => {
 
       // proofreadBasic：输出成功后才设置已校对标志
       if (toolName === "proofreadBasic") {
-        const outText = getOutputText(output);
-        if (!outText) return;
-        // 检查是否返回了错误（proofreadBasic 成功时返回校对结果，而不是错误信息）
-        if (outText.startsWith('{') || outText.includes('"success":false')) return;
+        if (output?.success === false) return;
         proofreadCalledThisBatch = true;
         proofreadDone = true;
       }
@@ -173,6 +170,7 @@ export default async () => {
             // 允许调回第 1 段重新开始
             proofreadDone = false;
             proofreadCalledThisBatch = false;
+            batchStarted = false;
             batchCount = 0;
           } else {
             throw new Error(
