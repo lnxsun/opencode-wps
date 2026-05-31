@@ -45,14 +45,14 @@ let batchStartOffset = null;       // 本批第一段的 [start]
 let batchEndOffset = null;         // 本批最后一段的 [end]
 let proofreadCalledThisBatch = false;  // 本批是否已调过 proofreadBasic
 
-// 从 getDocumentParagraphs 输出字符串中提取 [start-end] 数组
+// 从 getDocumentParagraphs 输出字符串中提取 [index] + [start-end] 数组
 // 锚定到行首格式 "[index] (style) [start-end]" 避免匹配正文中的 [digits-digits]
 function parseParagraphRanges(outputText) {
-  const regex = /^\s*\[\d+\] \([^)]+\) \[(\d+)-(\d+)\]/gm;
+  const regex = /^\s*\[(\d+)\] \([^)]+\) \[(\d+)-(\d+)\]/gm;
   const matches = [];
   let m;
   while ((m = regex.exec(outputText)) !== null) {
-    matches.push({ start: parseInt(m[1], 10), end: parseInt(m[2], 10) });
+    matches.push({ index: parseInt(m[1], 10), start: parseInt(m[2], 10), end: parseInt(m[3], 10) });
   }
   return matches;
 }
@@ -90,9 +90,7 @@ export default async () => {
         const ranges = parseParagraphRanges(outText);
         if (ranges.length === 0) return;
 
-        const end = input.args?.arguments?.end_paragraph ??
-          ((input.args?.arguments?.start_paragraph ?? 1) + 49);
-        prevEnd = end;
+        prevEnd = ranges[ranges.length - 1].index;
         batchStarted = true;
         batchCount++;
         proofreadDone = false;
@@ -105,7 +103,7 @@ export default async () => {
 
       // proofreadBasic：输出成功后才设置已校对标志
       if (toolName === "proofreadBasic") {
-        if (output?.success === false) return;
+        if (output?.success !== true) return;
         proofreadCalledThisBatch = true;
         proofreadDone = true;
       }
@@ -180,8 +178,9 @@ export default async () => {
             );
           }
         }
-        // 注意：prevEnd/batchStarted/batchCount/proofreadDone 在 after-hook 输出成功后才提交
-        // 参见 tool.execute.after。这样即使 COM 调用失败，状态也不会脏。
+        // 注意：prevEnd 从实际返回的最后一段索引计算（而非请求的 end_paragraph），
+        // 短文档不会被逼近不存在的段落。batchStarted/batchCount/proofreadDone
+        // 同样在 after-hook 输出成功后才提交，COM 失败也不会脏状态。
         return;
       }
 
