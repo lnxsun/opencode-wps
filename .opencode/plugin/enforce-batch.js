@@ -110,6 +110,8 @@ export default async () => {
 
       // enableTrackChanges：输出成功后才提交修订模式状态
       if (toolName === "enableTrackChanges") {
+        const outText = getOutputText(output);
+        if (!outText) return;
         trackChangesOn = input.args?.arguments?.enable === true;
         return;
       }
