@@ -47,12 +47,13 @@ let proofreadCalledThisBatch = false;  // 本批是否已调过 proofreadBasic
 
 // 从 getDocumentParagraphs 输出字符串中提取 [index] + [start-end] 数组
 // 锚定到行首格式 "[index] (style) [start-end]" 避免匹配正文中的 [digits-digits]
+// 使用贪心回溯匹配样式名，支持含括号的样式名如 "Heading 1 (modified)"
 function parseParagraphRanges(outputText) {
-  const regex = /^\s*\[(\d+)\] \([^)]+\) \[(\d+)-(\d+)\]/gm;
+  const regex = /^\s*\[(\d+)\] \((.+)\)\s*\[(\d+)-(\d+)\]/gm;
   const matches = [];
   let m;
   while ((m = regex.exec(outputText)) !== null) {
-    matches.push({ index: parseInt(m[1], 10), start: parseInt(m[2], 10), end: parseInt(m[3], 10) });
+    matches.push({ index: parseInt(m[1], 10), start: parseInt(m[3], 10), end: parseInt(m[4], 10) });
   }
   return matches;
 }
@@ -265,6 +266,16 @@ export default async () => {
             `【分批插件】replaceRange 必须在同一批的 proofreadBasic 之后调用。` +
             `请先对当前批次执行 proofreadBasic 完成校对，再修复问题。`
           );
+        }
+        // 偏移量验证：replaceRange 必须在本批字符范围内
+        if (toolName === "replaceRange" && proofreadDone && batchStartOffset !== null) {
+          const startPos = toolArgs.startPos;
+          if (startPos !== undefined && startPos < batchStartOffset) {
+            throw new Error(
+              `【分批插件】replaceRange startPos=${startPos} 在本批起始位置 ${batchStartOffset} 之前。` +
+              `请确保替换范围在当前校对的批次内。`
+            );
+          }
         }
       }
     }
