@@ -10,6 +10,7 @@
  * - wps_word_switch_document: 切换到指定文档
  * - wps_word_open_document: 打开指定路径的文档
  * - wps_word_get_document_text: 获取文档文本内容
+ * - wps_word_get_document_text_by_range: 按字符偏移读取文档原始文本
  * - wps_word_insert_header: 设置页眉内容
  * - wps_word_insert_footer: 设置页脚内容
  * - wps_word_generate_doc_toc: 自动生成文档目录
