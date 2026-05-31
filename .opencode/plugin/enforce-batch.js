@@ -102,6 +102,12 @@ export default async () => {
         return;
       }
 
+      // enableTrackChanges：输出成功后才提交修订模式状态
+      if (toolName === "enableTrackChanges") {
+        trackChangesOn = input.args?.arguments?.enable === true;
+        return;
+      }
+
       // proofreadBasic：有有效输出才设置已校对标志
       if (toolName === "proofreadBasic") {
         const outText = getOutputText(output);
@@ -136,9 +142,8 @@ export default async () => {
         return;
       }
 
-      // ── 跟踪 enableTrackChanges ──
+      // ── 跟踪 enableTrackChanges（注意：trackChangesOn 在 after-hook 输出成功后才提交）
       if (toolName === "enableTrackChanges") {
-        trackChangesOn = toolArgs.enable === true;
         return;
       }
 
@@ -270,9 +275,16 @@ export default async () => {
         // 偏移量验证：replaceRange 必须在本批字符范围内
         if (toolName === "replaceRange" && proofreadDone && batchStartOffset !== null) {
           const startPos = toolArgs.startPos;
+          const endPos = toolArgs.endPos;
           if (startPos !== undefined && startPos < batchStartOffset) {
             throw new Error(
               `【分批插件】replaceRange startPos=${startPos} 在本批起始位置 ${batchStartOffset} 之前。` +
+              `请确保替换范围在当前校对的批次内。`
+            );
+          }
+          if (endPos !== undefined && batchEndOffset !== null && endPos > batchEndOffset) {
+            throw new Error(
+              `【分批插件】replaceRange endPos=${endPos} 超出本批结束位置 ${batchEndOffset}。` +
               `请确保替换范围在当前校对的批次内。`
             );
           }

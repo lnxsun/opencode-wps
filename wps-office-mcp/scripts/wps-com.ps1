@@ -1869,6 +1869,7 @@ switch ($Action) {
         $doc = $word.ActiveDocument
         if ($null -eq $doc) { Output-Json @{ success = $false; error = "No active document" }; exit }
         $startOffset = if ($null -ne $p.startOffset) { [Math]::Max(0, [int]$p.startOffset) } else { 0 }
+        $startOffset = [Math]::Min($startOffset, $doc.Content.End)  # 超 doc 范围时钳位
         $length = if ($null -ne $p.length) { [Math]::Max(0, [int]$p.length) } else { [Math]::Max(0, $doc.Content.End - $startOffset) }
         $endOffset = [Math]::Min($startOffset + $length, $doc.Content.End)
         $endOffset = [Math]::Max(0, $endOffset)  # startOffset > doc length 时保底
