@@ -1868,7 +1868,7 @@ switch ($Action) {
         if ($null -eq $word) { Output-Json @{ success = $false; error = "WPS Word not running" }; exit }
         $doc = $word.ActiveDocument
         if ($null -eq $doc) { Output-Json @{ success = $false; error = "No active document" }; exit }
-        $startOffset = if ($null -ne $p.startOffset) { [int]$p.startOffset } else { 0 }
+        $startOffset = if ($null -ne $p.startOffset) { [Math]::Max(0, [int]$p.startOffset) } else { 0 }
         $length = if ($null -ne $p.length) { [int]$p.length } else { $doc.Content.End - $startOffset }
         $endOffset = [Math]::Min($startOffset + $length, $doc.Content.End)
         $range = $doc.Range($startOffset, $endOffset)

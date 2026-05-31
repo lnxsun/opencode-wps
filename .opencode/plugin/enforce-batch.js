@@ -17,7 +17,7 @@
  * 规则 9：text.length 必须等于本批最后一段 [end] - startOffset
  *         （禁止跳过空段落，必须传完整文本）
  *
- * 规则 7-9 依赖 getDocumentText 工具提供精确文档子串。
+ * 规则 7-9 依赖 getDocumentTextByRange 工具提供精确文档子串。
  * 如果 AI 手动拼接文本（跳过空段落），规则 9 会拒绝。
  *
  * 重要：所有有双路径（独立 MCP 工具 + 网关）的操作，一律强制走网关。
@@ -76,7 +76,7 @@ function getOutputText(output) {
 
 export default async () => {
   return {
-    // ── 执行后钩子：解析 getDocumentParagraphs 输出 ──
+      // ── 执行后钩子：解析 getDocumentParagraphs 输出 + 提交状态 ──
     "tool.execute.after": async (input, output) => {
       if (input.name !== "wps-office_wps_office_execute") return;
       if (input.args?.tool_name !== "getDocumentParagraphs") return;
@@ -86,6 +86,14 @@ export default async () => {
 
       const ranges = parseParagraphRanges(outText);
       if (ranges.length === 0) return;
+
+      // 仅在输出成功解析后，才提交批次状态
+      const end = input.args?.arguments?.end_paragraph ??
+        ((input.args?.arguments?.start_paragraph ?? 1) + 49);
+      prevEnd = end;
+      batchStarted = true;
+      batchCount++;
+      proofreadDone = false;
 
       batchStartOffset = ranges[0].start;
       batchEndOffset = ranges[ranges.length - 1].end;
@@ -150,6 +158,7 @@ export default async () => {
           if (start === 1) {
             // 允许调回第 1 段重新开始
             proofreadDone = false;
+            proofreadCalledThisBatch = false;
             batchCount = 0;
           } else {
             throw new Error(
@@ -159,11 +168,8 @@ export default async () => {
             );
           }
         }
-
-        prevEnd = end;
-        batchStarted = true;
-        batchCount++;
-        proofreadDone = false;
+        // 注意：prevEnd/batchStarted/batchCount/proofreadDone 在 after-hook 输出成功后才提交
+        // 参见 tool.execute.after。这样即使 COM 调用失败，状态也不会脏。
         return;
       }
 
@@ -199,7 +205,7 @@ export default async () => {
           throw new Error(
             `【分批插件】本批已调过 proofreadBasic，禁止再次调用。` +
             `每批只准调 1 次 proofreadBasic。如果要跳过子块，请使用 ` +
-            `getDocumentText 获取完整文本后一次性传入。`
+            `getDocumentTextByRange 获取完整文本后一次性传入。`
           );
         }
 
