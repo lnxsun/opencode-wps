@@ -76,28 +76,42 @@ function getOutputText(output) {
 
 export default async () => {
   return {
-      // ── 执行后钩子：解析 getDocumentParagraphs 输出 + 提交状态 ──
+      // ── 执行后钩子：输出成功后才提交可变状态 ──
     "tool.execute.after": async (input, output) => {
       if (input.name !== "wps-office_wps_office_execute") return;
-      if (input.args?.tool_name !== "getDocumentParagraphs") return;
 
-      const outText = getOutputText(output);
-      if (!outText) return;
+      const toolName = input.args?.tool_name;
 
-      const ranges = parseParagraphRanges(outText);
-      if (ranges.length === 0) return;
+      // getDocumentParagraphs：输出成功后才提交批次状态
+      if (toolName === "getDocumentParagraphs") {
+        const outText = getOutputText(output);
+        if (!outText) return;
 
-      // 仅在输出成功解析后，才提交批次状态
-      const end = input.args?.arguments?.end_paragraph ??
-        ((input.args?.arguments?.start_paragraph ?? 1) + 49);
-      prevEnd = end;
-      batchStarted = true;
-      batchCount++;
-      proofreadDone = false;
+        const ranges = parseParagraphRanges(outText);
+        if (ranges.length === 0) return;
 
-      batchStartOffset = ranges[0].start;
-      batchEndOffset = ranges[ranges.length - 1].end;
-      proofreadCalledThisBatch = false;
+        const end = input.args?.arguments?.end_paragraph ??
+          ((input.args?.arguments?.start_paragraph ?? 1) + 49);
+        prevEnd = end;
+        batchStarted = true;
+        batchCount++;
+        proofreadDone = false;
+
+        batchStartOffset = ranges[0].start;
+        batchEndOffset = ranges[ranges.length - 1].end;
+        proofreadCalledThisBatch = false;
+        return;
+      }
+
+      // proofreadBasic：输出成功后才设置已校对标志
+      if (toolName === "proofreadBasic") {
+        const outText = getOutputText(output);
+        if (!outText) return;
+        // 检查是否返回了错误（proofreadBasic 成功时返回校对结果，而不是错误信息）
+        if (outText.startsWith('{') || outText.includes('"success":false')) return;
+        proofreadCalledThisBatch = true;
+        proofreadDone = true;
+      }
     },
 
     // ── 执行前钩子：所有规则校验 ──
@@ -232,8 +246,8 @@ export default async () => {
           }
         }
 
-        proofreadCalledThisBatch = true;
-        proofreadDone = true;
+        // 注意：proofreadCalledThisBatch/proofreadDone 在 after-hook 输出成功后才提交
+        // 参见 tool.execute.after。这样即使 COM 调用失败，状态也不会脏。
         return;
       }
 
