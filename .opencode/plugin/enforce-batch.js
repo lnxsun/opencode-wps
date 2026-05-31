@@ -33,7 +33,7 @@ const DIRECT_TO_GATEWAY = {
   "wps-office_wps_get_active_presentation": "getActivePresentation",
 };
 
-let prevEnd = 0;
+let lastBatchParaIndex = 0;
 let docInfoFetched = false;        // getActiveDocument 已调
 let batchStarted = false;          // getDocumentParagraphs 至少调过一次
 let batchCount = 0;                // 已处理的批次数
@@ -82,6 +82,14 @@ export default async () => {
 
       const toolName = input.args?.tool_name;
 
+      // getActiveDocument：输出成功后才标记文档已获取
+      if (toolName === "getActiveDocument") {
+        const outText = getOutputText(output);
+        if (!outText) return;
+        docInfoFetched = true;
+        return;
+      }
+
       // getDocumentParagraphs：输出成功后才提交批次状态
       if (toolName === "getDocumentParagraphs") {
         const outText = getOutputText(output);
@@ -90,7 +98,7 @@ export default async () => {
         const ranges = parseParagraphRanges(outText);
         if (ranges.length === 0) return;
 
-        prevEnd = ranges[ranges.length - 1].index;
+        lastBatchParaIndex = ranges[ranges.length - 1].index;
         batchStarted = true;
         batchCount++;
 
@@ -133,9 +141,8 @@ export default async () => {
       const toolName = input.args?.tool_name;
       const toolArgs = input.args?.arguments || {};
 
-      // ── 跟踪 getActiveDocument ──
+      // ── 跟踪 getActiveDocument（注意：docInfoFetched 在 after-hook 输出成功后才提交）
       if (toolName === "getActiveDocument") {
-        docInfoFetched = true;
         return;
       }
 
@@ -167,7 +174,7 @@ export default async () => {
         }
 
         // 规则 2a：首次调用必须从第 1 段开始
-        if (prevEnd === 0 && start !== 1) {
+        if (lastBatchParaIndex === 0 && start !== 1) {
           throw new Error(
             `【分批插件】首次 getDocumentParagraphs 必须从第 1 段开始（当前 start=${start}）。` +
             `请从 start_paragraph=1 开始分批。`
@@ -175,7 +182,7 @@ export default async () => {
         }
 
         // 规则 2b：批次必须连续
-        if (prevEnd > 0 && start !== prevEnd + 1) {
+        if (lastBatchParaIndex > 0 && start !== lastBatchParaIndex + 1) {
           if (start === 1) {
             // 允许调回第 1 段重新开始
             proofreadCalledThisBatch = false;
@@ -183,13 +190,13 @@ export default async () => {
             batchCount = 0;
           } else {
             throw new Error(
-              `【分批插件】批次不连续：上一批结束于段落 ${prevEnd}，` +
-              `当前批从段落 ${start} 开始。批次必须从 ${prevEnd + 1} 开始逐批推进，` +
+              `【分批插件】批次不连续：上一批结束于段落 ${lastBatchParaIndex}，` +
+              `当前批从段落 ${start} 开始。批次必须从 ${lastBatchParaIndex + 1} 开始逐批推进，` +
               `或从第 1 段重新开始。`
             );
           }
         }
-        // 注意：prevEnd 从实际返回的最后一段索引计算（而非请求的 end_paragraph），
+        // 注意：lastBatchParaIndex 从实际返回的最后一段索引计算（而非请求的 end_paragraph），
         // 短文档不会被逼近不存在的段落。batchStarted/batchCount/proofreadCalledThisBatch
         // 同样在 after-hook 输出成功后才提交，COM 失败也不会脏状态。
         return;

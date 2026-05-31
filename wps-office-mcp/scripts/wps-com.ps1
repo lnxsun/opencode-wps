@@ -1872,7 +1872,6 @@ switch ($Action) {
         $startOffset = [Math]::Min($startOffset, $doc.Content.End)  # 超 doc 范围时钳位
         $length = if ($null -ne $p.length) { [Math]::Max(0, [int]$p.length) } else { [Math]::Max(0, $doc.Content.End - $startOffset) }
         $endOffset = [Math]::Min($startOffset + $length, $doc.Content.End)
-        $endOffset = [Math]::Max(0, $endOffset)  # startOffset > doc length 时保底
         $range = $doc.Range($startOffset, $endOffset)
         $text = $range.Text
         Output-Json @{ success = $true; data = @{ text = $text; startOffset = $startOffset; length = $text.Length; docLength = $doc.Content.End } }
