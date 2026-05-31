@@ -46,8 +46,9 @@ let batchEndOffset = null;         // 本批最后一段的 [end]
 let proofreadCalledThisBatch = false;  // 本批是否已调过 proofreadBasic
 
 // 从 getDocumentParagraphs 输出字符串中提取 [start-end] 数组
+// 锚定到行首格式 "[index] (style) [start-end]" 避免匹配正文中的 [digits-digits]
 function parseParagraphRanges(outputText) {
-  const regex = /\[(\d+)-(\d+)\]/g;
+  const regex = /^\s*\[\d+\] \([^)]+\) \[(\d+)-(\d+)\]/gm;
   const matches = [];
   let m;
   while ((m = regex.exec(outputText)) !== null) {
@@ -93,13 +94,15 @@ export default async () => {
 
     // ── 执行前钩子：所有规则校验 ──
     "tool.execute.before": async (input, output) => {
-      // 强制走网关：拦截所有双路径独立 MCP 工具
-      const gatewayName = DIRECT_TO_GATEWAY[input.name];
-      if (gatewayName) {
-        throw new Error(
-          `【分批插件】请通过网关调用 ${gatewayName}，不要直接调用 ${input.name}。` +
-          `使用方法：wps_office_execute({ tool_name: "${gatewayName}", arguments: {...} })`
-        );
+      // 强制走网关：校对流程中拦截所有双路径独立 MCP 工具
+      if (batchStarted) {
+        const gatewayName = DIRECT_TO_GATEWAY[input.name];
+        if (gatewayName) {
+          throw new Error(
+            `【分批插件】请通过网关调用 ${gatewayName}，不要直接调用 ${input.name}。` +
+            `使用方法：wps_office_execute({ tool_name: "${gatewayName}", arguments: {...} })`
+          );
+        }
       }
 
       // 仅拦截走 wps_office_execute 网关的调用
@@ -217,7 +220,7 @@ export default async () => {
             throw new Error(
               `【分批插件】proofreadBasic 传入文本长度 ${text.length} 与本批 ` +
               `字符范围 ${so}-${batchEndOffset}（长度 ${expectedLen}）不匹配。` +
-              `请用 getDocumentText(startOffset=${so}, length=${expectedLen}) ` +
+              `请用 getDocumentTextByRange(startOffset=${so}, length=${expectedLen}) ` +
               `获取精确文本后再调用 proofreadBasic。`
             );
           }
