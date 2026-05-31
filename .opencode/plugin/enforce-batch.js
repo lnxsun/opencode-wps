@@ -101,9 +101,10 @@ export default async () => {
         return;
       }
 
-      // proofreadBasic：输出成功后才设置已校对标志
+      // proofreadBasic：有有效输出才设置已校对标志
       if (toolName === "proofreadBasic") {
-        if (output?.success !== true) return;
+        const outText = getOutputText(output);
+        if (!outText) return;
         proofreadCalledThisBatch = true;
         proofreadDone = true;
       }
@@ -184,8 +185,9 @@ export default async () => {
         return;
       }
 
-      // ── 规则 5：必须先获取文档信息 + 启动分批 ──
+      // ── 规则 3 + 5 + 7 + 8 + 9：proofreadBasic ──
       if (toolName === "proofreadBasic") {
+        // 规则 5：必须先获取文档信息 + 启动分批
         if (!docInfoFetched) {
           throw new Error(
             `【分批插件】请先调用 getActiveDocument 了解文档总段落数，` +
@@ -198,10 +200,6 @@ export default async () => {
             `确认分批计划后，再调 proofreadBasic。未输出分批计划前不得开始校对。`
           );
         }
-      }
-
-      // ── 规则 3 + 7 + 8 + 9：proofreadBasic ──
-      if (toolName === "proofreadBasic") {
         // 规则 3：startOffset 必须传
         const so = toolArgs.startOffset;
         if (so === undefined || so === null) {

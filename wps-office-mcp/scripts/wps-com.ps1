@@ -1871,6 +1871,7 @@ switch ($Action) {
         $startOffset = if ($null -ne $p.startOffset) { [Math]::Max(0, [int]$p.startOffset) } else { 0 }
         $length = if ($null -ne $p.length) { [int]$p.length } else { $doc.Content.End - $startOffset }
         $endOffset = [Math]::Min($startOffset + $length, $doc.Content.End)
+        $endOffset = [Math]::Max(0, $endOffset)  # startOffset > doc length 时保底
         $range = $doc.Range($startOffset, $endOffset)
         $text = $range.Text
         Output-Json @{ success = $true; data = @{ text = $text; startOffset = $startOffset; length = $text.Length; docLength = $doc.Content.End } }
