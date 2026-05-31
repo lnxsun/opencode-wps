@@ -37,7 +37,6 @@ let prevEnd = 0;
 let docInfoFetched = false;        // getActiveDocument 已调
 let batchStarted = false;          // getDocumentParagraphs 至少调过一次
 let batchCount = 0;                // 已处理的批次数
-let proofreadDone = false;         // 当前批是否已调过 proofreadBasic
 let trackChangesOn = false;        // enableTrackChanges(true) 已调
 
 // 规则 7-9 所需状态（从 getDocumentParagraphs 输出解析）
@@ -94,7 +93,6 @@ export default async () => {
         prevEnd = ranges[ranges.length - 1].index;
         batchStarted = true;
         batchCount++;
-        proofreadDone = false;
 
         batchStartOffset = ranges[0].start;
         batchEndOffset = ranges[ranges.length - 1].end;
@@ -113,7 +111,6 @@ export default async () => {
         const outText = getOutputText(output);
         if (!outText) return;
         proofreadCalledThisBatch = true;
-        proofreadDone = true;
       }
     },
 
@@ -169,11 +166,18 @@ export default async () => {
           );
         }
 
-        // 规则 2：批次必须连续
+        // 规则 2a：首次调用必须从第 1 段开始
+        if (prevEnd === 0 && start !== 1) {
+          throw new Error(
+            `【分批插件】首次 getDocumentParagraphs 必须从第 1 段开始（当前 start=${start}）。` +
+            `请从 start_paragraph=1 开始分批。`
+          );
+        }
+
+        // 规则 2b：批次必须连续
         if (prevEnd > 0 && start !== prevEnd + 1) {
           if (start === 1) {
             // 允许调回第 1 段重新开始
-            proofreadDone = false;
             proofreadCalledThisBatch = false;
             batchStarted = false;
             batchCount = 0;
@@ -186,7 +190,7 @@ export default async () => {
           }
         }
         // 注意：prevEnd 从实际返回的最后一段索引计算（而非请求的 end_paragraph），
-        // 短文档不会被逼近不存在的段落。batchStarted/batchCount/proofreadDone
+        // 短文档不会被逼近不存在的段落。batchStarted/batchCount/proofreadCalledThisBatch
         // 同样在 after-hook 输出成功后才提交，COM 失败也不会脏状态。
         return;
       }
@@ -247,7 +251,7 @@ export default async () => {
           }
         }
 
-        // 注意：proofreadCalledThisBatch/proofreadDone 在 after-hook 输出成功后才提交
+        // 注意：proofreadCalledThisBatch 在 after-hook 输出成功后才提交
         // 参见 tool.execute.after。这样即使 COM 调用失败，状态也不会脏。
         return;
       }
@@ -266,14 +270,14 @@ export default async () => {
             `请改用 replaceRange 进行替换。`
           );
         }
-        if (toolName === "replaceRange" && !proofreadDone) {
+        if (toolName === "replaceRange" && !proofreadCalledThisBatch) {
           throw new Error(
             `【分批插件】replaceRange 必须在同一批的 proofreadBasic 之后调用。` +
             `请先对当前批次执行 proofreadBasic 完成校对，再修复问题。`
           );
         }
         // 偏移量验证：replaceRange 必须在本批字符范围内
-        if (toolName === "replaceRange" && proofreadDone && batchStartOffset !== null) {
+        if (toolName === "replaceRange" && proofreadCalledThisBatch && batchStartOffset !== null) {
           const startPos = toolArgs.startPos;
           const endPos = toolArgs.endPos;
           if (startPos !== undefined && startPos < batchStartOffset) {
