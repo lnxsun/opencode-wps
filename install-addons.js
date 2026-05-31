@@ -372,9 +372,36 @@ if (fsEx.existsSync(agentsSrcDir)) {
 }
 
 // ============================================================
-// 第 6 步: 清理废弃配置
+// 第 6 步: 安装 OpenCode 插件到用户目录
 // ============================================================
-console.log('\n【第 6 步】清理废弃配置');
+console.log('\n【第 6 步】安装 OpenCode 插件');
+
+const pluginSrcDir = path.resolve(rootDir, '.opencode', 'plugin');
+const pluginDstDir = path.join(homeDir, '.opencode', 'plugin');
+
+if (fsEx.existsSync(pluginSrcDir)) {
+    const pluginFiles = fs.readdirSync(pluginSrcDir).filter(f => f.endsWith('.js'));
+
+    if (pluginFiles.length > 0) {
+        fsEx.ensureDirSync(pluginDstDir);
+        pluginFiles.forEach(file => {
+            const src = path.join(pluginSrcDir, file);
+            const dst = path.join(pluginDstDir, file);
+            fsEx.copySync(src, dst, { overwrite: true });
+            console.log('  已安装: ' + file);
+        });
+        console.log('  插件目录: ' + pluginDstDir);
+    } else {
+        console.log('  [跳过] 未找到有效的插件');
+    }
+} else {
+    console.log('  [跳过] 插件源目录不存在: ' + pluginSrcDir);
+}
+
+// ============================================================
+// 第 7 步: 清理废弃配置
+// ============================================================
+console.log('\n【第 7 步】清理废弃配置');
 
 staleClaudeDirs.forEach(dir => {
     try {
@@ -402,9 +429,9 @@ stalePluginDirs.forEach(dir => {
 });
 
 // ============================================================
-// 第 7 步: 注册 launcher 开机自启 + 立即启动
+// 第 8 步: 注册 launcher 开机自启 + 立即启动
 // ============================================================
-console.log('\n【第 7 步】注册 launcher 开机自启');
+console.log('\n【第 8 步】注册 launcher 开机自启');
 
 const launcherPath = path.join(jsaddonsDir, 'opencode-wps_', 'launcher.js');
 
@@ -486,7 +513,8 @@ console.log('  2. MCP 服务器 → ' + mcpServer.src);
 console.log('  3. OpenCode MCP 配置 → opencode.json');
 console.log('  4. Skills → ~/.opencode/skills/');
 console.log('  5. Agents → ~/.config/opencode/agents/ 和 ~/.opencode/agents/');
-console.log('  6. launcher 进程管理 → http://127.0.0.1:14097');
+console.log('  6. Plugins → ~/.opencode/plugin/');
+console.log('  7. launcher 进程管理 → http://127.0.0.1:14097');
 console.log('');
 console.log('后续步骤:');
 console.log('  - 重启 WPS Office 以加载插件');
