@@ -248,6 +248,23 @@ wps_office_execute({
 // 返回精确的文档原始文本（包含空段落标记）
 ```
 
+> **⚠️ 关键：必须用 `file_path` 传文本给 proofreadBasic**  
+> 本批文本通过 2b 获得后，**必须写为临时文件**再传 `file_path`，**不得**直接通过 `text` 参数传递。原因：
+> - `\f`（分页符）、`\u201c`/`\u201d` 等字符会导致 JSON 序列化失败（"JSON Parse error: Unterminated string"）
+> - 实际测试中 ≥ 2000 字符的文本就可能在 MCP JSON-RPC 层解析失败
+> - `file_path` 完全避免此问题，且不影响 `startOffset` 偏移定位
+>
+> **正确做法：**
+> ```javascript
+> // 1. 写文件
+> $text | Out-File -FilePath $tempFile -Encoding utf8
+> // 2. 传 file_path
+> wps_office_execute({
+>   tool_name: "proofreadBasic",
+>   arguments: { file_path: $tempFile, startOffset: batchStartOffset }
+> })
+> ```
+
 **注意：禁止手动拼接段落文本（如 `paragraphs.map(...).join('\n')`）。**
 **手动拼接会跳过空段落，导致 text.length 与本批字符范围不匹配，被插件拒绝。**
 

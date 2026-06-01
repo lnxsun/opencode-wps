@@ -282,6 +282,18 @@ export default async () => {
         // 与段落 [start-end] 计算的预期长度不一致，不用严格相等检查。
         // 改为检查 text 是否非空且至少包含一定有效内容。
         // 如果使用 file_path 参数（控制字符规避方案），则跳过文本长度检查。
+
+        // 规则 3a：text ≥ 3000 字符时警告（JSON 解析可能失败）
+        if (!toolArgs.file_path) {
+          const textLen = (toolArgs.text || '').length;
+          if (textLen >= 3000) {
+            console.warn(
+              `【分批插件】proofreadBasic text 参数长度为 ${textLen} 字符，` +
+              `建议改用 file_path 参数（将文本写入临时文件后传路径），` +
+              `否则长文本含控制字符可能导致 JSON 解析失败。`
+            );
+          }
+        }
         if (batchEndOffset !== null && !toolArgs.file_path) {
           const text = toolArgs.text || '';
           const expectedLen = batchEndOffset - so;

@@ -480,7 +480,10 @@ export const proofreadBasicDefinition: ToolDefinition = {
     properties: {
       text: {
         type: 'string',
-        description: '要校对的文本内容（text 和 file_path 至少提供一个）',
+        maxLength: 5000,
+        description: '要校对的文本内容（text 和 file_path 至少提供一个）。' +
+          '注意：text ≥ 5000 字符或含 \\f 等控制字符时请改用 file_path，' +
+          '否则 JSON 解析可能失败。',
       },
       start_offset: {
         type: 'number',
