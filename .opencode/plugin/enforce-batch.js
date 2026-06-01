@@ -4,18 +4,23 @@
  * 拦截所有 MCP 工具调用，检验分批校对规则：
  *
  * ── 流程规则 ──
- * 规则 1：getDocumentParagraphs 单次请求不得超过 200 段
- * 规则 2：getDocumentParagraphs 必须从第 1 段开始，逐批推进
- * 规则 3：proofreadBasic 必须传入正确的 startOffset（与段落 [start] 一致）
- * 规则 4：replaceRange 必须在 proofreadBasic 之后调用
- * 规则 5：必须先获取文档信息并开始分批，才允许校对
- * 规则 6：修改前必须开启修订模式（enableTrackChanges(true)）
+ * 规则 1： getDocumentParagraphs 单次请求不得超过 200 段
+ * 规则 2： getDocumentParagraphs 必须从第 1 段开始，逐批推进
+ * 规则 3： proofreadBasic 必须传入正确的 startOffset（与段落 [start] 一致）
+ * 规则 4a：replaceRange 完全禁用（偏移量在含不可见字符的文档中不可靠）
+ * 规则 4b：findReplace 禁用（不支持修订标记）
+ * 规则 5： 必须先获取文档信息并开始分批，才允许校对
+ * 规则 6： 修改前必须开启修订模式（enableTrackChanges(true)）
  *
  * ── 数据正确性规则（tool.execute.after 从输出解析）──
- * 规则 7：每批只准调 1 次 proofreadBasic（禁止拆子块）
- * 规则 8：startOffset 必须等于本批第一段的 [start] 值
- * 规则 9：text.length 必须等于本批最后一段 [end] - startOffset
- *         （禁止跳过空段落，必须传完整文本）
+ * 规则 7： 每批只准调 1 次 proofreadBasic（禁止拆子块）
+ * 规则 8： startOffset 必须等于本批第一段的 [start] 值
+ * 规则 9： text 不能为空且不能明显过短（< 20 字符）。不要求精确长度匹配，
+ *          因为 WPS COM Range.Text 返回长度可能因 \\f \\a 等控制字符
+ *          与段落 [start-end] 预期长度不一致。
+ *
+ * ── 智能校对规则 ──
+ * 规则 10：replaceInParagraph 前必须先确认 AI 校对（confirmBatchAiProofread）
  *
  * 规则 7-9 依赖 getDocumentTextByRange 工具提供精确文档子串。
  * 如果 AI 手动拼接文本（跳过空段落），规则 9 会拒绝。
@@ -34,10 +39,13 @@ const DIRECT_TO_GATEWAY = {
 };
 
 let lastBatchParaIndex = 0;
+let batchStartParaIndex = 0;       // 本批第一段的段落索引
 let docInfoFetched = false;        // getActiveDocument 已调
 let batchStarted = false;          // getDocumentParagraphs 至少调过一次
 let batchCount = 0;                // 已处理的批次数
 let trackChangesOn = false;        // enableTrackChanges(true) 已调
+let aiProofreadDoneThisBatch = false;  // 本批AI校对已确认
+let lastRevisionCount = 0;             // 从 getTrackChangesStatus 获得的最新修订数
 
 // 规则 7-9 所需状态（从 getDocumentParagraphs 输出解析）
 let batchStartOffset = null;       // 本批第一段的 [start]
@@ -100,12 +108,14 @@ export default async () => {
         if (ranges.length === 0) return;
 
         lastBatchParaIndex = ranges[ranges.length - 1].index;
+        batchStartParaIndex = ranges[0].index;
         batchStarted = true;
         batchCount++;
 
         batchStartOffset = ranges[0].start;
         batchEndOffset = ranges[ranges.length - 1].end;
         proofreadCalledThisBatch = false;
+        aiProofreadDoneThisBatch = false;
         return;
       }
 
@@ -122,7 +132,27 @@ export default async () => {
         const outText = getOutputText(output);
         if (!outText) return;
         proofreadCalledThisBatch = true;
+        aiProofreadDoneThisBatch = false; // 基础校对后 AI 校对标记重置
+        return;
       }
+
+      // confirmBatchAiProofread：确认本批 AI 智能校对已完成
+      if (toolName === "confirmBatchAiProofread") {
+        aiProofreadDoneThisBatch = true;
+        return;
+      }
+
+      // getTrackChangesStatus：捕获最新修订数
+      if (toolName === "getTrackChangesStatus") {
+        const outText = getOutputText(output);
+        if (!outText) return;
+        const match = outText.match(/当前修订数量:\s*(\d+)/);
+        if (match) {
+          lastRevisionCount = parseInt(match[1], 10);
+        }
+        return;
+      }
+
     },
 
     // ── 执行前钩子：所有规则校验 ──
@@ -247,16 +277,40 @@ export default async () => {
           );
         }
 
-        // 规则 9：text.length 必须等于本批最后一段 [end] - startOffset
-        if (batchEndOffset !== null) {
+        // 规则 9：text 不能为空且不能明显过短
+        // 注意：由于 WPS COM 的 Range.Text 返回长度可能因控制字符/分页符等
+        // 与段落 [start-end] 计算的预期长度不一致，不用严格相等检查。
+        // 改为检查 text 是否非空且至少包含一定有效内容。
+        // 如果使用 file_path 参数（控制字符规避方案），则跳过文本长度检查。
+
+        // 规则 3a：text ≥ 3000 字符时警告（JSON 解析可能失败）
+        if (!toolArgs.file_path) {
+          const textLen = (toolArgs.text || '').length;
+          if (textLen >= 3000) {
+            console.warn(
+              `【分批插件】proofreadBasic text 参数长度为 ${textLen} 字符，` +
+              `建议改用 file_path 参数（将文本写入临时文件后传路径），` +
+              `否则长文本含控制字符可能导致 JSON 解析失败。`
+            );
+          }
+        }
+        if (batchEndOffset !== null && !toolArgs.file_path) {
           const text = toolArgs.text || '';
           const expectedLen = batchEndOffset - so;
-          if (text.length !== expectedLen) {
+          // 文本不能为空
+          if (text.length === 0) {
             throw new Error(
-              `【分批插件】proofreadBasic 传入文本长度 ${text.length} 与本批 ` +
-              `字符范围 ${so}-${batchEndOffset}（长度 ${expectedLen}）不匹配。` +
+              `【分批插件】proofreadBasic 传入文本为空。` +
               `请用 getDocumentTextByRange(startOffset=${so}, length=${expectedLen}) ` +
-              `获取精确文本后再调用 proofreadBasic。`
+              `获取文本后再调用 proofreadBasic。`
+            );
+          }
+          // 文本不能明显过短（< 20 字符），说明传错了文本
+          if (text.length < 20) {
+            throw new Error(
+              `【分批插件】proofreadBasic 传入文本仅 ${text.length} 字符，` +
+              `明显不足（预期约 ${expectedLen} 字符）。` +
+              `请用 getDocumentTextByRange 获取完整批次文本。`
             );
           }
         }
@@ -266,41 +320,67 @@ export default async () => {
         return;
       }
 
-      // ── 规则 6 + 4：replaceRange / findReplace ──
-      if (toolName === "replaceRange" || toolName === "findReplace") {
+      // ── 规则 4 + 6 + 10 + 11：replaceRange / replaceInParagraph / findReplace ──
+      if (toolName === "replaceRange" || toolName === "replaceInParagraph" || toolName === "findReplace") {
+        // 规则 6：必须先开启修订模式
         if (!trackChangesOn) {
           throw new Error(
             `【分批插件】请先调用 enableTrackChanges(true) 开启修订模式，` +
             `再执行替换操作。所有修改必须在修订模式下进行。`
           );
         }
+
+        // 规则 4a：replaceRange 完全禁止（偏移量在含不可见字符的文档中不可靠）
+        if (toolName === "replaceRange") {
+          throw new Error(
+            `【分批插件】分批校对流程中严禁使用 replaceRange。` +
+            `偏移量在含不可见字符（\\f、\\a、BEL 等）的文档中不可靠，` +
+            `会导致替换到错误位置损坏文档。` +
+            `请统一改用 replaceInParagraph（按段落索引+文本匹配）。`
+          );
+        }
+
+        // 规则 4b：findReplace 禁止（不支持修订标记）
         if (toolName === "findReplace" && batchStarted) {
           throw new Error(
             `【分批插件】分批校对流程中禁止使用 findReplace（不支持修订标记）。` +
-            `请改用 replaceRange 进行替换。`
+            `请改用 replaceInParagraph 进行替换。`
           );
         }
-        if (toolName === "replaceRange" && !proofreadCalledThisBatch) {
+
+        // 规则 4c：必须先调 proofreadBasic（基础校对）
+        if (toolName === "replaceInParagraph" && !proofreadCalledThisBatch) {
           throw new Error(
-            `【分批插件】replaceRange 必须在同一批的 proofreadBasic 之后调用。` +
-            `请先对当前批次执行 proofreadBasic 完成校对，再修复问题。`
+            `【分批插件】replaceInParagraph 必须在同一批的 proofreadBasic 之后调用。` +
+            `请先对当前批次执行 proofreadBasic 完成基础校对，再修复问题。`
           );
         }
-        // 偏移量验证：replaceRange 必须在本批字符范围内
-        if (toolName === "replaceRange" && batchStartOffset !== null) {
-          const startPos = toolArgs.startPos;
-          const endPos = toolArgs.endPos;
-          if (startPos !== undefined && startPos < batchStartOffset) {
-            throw new Error(
-              `【分批插件】replaceRange startPos=${startPos} 在本批起始位置 ${batchStartOffset} 之前。` +
-              `请确保替换范围在当前校对的批次内。`
-            );
-          }
-          if (endPos !== undefined && batchEndOffset !== null && endPos > batchEndOffset) {
-            throw new Error(
-              `【分批插件】replaceRange endPos=${endPos} 超出本批结束位置 ${batchEndOffset}。` +
-              `请确保替换范围在当前校对的批次内。`
-            );
+
+        // 规则 10：必须确认 AI 智能校对已完成
+        if (toolName === "replaceInParagraph" && !aiProofreadDoneThisBatch) {
+          throw new Error(
+            `【分批插件】AI 智能校对未完成。请在 proofreadBasic 之后调用 ` +
+            `confirmBatchAiProofread 确认 AI 校对已完成，再执行替换操作。` +
+            `基础校对 + AI 智能校对两层完成后才允许修复。`
+          );
+        }
+
+        // 段落索引验证：replaceInParagraph 必须在本批段落范围内
+        if (toolName === "replaceInParagraph" && batchStarted) {
+          const paraIdx = toolArgs.paragraphIndex;
+          if (paraIdx !== undefined) {
+            if (paraIdx < batchStartParaIndex) {
+              throw new Error(
+                `【分批插件】replaceInParagraph paragraphIndex=${paraIdx} 在本批起始段落 ${batchStartParaIndex} 之前。` +
+                `请确保替换的段落在当前校对的批次内。`
+              );
+            }
+            if (paraIdx > lastBatchParaIndex) {
+              throw new Error(
+                `【分批插件】replaceInParagraph paragraphIndex=${paraIdx} 超出本批结束段落 ${lastBatchParaIndex}。` +
+                `请确保替换的段落在当前校对的批次内。`
+              );
+            }
           }
         }
       }

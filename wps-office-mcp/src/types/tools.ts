@@ -17,6 +17,7 @@ export interface ToolParameterSchema {
   properties?: Record<string, ToolParameterSchema>;
   required?: string[];
   default?: unknown;
+  maxLength?: number;
 }
 
 /**
