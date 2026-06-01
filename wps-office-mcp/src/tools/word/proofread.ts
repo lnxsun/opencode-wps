@@ -9,10 +9,13 @@
  * - wps_word_enable_track_changes: 开启/关闭修订模式
  * - wps_word_get_track_changes_status: 获取修订模式状态
  * - wps_word_replace_range: 按字符范围替换文本（修订模式下跟踪）
+ * - wps_word_replace_in_paragraph: 按段落+文本匹配替换（修订模式下跟踪，推荐用于校对）
  * - wps_word_proofread_basic: 基础文本校对（正则检测错别字/语病）
+
  */
 
 import { v4 as uuidv4 } from 'uuid';
+import * as fs from 'fs';
 import {
   ToolDefinition,
   ToolHandler,
@@ -239,12 +242,12 @@ export const replaceRangeHandler: ToolHandler = async (
     };
   }
 
-  if (text == null || text === '') {
+  if (text == null) {
     return {
       id: uuidv4(),
       success: false,
-      content: [{ type: 'text', text: '替换文本不能为空！' }],
-      error: '替换文本为空',
+      content: [{ type: 'text', text: '替换文本不能为空（允许空字符串表示删除）！' }],
+      error: '替换文本为 null/undefined',
     };
   }
 
@@ -270,6 +273,161 @@ export const replaceRangeHandler: ToolHandler = async (
           {
             type: 'text',
             text: `替换成功！\n原文: "${d.originalText}"\n修改为: "${d.newText}"\n位置: ${d.startPos}-${d.endPos}`,
+          },
+        ],
+      };
+    }
+    return {
+      id: uuidv4(),
+      success: false,
+      content: [{ type: 'text', text: `替换失败: ${response.error}` }],
+      error: response.error,
+    };
+  } catch (error) {
+    const errMsg = error instanceof Error ? error.message : String(error);
+    return {
+      id: uuidv4(),
+      success: false,
+      content: [{ type: 'text', text: `替换出错: ${errMsg}` }],
+      error: errMsg,
+    };
+  }
+};
+
+/**
+ * 按段落+文本匹配替换（修订模式下跟踪）
+ * 通过指定段落索引和查找文本进行精确替换，避免偏移量不准确导致文档损坏
+ * 使用 paragraph.Range.Find.Execute 进行文本匹配，支持修订跟踪
+ *
+ * 与 replaceRange 的区别：
+ * - replaceRange 依赖字符偏移量，容易因域代码、分页符等偏移
+ * - replaceInParagraph 通过段落索引+文本匹配，不受偏移量影响
+ * - 两者都支持修订模式跟踪
+ */
+export const replaceInParagraphDefinition: ToolDefinition = {
+  name: 'wps_word_replace_in_paragraph',
+  description: `按段落索引+文本匹配精确替换Word文档中的文本。
+通过指定段落索引（从1开始）和查找文本进行替换，避免偏移量不准确的问题。
+在修订模式下，此操作会自动产生修订标记。
+
+使用场景：
+- 校对时替换指定段落中的错别字
+- 在已知段落索引时替换文本
+- 替代 replaceRange 的更稳妥方案
+
+注意：
+- 段落索引可以通过 wps_word_get_paragraphs 获取
+- 请先调用 wps_word_enable_track_changes 开启修订模式`,
+  category: ToolCategory.DOCUMENT,
+  inputSchema: {
+    type: 'object',
+    properties: {
+      paragraph_index: {
+        type: 'number',
+        description: '段落索引（从1开始）',
+      },
+      find_text: {
+        type: 'string',
+        description: '要查找的原始文本',
+      },
+      replace_text: {
+        type: 'string',
+        description: '替换后的文本内容',
+      },
+      match_case: {
+        type: 'boolean',
+        description: '是否区分大小写，默认false',
+      },
+      match_whole_word: {
+        type: 'boolean',
+        description: '是否全词匹配，默认false',
+      },
+      replace_all: {
+        type: 'boolean',
+        description: '是否替换全部匹配项，默认false（只替换第一处）',
+      },
+    },
+    required: ['paragraph_index', 'find_text', 'replace_text'],
+  },
+};
+
+export const replaceInParagraphHandler: ToolHandler = async (
+  args: Record<string, unknown>
+): Promise<ToolCallResult> => {
+  const { paragraph_index, find_text, replace_text, match_case, match_whole_word, replace_all } = args as {
+    paragraph_index: number;
+    find_text: string;
+    replace_text: string;
+    match_case?: boolean;
+    match_whole_word?: boolean;
+    replace_all?: boolean;
+  };
+
+  if (paragraph_index === undefined || paragraph_index === null) {
+    return {
+      id: uuidv4(),
+      success: false,
+      content: [{ type: 'text', text: '必须指定段落索引 paragraph_index！' }],
+      error: '缺少段落索引',
+    };
+  }
+
+  if (typeof paragraph_index !== 'number' || !Number.isInteger(paragraph_index) || paragraph_index < 1) {
+    return {
+      id: uuidv4(),
+      success: false,
+      content: [{ type: 'text', text: '段落索引必须是大于0的整数！' }],
+      error: '段落索引类型错误',
+    };
+  }
+
+  if (!find_text || find_text === '') {
+    return {
+      id: uuidv4(),
+      success: false,
+      content: [{ type: 'text', text: '查找文本不能为空！' }],
+      error: '查找文本为空',
+    };
+  }
+
+  if (replace_text == null) {
+    return {
+      id: uuidv4(),
+      success: false,
+      content: [{ type: 'text', text: '替换文本不能为空（允许空字符串表示删除）！' }],
+      error: '替换文本为 null/undefined',
+    };
+  }
+
+  try {
+    const response = await wpsClient.executeMethod<{
+      success: boolean;
+      paragraphIndex: number;
+      findText: string;
+      replaceText: string;
+      replacedCount: number;
+    }>(
+      'replaceInParagraph',
+      {
+        paragraphIndex: paragraph_index,
+        findText: find_text,
+        replaceText: replace_text,
+        matchCase: match_case === true,
+        matchWholeWord: match_whole_word === true,
+        replaceAll: replace_all === true,
+      },
+      WpsAppType.WRITER
+    );
+
+    if (response.success && response.data) {
+      const d = response.data;
+      return {
+        id: uuidv4(),
+        success: true,
+        content: [
+          {
+            type: 'text',
+            text: `替换成功！\n段落: 第 ${d.paragraphIndex} 段\n查找: "${d.findText}"\n替换为: "${d.replaceText}"\n替换次数: ${d.replacedCount}`,
           },
         ],
       };
@@ -322,14 +480,19 @@ export const proofreadBasicDefinition: ToolDefinition = {
     properties: {
       text: {
         type: 'string',
-        description: '要校对的文本内容',
+        description: '要校对的文本内容（text 和 file_path 至少提供一个）',
       },
       start_offset: {
         type: 'number',
         description: '文本在文档中的起始偏移位置，用于定位问题在文档中的准确位置',
       },
+      file_path: {
+        type: 'string',
+        description: '从文件读取文本的路径（text 和 file_path 至少提供一个）。' +
+          '当文本含 \\f 等控制字符导致 JSON 解析失败时，先用 bash 写入文件再传此路径。',
+      },
     },
-    required: ['text'],
+    required: [],
   },
 };
 
@@ -349,6 +512,22 @@ interface ProofreadIssue {
 function runBasicProofreading(text: string, baseOffset: number = 0): ProofreadIssue[] {
   const issues: ProofreadIssue[] = [];
   const offset = baseOffset || 0;
+
+  // 剥离控制字符（保留 \\n \\r \\t），保持 cleaned→original 偏移映射
+  // 解决 WPS COM Range.Text 含 \\f \\a \\u0007 等导致的正则匹配和偏移问题
+  const charMap: number[] = [];
+  let cleaned = '';
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    const code = ch.charCodeAt(0);
+    if (code >= 0x20 || code === 0x0a || code === 0x0d || code === 0x09) {
+      charMap.push(i);
+      cleaned += ch;
+    }
+  }
+  // 如果没有控制字符，直接用原文本避免额外开销
+  const useCleaned = cleaned.length !== text.length;
+  const effectiveText = useCleaned ? cleaned : text;
 
   type Rule = {
     pattern: RegExp;
@@ -579,12 +758,12 @@ function runBasicProofreading(text: string, baseOffset: number = 0): ProofreadIs
     },
     {
       pattern: /变的/g,
-      type: '的地得混淆',
+      type: '的得混淆',
       getSuggestion: () => '变得',
     },
     {
       pattern: /做的/g,
-      type: '的地得混淆',
+      type: '的得混淆',
       getSuggestion: () => '做得',
     },
 
@@ -688,11 +867,7 @@ function runBasicProofreading(text: string, baseOffset: number = 0): ProofreadIs
       type: '多字',
       getSuggestion: () => '的程度',
     },
-    {
-      pattern: /进行了一次/g,
-      type: '口语化',
-      getSuggestion: (m) => m.replace('进行了一次', '进行了'),
-    },
+
     // 冗余"到"
     {
       pattern: /涉及到/g,
@@ -721,12 +896,7 @@ function runBasicProofreading(text: string, baseOffset: number = 0): ProofreadIs
       type: '多字',
       getSuggestion: () => '即',
     },
-    // "进行"冗余
-    {
-      pattern: /进行(研究|分析|讨论|审查|调查|检查|测试|验证|处理|整改|排查|评估)/g,
-      type: '口语化',
-      getSuggestion: (m) => m.substring(2),
-    },
+
     // 冗余判断
     {
       pattern: /并非是/g,
@@ -779,20 +949,33 @@ function runBasicProofreading(text: string, baseOffset: number = 0): ProofreadIs
       type: '常见错别字',
       getSuggestion: () => '软件测评',
     },
+
+    // ===== 测试/占位文本检测 =====
+    {
+      pattern: /(?:check|test|sample|todo|fixme|placeholder|lorem ipsum)\s+(?:\w+\s+){0,5}(?:check|test|sample|todo|fixme|placeholder|lorem ipsum)/gi,
+      type: '占位文本',
+      getSuggestion: () => '[需补充正式内容]',
+    },
+    {
+      pattern: /(?:xx|xxx|xxx|xxxx)\s*(?:有限公司|公司|项目|部门|单位)/gi,
+      type: '占位文本',
+      getSuggestion: (m) => m.replace(/x+/gi, '[名称]'),
+    },
   ];
 
   for (const rule of rules) {
     let match: RegExpExecArray | null;
     const regex = new RegExp(rule.pattern.source, 'g');
-    while ((match = regex.exec(text)) !== null) {
+    while ((match = regex.exec(effectiveText)) !== null) {
       const orig = match[0];
       const suggestion = rule.getSuggestion(orig);
       if (orig !== suggestion) {
         const start = match.index;
-        const beforeCtx = text.substring(Math.max(0, start - 10), start);
-        const afterCtx = text.substring(start + orig.length, start + orig.length + 10);
+        const docOffset = useCleaned ? (charMap[start] ?? start) : start;
+        const beforeCtx = effectiveText.substring(Math.max(0, start - 10), start);
+        const afterCtx = effectiveText.substring(start + orig.length, start + orig.length + 10);
         issues.push({
-          offset: offset + start,
+          offset: offset + docOffset,
           length: orig.length,
           original: orig,
           suggestion,
@@ -809,12 +992,30 @@ function runBasicProofreading(text: string, baseOffset: number = 0): ProofreadIs
 export const proofreadBasicHandler: ToolHandler = async (
   args: Record<string, unknown>
 ): Promise<ToolCallResult> => {
-  const { text, start_offset } = args as {
-    text: string;
+  const { text, start_offset, file_path } = args as {
+    text?: string;
     start_offset?: number;
+    file_path?: string;
   };
 
-  if (!text || text.trim() === '') {
+  let content: string;
+  if (file_path) {
+    try {
+      content = fs.readFileSync(file_path, 'utf-8');
+    } catch (err) {
+      const errMsg = err instanceof Error ? err.message : String(err);
+      return {
+        id: uuidv4(),
+        success: false,
+        content: [{ type: 'text', text: `读取文件失败: ${errMsg}` }],
+        error: errMsg,
+      };
+    }
+  } else {
+    content = text || '';
+  }
+
+  if (!content || content.trim() === '') {
     return {
       id: uuidv4(),
       success: false,
@@ -825,7 +1026,7 @@ export const proofreadBasicHandler: ToolHandler = async (
 
   try {
     const baseOffset = typeof start_offset === 'number' ? start_offset : 0;
-    const issues = runBasicProofreading(text, baseOffset);
+    const issues = runBasicProofreading(content, baseOffset);
 
     if (issues.length === 0) {
       return {
@@ -870,13 +1071,52 @@ export const proofreadBasicHandler: ToolHandler = async (
 };
 
 /**
+ * 确认本批 AI 智能校对已完成
+ * 在校对流程中，调用 proofreadBasic 后必须调用此工具确认 AI 校对已完成
+ */
+export const confirmBatchAiProofreadDefinition: ToolDefinition = {
+  name: 'wps_word_confirm_batch_ai_proofread',
+  description: `确认本批AI智能校对已完成。
+在校对流程中，调用 proofreadBasic 后必须调用此工具确认 AI 校对已完成，然后才能进行修复操作。
+这是强制校验要求，两层校对（基础+AI）都完成后才允许执行替换操作。`,
+  category: ToolCategory.DOCUMENT,
+  inputSchema: {
+    type: 'object',
+    properties: {},
+  },
+};
+
+export const confirmBatchAiProofreadHandler: ToolHandler = async (
+  _args: Record<string, unknown>
+): Promise<ToolCallResult> => {
+  return {
+    id: uuidv4(),
+    success: true,
+    content: [
+      {
+        type: 'text',
+        text: 'AI 智能校对已确认完成。现在可以进行替换修复操作。',
+      },
+    ],
+  };
+};
+
+/**
  * 导出所有校对相关的Tools
  */
+/**
+ * 拼写检查工具（WPS COM API）
+ * 使用 WPS COM CheckSpelling 检查英文单词拼写
+ * 适用于中英文混排文档中的英文单词检查
+ */
+
 export const proofreadTools: RegisteredTool[] = [
   { definition: enableTrackChangesDefinition, handler: enableTrackChangesHandler },
   { definition: getTrackChangesStatusDefinition, handler: getTrackChangesStatusHandler },
   { definition: replaceRangeDefinition, handler: replaceRangeHandler },
+  { definition: replaceInParagraphDefinition, handler: replaceInParagraphHandler },
   { definition: proofreadBasicDefinition, handler: proofreadBasicHandler },
+  { definition: confirmBatchAiProofreadDefinition, handler: confirmBatchAiProofreadHandler },
 ];
 
 export default proofreadTools;

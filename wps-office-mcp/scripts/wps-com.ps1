@@ -2153,7 +2153,7 @@ switch ($Action) {
             $para = $doc.Paragraphs.Item($i)
             $text = $para.Range.Text
             # Remove trailing paragraph marks
-            $text = $text.TrimEnd("`r`n", "`r", "`n")
+            $text = $text.TrimEnd("`r", "`n")
             if ($text.Length -gt 200) { $text = $text.Substring(0, 200) + "..." }
             $styleName = ""
             try { $styleName = $para.Range.Style.NameLocal } catch { $styleName = "" }
@@ -2463,6 +2463,66 @@ switch ($Action) {
             Output-Json @{ success = $true; data = @{ startPos = [int]$p.startPos; endPos = [int]$p.startPos + $p.text.Length; originalText = $originalText.TrimEnd(); newText = $p.text } }
         } catch {
             Output-Json @{ success = $false; error = "Failed to replace range: $($_.Exception.Message)" }
+        }
+    }
+
+    "replaceInParagraph" {
+        $word = Get-WpsWord
+        if ($null -eq $word) { Output-Json @{ success = $false; error = "WPS Word not running" }; exit }
+        $doc = $word.ActiveDocument
+        if ($null -eq $doc) { Output-Json @{ success = $false; error = "No active document" }; exit }
+        if ($null -eq $p.paragraphIndex) { Output-Json @{ success = $false; error = "paragraphIndex required" }; exit }
+        if ($null -eq $p.findText -or $p.findText -eq "") { Output-Json @{ success = $false; error = "findText required" }; exit }
+        if ($null -eq $p.replaceText) { Output-Json @{ success = $false; error = "replaceText required" }; exit }
+        $paraIdx = [int]$p.paragraphIndex
+        $findText = $p.findText
+        $replaceText = $p.replaceText
+        $matchCase = if ($null -ne $p.matchCase) { [bool]$p.matchCase } else { $false }
+        $matchWholeWord = if ($null -ne $p.matchWholeWord) { [bool]$p.matchWholeWord } else { $false }
+        $replaceAll = if ($null -ne $p.replaceAll) { [bool]$p.replaceAll } else { $false }
+        if ($paraIdx -lt 1 -or $paraIdx -gt $doc.Paragraphs.Count) {
+            Output-Json @{ success = $false; error = "段落索引 $paraIdx 超出范围（文档共 $($doc.Paragraphs.Count) 段）" }; exit
+        }
+        try {
+            $para = $doc.Paragraphs.Item($paraIdx)
+            $paraRange = $para.Range
+            $count = 0
+            $firstOriginal = $null
+            if ($replaceAll) {
+                # Replace all occurrences by looping
+                while ($true) {
+                    $r = $paraRange.Duplicate
+                    $r.Find.ClearFormatting()
+                    $found = $r.Find.Execute($findText, $matchCase, $matchWholeWord, $false, $false, $false, $true, 1, $false, "", 0)
+                    if (-not $found) { break }
+                    if ($null -eq $firstOriginal) { $firstOriginal = $r.Text }
+                    $r.Text = $replaceText
+                    $count++
+                    # Reset paraRange to search remaining text after replaced position
+                    $paraRange = $para.Range
+                    $paraRange.Start = $r.End
+                }
+            } else {
+                # Replace first occurrence only
+                $range = $paraRange.Duplicate
+                $range.Find.ClearFormatting()
+                $found = $range.Find.Execute($findText, $matchCase, $matchWholeWord, $false, $false, $false, $true, 1, $false, "", 0)
+                if (-not $found) {
+                    Output-Json @{ success = $false; error = "在段落 $paraIdx 中未找到 '$findText'" }; exit
+                }
+                $firstOriginal = $range.Text
+                $range.Text = $replaceText
+                $count = 1
+            }
+            Output-Json @{ success = $true; data = @{
+                paragraphIndex = $paraIdx;
+                findText = $findText;
+                replaceText = $replaceText;
+                originalText = $firstOriginal;
+                replacedCount = $count
+            } }
+        } catch {
+            Output-Json @{ success = $false; error = "替换段落文本失败: $($_.Exception.Message)" }
         }
     }
 

@@ -96,7 +96,9 @@ const HANDLER_PARAM_MAP: Record<string, Record<string, string>> = {
   smartFillField: { fillMode: 'fill_mode' },
   getDocumentParagraphs: { startParagraph: 'start_paragraph', endParagraph: 'end_paragraph' },
   replaceRange: { startPos: 'start_pos', endPos: 'end_pos' },
+  replaceInParagraph: { paragraphIndex: 'paragraph_index', findText: 'find_text', replaceText: 'replace_text', matchCase: 'match_case', matchWholeWord: 'match_whole_word', replaceAll: 'replace_all' },
   proofreadBasic: { startOffset: 'start_offset' },
+
   getDocumentTextByRange: { startOffset: 'start_offset' },
 };
 
@@ -160,7 +162,7 @@ const VERIFIED_TOOLS = new Set([
   'smartFillField', 'addComment', 'getComments', 'insertText',
   'switchDocument', 'getOpenDocuments',
   // === Word: Proofreading ===
-  'enableTrackChanges', 'getTrackChangesStatus', 'replaceRange', 'proofreadBasic',
+  'enableTrackChanges', 'getTrackChangesStatus', 'replaceRange', 'replaceInParagraph', 'proofreadBasic',
   // === Excel ===
   'getActiveWorkbook', 'getCellValue', 'setCellValue', 'getRangeData', 'setRangeData',
   'setFormula', 'getFormula', 'setArrayFormula', 'diagnoseFormula',
@@ -253,10 +255,11 @@ const COM_ACTIONS: ToolIndexItem[] = [
   { name: 'getComments', description: '获取文档批注列表', keywords: ['批注'], category: 'word', appType: WpsAppType.WRITER, paramsSchema: {} },
   { name: 'insertText', description: '插入文本', keywords: ['文本', '插入'], category: 'word', appType: WpsAppType.WRITER, paramsSchema: { text: { type: 'string', description: '文本内容', required: true } } },
 
-  // Word: 校对操作 (4)
+  // Word: 校对操作 (5)
   { name: 'enableTrackChanges', description: '开启/关闭修订模式', keywords: ['修订', '校对', 'track'], category: 'word', appType: WpsAppType.WRITER, paramsSchema: { enable: { type: 'boolean', description: 'true开启/false关闭', required: true } } },
   { name: 'getTrackChangesStatus', description: '获取修订模式状态', keywords: ['修订', '状态', '校对'], category: 'word', appType: WpsAppType.WRITER, paramsSchema: {} },
   { name: 'replaceRange', description: '按字符范围替换文本', keywords: ['替换', '范围', '校对'], category: 'word', appType: WpsAppType.WRITER, paramsSchema: { startPos: { type: 'number', description: '起始位置', required: true }, endPos: { type: 'number', description: '结束位置', required: true }, text: { type: 'string', description: '替换文本', required: true } } },
+  { name: 'replaceInParagraph', description: '按段落+文本匹配替换（修订跟踪，支持全部替换）', keywords: ['替换', '段落', '校对', '文本匹配'], category: 'word', appType: WpsAppType.WRITER, paramsSchema: { paragraphIndex: { type: 'number', description: '段落索引（从1开始）', required: true }, findText: { type: 'string', description: '查找文本', required: true }, replaceText: { type: 'string', description: '替换文本', required: true }, matchCase: { type: 'boolean', description: '区分大小写', required: false }, matchWholeWord: { type: 'boolean', description: '全词匹配', required: false }, replaceAll: { type: 'boolean', description: '替换全部匹配项', required: false } } },
   { name: 'proofreadBasic', description: '基础文本校对（零token）', keywords: ['校对', '错别字', '检查'], category: 'word', appType: WpsAppType.WRITER, paramsSchema: { text: { type: 'string', description: '要校对的文本', required: true }, startOffset: { type: 'number', description: '偏移位置', required: false } } },
 
   // Excel 操作 (~120)
