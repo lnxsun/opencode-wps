@@ -144,8 +144,23 @@ async function execWpsAction(action: string, params: Record<string, unknown> = {
   }
 }
 
-// 超时时间（毫秒）
-const COM_TIMEOUT = 30000;
+// 超时时间（毫秒）— 按工具类型区分
+const COM_TIMEOUT_DEFAULT = 30000;
+const COM_TIMEOUTS: Record<string, number> = {
+  getDocumentParagraphs: 30000,    // 大批段落可能耗时较长
+  getDocumentTextByRange: 15000,
+  proofreadBasic: 15000,
+  replaceInParagraph: 10000,
+  replaceRange: 10000,
+  findReplace: 10000,
+  enableTrackChanges: 5000,
+  getTrackChangesStatus: 5000,
+  confirmBatchAiProofread: 5000,
+  getActiveDocument: 10000,
+};
+function getTimeout(action: string): number {
+  return COM_TIMEOUTS[action] ?? COM_TIMEOUT_DEFAULT;
+}
 
 /**
  * 带超时和重试的WPS调用
@@ -163,18 +178,20 @@ async function execWpsActionWithRetry(action: string, params: Record<string, unk
       if (isWin) {
         // Windows: 通过 spawnPowerShell 拿到进程引用，超时时 kill
         const { process: ps, result } = spawnPowerShell(action, params);
+        const timeout = getTimeout(action);
         const timeoutPromise = new Promise((_, reject) => {
           setTimeout(() => {
             ps.kill('SIGTERM');
             log.warn(`COM 调用超时，已终止 PowerShell 进程 (PID: ${ps.pid})`, { action });
-            reject(new Error('COM 调用超时（' + COM_TIMEOUT + 'ms）'));
-          }, COM_TIMEOUT);
+            reject(new Error('COM 调用超时（' + timeout + 'ms）'));
+          }, timeout);
         });
         actionPromise = Promise.race([result, timeoutPromise]);
       } else {
         // Mac: 使用已有 execMacPoll，Promise.race 快速失败
+        const timeout = getTimeout(action);
         const timeoutPromise = new Promise((_, reject) => {
-          setTimeout(() => reject(new Error('COM 调用超时（' + COM_TIMEOUT + 'ms）')), COM_TIMEOUT);
+          setTimeout(() => reject(new Error('COM 调用超时（' + timeout + 'ms）')), timeout);
         });
         actionPromise = Promise.race([execWpsAction(action, params), timeoutPromise]);
       }
