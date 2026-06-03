@@ -2244,6 +2244,13 @@ switch ($Action) {
         $paraText = $paraRange.Text
         $detectedMode = $fillMode
 
+        # General dedup: if keyword + colon + value exists in this paragraph, skip
+        $colonForm = [regex]::Escape($p.keyword) + '\s*[：:]\s*' + [regex]::Escape($p.value)
+        if ($paraText -match $colonForm) {
+            Output-Json @{ success = $true; data = @{ keyword = $p.keyword; value = $p.value; fillMode = $detectedMode; result = "Skipped '$($p.keyword)' — already filled" } }
+            return
+        }
+
         # Step 2: Auto-detect fill mode
         if ($fillMode -eq "auto") {
             # Check for placeholder patterns: {keyword}, 【keyword】, [keyword]
@@ -2330,10 +2337,22 @@ switch ($Action) {
                     $insertPos = $matchEnd + $colonOffset + 1
                     $paraEndOrig = $paraRange.End
                     $valLen = $p.value.Length
-                    # Save original underline state from the fill-area start
-                    $fmtCheck = $doc.Range($insertPos, [Math]::Min($insertPos + 1, $paraEndOrig - 1))
-                    $origUl = $fmtCheck.Font.Underline
-                    # Insert value right after colon (safe — preserves structural content like （公章）)
+                    # Dedup: if the text after the colon already starts with the value, skip
+                    $postColonText = $doc.Range($insertPos, $paraEndOrig - 1).Text
+                    $postColonTrimmed = $postColonText.TrimStart()
+                    if ($postColonTrimmed.Length -ge $valLen -and $postColonTrimmed.Substring(0, $valLen) -eq $p.value) {
+                        $fillResult = "Skipped '$($p.keyword)' — already filled with '$($p.value)'"
+                        break
+                    }
+                    # Scan trailing content for underline formatting (scan ahead to find
+                    # underlined runs that were on placeholder __ chars)
+                    $scanForUl = $doc.Range($insertPos, $paraEndOrig - 1)
+                    $origUl = 0
+                    for ($si = $scanForUl.Start; $si -lt $scanForUl.End; $si++) {
+                        $ulCheck = $doc.Range($si, $si + 1).Font.Underline
+                        if ($ulCheck -ne 0) { $origUl = $ulCheck; break }
+                    }
+                    # Insert value right after colon
                     $insRange = $doc.Range($insertPos, $insertPos)
                     $insRange.InsertAfter($p.value)
                     # Clean up trailing content after the inserted value.
@@ -2343,9 +2362,9 @@ switch ($Action) {
                     if ($trailStart -lt $trailEnd) {
                         $trailRange = $doc.Range($trailStart, $trailEnd)
                         $trailText = $trailRange.Text
-                        # Always consume leading whitespace between value and structural content
-                        # (e.g. "                   （公章）" → delete the spaces, keep "（公章）")
-                        if ($trailText -match '^([\s　]+)') {
+                        # Consume leading whitespace and/or underscore placeholders
+                        # (e.g. "____________（公章）" → delete "____________", keep "（公章）")
+                        if ($trailText -match '^([\s　_]+)') {
                             $wsLen = $Matches[1].Length
                             $wsRange = $doc.Range($trailStart, $trailStart + $wsLen)
                             [void]$wsRange.Delete()
@@ -2356,7 +2375,7 @@ switch ($Action) {
                         if ($trailStart -lt $trailEnd) {
                             $trailRange2 = $doc.Range($trailStart, $trailEnd)
                             $trailText2 = $trailRange2.Text
-                            if ($trailText2 -match '^[\s\r\n_　年 月日号>]*$') {
+                            if ($trailText2 -match '^[ \t_　年 月日号>]*$') {
                                 $trailRange2.Delete()
                             }
                         }
@@ -2391,8 +2410,8 @@ switch ($Action) {
                 if ($trailStart -lt $trailEnd) {
                     $trailRange = $doc.Range($trailStart, $trailEnd)
                     $trailText = $trailRange.Text
-                    # Always consume leading whitespace
-                    if ($trailText -match '^([\s　]+)') {
+                    # Consume leading whitespace and/or underscore placeholders
+                    if ($trailText -match '^([\s　_]+)') {
                         $wsLen = $Matches[1].Length
                         $wsRange = $doc.Range($trailStart, $trailStart + $wsLen)
                         [void]$wsRange.Delete()
@@ -2403,7 +2422,7 @@ switch ($Action) {
                     if ($trailStart -lt $trailEnd) {
                         $trailRange2 = $doc.Range($trailStart, $trailEnd)
                         $trailText2 = $trailRange2.Text
-                        if ($trailText2 -match '^[\s\r\n_　年 月日号>]*$') {
+                        if ($trailText2 -match '^[ \t_　年 月日号>]*$') {
                             $trailRange2.Delete()
                         }
                     }

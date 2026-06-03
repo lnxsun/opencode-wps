@@ -26,6 +26,7 @@
  * 规则 T7：禁止编造 — 首次填写前必须输出"文档字段 ↔ 用户值"对照表并获用户确认
  * 规则 T8：跳过签字字段 — 含"签字/签名/签章"的关键字无需填写（需手动签章）
  * 规则 T9：日期字段强制 underline — 日期字段禁止使用 afterColon 模式
+ * 规则 T10：禁止同一 (keyword, value) 重复填写
  */
 
 // ==================== 常量定义 ====================
@@ -156,6 +157,7 @@ let templateFilling = {
   lastParagraphIndex: 0,
   fillKeywords: [],
   userConfirmed: false,   // T7：用户是否确认了字段对照表
+  fillHistory: [],        // T10：已填 (keyword, value) 记录，防重复
 };
 
 // ==================== 辅助函数 ====================
@@ -361,8 +363,12 @@ export default async () => {
           templateFilling.active = true;
           templateFilling.fieldsFilled++;
           const keyword = input.args?.arguments?.keyword;
+          const value = input.args?.arguments?.value;
           if (keyword) {
             templateFilling.fillKeywords.push(keyword);
+          }
+          if (keyword && value !== undefined) {
+            templateFilling.fillHistory.push({ keyword, value });
           }
           if (input.args?.arguments?._field_mapping_confirmed) {
             templateFilling.userConfirmed = true;
@@ -671,6 +677,18 @@ export default async () => {
                 );
               }
             }
+          }
+        }
+        // T10：禁止同一 (keyword, value) 重复填写
+        if (newKeyword && toolArgs.value !== undefined) {
+          const dup = templateFilling.fillHistory.find(
+            h => h.keyword === newKeyword && h.value === toolArgs.value
+          );
+          if (dup) {
+            throw new Error(
+              `【执行治理·禁止重复】"${newKeyword}" 已用 "${toolArgs.value}" 填写过。` +
+              `不要重复填写相同的字段。`
+            );
           }
         }
         return;
