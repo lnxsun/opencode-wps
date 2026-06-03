@@ -2270,38 +2270,35 @@ switch ($Action) {
                 else { $fillResult = "Failed to replace placeholder" }
             }
             "underline" {
-                # Find runs with underline after the keyword and replace underline text with value
-                # Strategy: find the keyword, then look for underlined runs after it
+                # Find underscore range after keyword and replace with value
+                # Also consumes adjacent suffix chars (年/月/日/号/等) + underscore runs
                 $keywordEndPos = $matchEnd
-                $fillDone = $false
-                # Check the paragraph runs
-                for ($ri = 1; $ri -le $paraRange.Words.Count; $ri++) {
-                    $wordObj = $paraRange.Words.Item($ri)
-                    if ($wordObj.Start -gt $keywordEndPos -and $wordObj.Font.Underline -ne 0 -and $wordObj.Text -match '_+') {
-                        # Found underlined underscore run - replace with value
-                        $wordObj.Text = $p.value
-                        $wordObj.Font.Underline = 1  # Keep underline
-                        $fillDone = $true
-                        $fillResult = "Filled underlined field after '$($p.keyword)' with '$($p.value)'"
-                        break
+                $afterKeyRange = $doc.Range($keywordEndPos, $paraRange.End)
+                $afterKeyFind = $afterKeyRange.Duplicate
+                $afterKeyFind.Find.ClearFormatting()
+                $afterKeyFind.Find.Text = "\_+"
+                $afterKeyFind.Find.MatchWildcards = $true
+                $foundUl = $afterKeyFind.Find.Execute()
+                if ($foundUl) {
+                    $ulStart = $afterKeyFind.Start
+                    $ulEnd = $afterKeyFind.End
+                    # Extend range to consume separator chars + adjacent underscore runs
+                    $extEnd = $ulEnd
+                    $scanText = $doc.Range($extEnd, $paraRange.End - 1).Text
+                    # Match optional colon, whitespace, then CJK suffix char(s) + underscores
+                    while ($scanText -match '^[\s：:　]*(\p{IsCJKUnifiedIdeographs}+[\s：:　]*\_+)') {
+                        $extEnd += $Matches[1].Length
+                        $scanText = $doc.Range($extEnd, $paraRange.End - 1).Text
                     }
-                }
-                if (-not $fillDone) {
-                    # Fallback: find underscore text after keyword in the paragraph and replace via Find
-                    $underscorePattern = "_+"
-                    $afterKeyRange = $doc.Range($keywordEndPos, $paraRange.End)
-                    $afterKeyRange.Find.ClearFormatting()
-                    $afterKeyRange.Find.Text = $underscorePattern
-                    $afterKeyRange.Find.MatchWildcards = $true
-                    $foundUl = $afterKeyRange.Find.Execute($underscorePattern, $false, $false, $false, $false, $false, $true, 1, $false, $p.value, 1)
-                    if ($foundUl) {
-                        $fillResult = "Filled underline after '$($p.keyword)' with '$($p.value)'"
-                    } else {
-                        # Last fallback: insert after keyword
-                        $insertRange = $doc.Range($keywordEndPos, $keywordEndPos)
-                        $insertRange.InsertAfter($p.value)
-                        $fillResult = "Inserted '$($p.value)' after keyword '$($p.keyword)' (no underline found)"
-                    }
+                    # Replace the entire extended range with the value
+                    $fillRange = $doc.Range($ulStart, $extEnd)
+                    $fillRange.Text = $p.value
+                    $fillRange.Font.Underline = 0
+                    $fillResult = "Filled underlined field after '$($p.keyword)' with '$($p.value)'"
+                } else {
+                    $insertRange = $doc.Range($keywordEndPos, $keywordEndPos)
+                    $insertRange.InsertAfter($p.value)
+                    $fillResult = "Inserted '$($p.value)' after keyword '$($p.keyword)' (no underline found)"
                 }
             }
             "afterColon" {
@@ -2315,14 +2312,35 @@ switch ($Action) {
                     $afterColonRange = $doc.Range($insertPos, $paraRange.End - 1)
                     $afterColonText = $afterColonRange.Text.TrimStart().TrimEnd("`r`n", "`r", "`n").TrimEnd()
                     if ($afterColonText.Length -gt 0 -and $afterColonText -notmatch '^[\s\r\n_　]+$') {
-                        # There's already content, replace it
+                        # There's already content — if it contains underscores, replace full content
+                        # (handles date templates like ____年____月____日)
                         $afterColonRange.Text = $p.value
                         $fillResult = "Replaced content after colon with '$($p.value)'"
                     } else {
-                        # Insert at colon position
-                        $insertRange = $doc.Range($insertPos, $insertPos)
-                        $insertRange.InsertAfter($p.value)
-                        $fillResult = "Inserted '$($p.value)' after colon following '$($p.keyword)'"
+                        # Content is empty or only whitespace/underscores — insert at colon
+                        # But first try to find and consume adjacent underscore runs + separators
+                        $searchForUl = $doc.Range($insertPos, $paraRange.End)
+                        $searchForUl.Find.ClearFormatting()
+                        $searchForUl.Find.Text = "\_+"
+                        $searchForUl.Find.MatchWildcards = $true
+                        if ($searchForUl.Find.Execute()) {
+                            $ulStart = $searchForUl.Start
+                            $ulEnd = $searchForUl.End
+                            # Extend for suffix separators + adjacent underscores
+                            $extEnd = $ulEnd
+                            $scanText = $doc.Range($extEnd, $paraRange.End - 1).Text
+                            while ($scanText -match '^[\s：:　]*(\p{IsCJKUnifiedIdeographs}+[\s：:　]*\_+)') {
+                                $extEnd += $Matches[1].Length
+                                $scanText = $doc.Range($extEnd, $paraRange.End - 1).Text
+                            }
+                            $fillRange = $doc.Range($ulStart, $extEnd)
+                            $fillRange.Text = $p.value
+                            $fillResult = "Filled content after colon '$($p.keyword)' with '$($p.value)'"
+                        } else {
+                            $insertRange = $doc.Range($insertPos, $insertPos)
+                            $insertRange.InsertAfter($p.value)
+                            $fillResult = "Inserted '$($p.value)' after colon following '$($p.keyword)'"
+                        }
                     }
                 } else {
                     # No colon found, insert right after keyword

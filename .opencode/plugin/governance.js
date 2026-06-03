@@ -15,6 +15,13 @@
  *
  * ── 分批校对规则（校对激活时生效） ──
  * 规则 P1-P11：继承 enforce-batch.js 的全部 11 条规则
+ *
+ * ── 模板填写工作流规则（模板填写时生效） ──
+ * 规则 T1：填写前必须调用 getActiveDocument 评估文档规模
+ * 规则 T2：填写前必须调用 getDocumentParagraphs 分批（≤200 段/批）
+ * 规则 T3：填写前必须调用 enableTrackChanges(true) 开启修订模式
+ * 规则 T4：填写后建议调用 findInDocument 检查遗漏
+ * 规则 T5：批次连续性检查（同 P2，复用 getDocumentParagraphs 规则）
  */
 
 // ==================== 常量定义 ====================
@@ -42,6 +49,7 @@ const WRITE_TOOLS = new Set([
   "addShape", "deleteShape", "addTextBox", "setTextBoxText", "deleteTextBox",
   "addComment", "beautifySlide", "beautifyAllSlides",
   "save", "saveAs", "closeDocument", "closePresentation", "closeWorkbook",
+  "smartFillField", "replaceBookmarkContent",
 ]);
 
 const READ_TOOLS = new Set([
@@ -132,6 +140,17 @@ let appReadState = {
   word: { activeDocRead: false },
   excel: { activeWorkbookRead: false },
   ppt: { activePresentationRead: false },
+};
+
+// 模板填写状态跟踪
+let templateFilling = {
+  active: false,
+  docFetched: false,
+  paragraphsFetched: false,
+  trackChangesEnabled: false,
+  fieldsFilled: 0,
+  lastParagraphIndex: 0,
+  fillKeywords: [],
 };
 
 // ==================== 辅助函数 ====================
@@ -306,6 +325,46 @@ export default async () => {
           if (match) {
             lastRevisionCount = parseInt(match[1], 10);
           }
+          return;
+        }
+
+        // ── 模板填写状态跟踪 ──
+        if (toolName === "getActiveDocument") {
+          templateFilling.docFetched = true;
+          return;
+        }
+
+        if (toolName === "getDocumentParagraphs") {
+          const outText = getOutputText(output);
+          if (!outText) return;
+          const ranges = parseParagraphRanges(outText);
+          if (ranges.length > 0) {
+            templateFilling.paragraphsFetched = true;
+            templateFilling.lastParagraphIndex = ranges[ranges.length - 1].index;
+          }
+          return;
+        }
+
+        if (toolName === "enableTrackChanges") {
+          const outText = getOutputText(output);
+          if (!outText) return;
+          templateFilling.trackChangesEnabled = input.args?.arguments?.enable === true;
+          return;
+        }
+
+        if (toolName === "smartFillField") {
+          templateFilling.active = true;
+          templateFilling.fieldsFilled++;
+          const keyword = input.args?.arguments?.keyword;
+          if (keyword) {
+            templateFilling.fillKeywords.push(keyword);
+          }
+          return;
+        }
+
+        if (toolName === "replaceBookmarkContent") {
+          templateFilling.active = true;
+          templateFilling.fieldsFilled++;
           return;
         }
       }
@@ -526,6 +585,32 @@ export default async () => {
               }
             }
           }
+        }
+        return;
+      }
+
+      // ── 模板填写工作流规则（T1-T5） ──
+
+      // T1 + T2：评估文档 + 分批——smartFillField 前必须调用 getActiveDocument + getDocumentParagraphs
+      if (toolName === "smartFillField" || toolName === "replaceBookmarkContent") {
+        if (!templateFilling.active && !templateFilling.docFetched) {
+          throw new Error(
+            `【执行治理】模板填写前请先评估文档规模。` +
+            `请先调用 getActiveDocument 了解文档总段落数。`
+          );
+        }
+        if (!templateFilling.active && !templateFilling.paragraphsFetched) {
+          throw new Error(
+            `【执行治理】模板填写前请先分批。` +
+            `请先调用 getDocumentParagraphs 以每批 ≤200 段评估文档结构，再逐批填写。`
+          );
+        }
+        // T3：修订模式 — smartFillField 前必须开启修订
+        if (!templateFilling.trackChangesEnabled) {
+          throw new Error(
+            `【执行治理】模板填写前请先调用 enableTrackChanges(true) 开启修订模式，` +
+            `以便追踪填写变更。`
+          );
         }
         return;
       }
