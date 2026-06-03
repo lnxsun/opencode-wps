@@ -2210,11 +2210,11 @@ switch ($Action) {
         if ($null -eq $p.value) { Output-Json @{ success = $false; error = "value required（空字符串将清除该字段内容）" }; exit }
         $fillMode = if ($p.fillMode) { $p.fillMode.ToLower() } else { "auto" }
 
-        # Step 1: Find the keyword
+        # Step 1: Find the keyword (MatchWholeWord=true to prevent "包号" matching inside "采购包号")
         $searchRange = $doc.Content.Duplicate
         $searchRange.Find.ClearFormatting()
         $searchRange.Find.Text = $p.keyword
-        $found = $searchRange.Find.Execute($p.keyword, $false, $false, $false, $false, $false, $true, 1, $false, "", 0)
+        $found = $searchRange.Find.Execute($p.keyword, $false, $true, $false, $false, $false, $true, 1, $false, "", 0)
         if (-not $found) { Output-Json @{ success = $false; error = "Keyword '$($p.keyword)' not found" }; exit }
 
         $matchStart = $searchRange.Start
@@ -2350,8 +2350,15 @@ switch ($Action) {
                 }
             }
             "afterLabel" {
-                # Insert value right after the keyword
-                $insertRange = $doc.Range($matchEnd, $matchEnd)
+                # Insert value after the keyword, skipping trailing whitespace/colons/delimiters
+                $insertPos = $matchEnd
+                $afterText = $doc.Range($matchEnd, [Math]::Min($matchEnd + 10, $paraRange.End)).Text
+                # Skip whitespace, colons, and common delimiters between keyword and fill area
+                $afterText -match '^([\s：:　，,、。.、]*)' | Out-Null
+                if ($Matches[1].Length -gt 0) {
+                    $insertPos = $matchEnd + $Matches[1].Length
+                }
+                $insertRange = $doc.Range($insertPos, $insertPos)
                 $insertRange.InsertAfter($p.value)
                 $fillResult = "Inserted '$($p.value)' after label '$($p.keyword)'"
             }
