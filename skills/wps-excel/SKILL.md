@@ -305,6 +305,19 @@ wps_office_execute({
 
 ## 注意事项
 
+### 执行治理规则（代码层强制，无法绕过）
+
+`.opencode/plugin/governance.js` 会在运行时自动拦截工具调用，执行以下校验：
+
+| 规则 | 说明 | 触发条件 |
+|------|------|---------|
+| **G1 网关强制** | 6 个内置工具必须走 `wps_office_execute` 网关 | 直接调用 `wps_get_active_workbook` / `wps_get_cell_value` / `wps_set_cell_value` 等 |
+| **G3 读前必写** | 写操作前必须先读文档状态 | 未先调 `getActiveWorkbook` 就调 `setCellValue` / `setFormula` / `deleteSheet` 等 |
+| **G4 破坏性确认** | 删表/清数据需显式确认 | `deleteSheet` / `deleteRows` / `deleteColumns` / `clearRange` 等未传 `confirm: true` |
+| **G5 路径安全** | 文件路径禁止 `..` 穿越 | 路径参数含 `..` |
+| **G6 密码保护** | 密码参数已脱敏 | `protectSheet` / `unprotectSheet` / `protectWorkbook` |
+| **G7 参数校验** | 行号/索引自动 ≥ 1 | 传了 ≤0 的值 |
+
 ### 安全原则
 
 1. **确认范围**：操作前确认数据范围，避免误操作重要数据

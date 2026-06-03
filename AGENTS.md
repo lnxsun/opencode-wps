@@ -34,6 +34,10 @@ opencode-wps/
 ├── skills/               # 5 个 OpenCode Skills (wps-excel/word/ppt/office/proofread)
 │   └── README.md        # ⚠️ 必须先读：skills 修改流程
 ├── agents/               # 自定义 Agents (wps-expert + 3 个子 agents)
+├── .opencode/
+│   ├── plugin/
+│   │   └── governance.js # ⚙️ 执行治理插件（19 条规则，代码层强制执行）
+│   └── package.json
 └── install-addons.js     # 一键安装脚本 (7 步)
 ```
 
@@ -97,6 +101,28 @@ OpenCode 通过 Launcher 进程管理自动启动：
 5. WPS 必须运行才能进行 MCP 操作
 6. Skills 不生效 → 检查是否运行了 `node install-addons.js` 同步
 7. Agents 不显示 → 重启 OpenCode 服务让新 agents 生效
+
+## 执行治理插件
+
+`.opencode/plugin/governance.js` 是项目的执行治理核心，使用 OpenCode Plugin Hooks 在运行时拦截所有 MCP 工具调用：
+
+### 通用规则（G1-G8，始终生效）
+- **G1 网关强制**：6 个双路径工具必须走 `wps_office_execute` 网关
+- **G2 wps_execute_method 白名单**：仅允许白名单 API 通过
+- **G3 读前必写**：写操作前必须先读取文档状态
+- **G4 破坏性确认**：删除/清除操作需显式传 `confirm: true`
+- **G5 文件路径安全**：禁止 `..` 路径穿越
+- **G6 密码保护**：保护/取消保护密码脱敏
+- **G7 参数范围校验**：行号/索引自动 ≥ 1
+- **G8 跨应用缓存**：跨应用数据传递提示
+
+### 校对规则（P1-P11，分批校对时生效）
+- 批次大小 ≤200、连续性、startOffset 匹配、修订模式等 11 条规则
+
+### 修改治理插件
+1. 修改 `.opencode/plugin/governance.js`
+2. 运行 `node install-addons.js` 同步到 `~/.opencode/plugin/`
+3. 重启 OpenCode 服务
 
 ## 参考文档
 - README.md — 完整项目文档

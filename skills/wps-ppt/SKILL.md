@@ -353,6 +353,17 @@ wps_office_execute({
 
 ## 注意事项
 
+### 执行治理规则（代码层强制，无法绕过）
+
+`.opencode/plugin/governance.js` 会在运行时自动拦截工具调用，执行以下校验：
+
+| 规则 | 说明 | 触发条件 |
+|------|------|---------|
+| **G1 网关强制** | 6 个内置工具必须走 `wps_office_execute` 网关 | 直接调用 `wps_get_active_presentation` 等 |
+| **G3 读前必写** | 写操作前必须先读文档状态 | 未先调 `getActivePresentation` 就调 `deleteSlide` / `setSlideTitle` / `addSlide` 等 |
+| **G4 破坏性确认** | 删幻灯片/形状需显式确认 | `deleteSlide` / `deleteShape` / `deleteTextBox` 等未传 `confirm: true` |
+| **G7 参数校验** | 幻灯片索引/形状索引自动 ≥ 1 | 传了 ≤0 的值 |
+
 ### 设计原则
 
 1. **少即是多**：不要添加过多元素

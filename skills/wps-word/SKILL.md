@@ -344,6 +344,20 @@ wps_office_execute({
 
 ## 注意事项
 
+### 执行治理规则（代码层强制，无法绕过）
+
+`.opencode/plugin/governance.js` 会在运行时自动拦截工具调用，执行以下校验：
+
+| 规则 | 说明 | 触发条件 |
+|------|------|---------|
+| **G1 网关强制** | 6 个内置工具必须走 `wps_office_execute` 网关 | 直接调用 `wps_get_active_document` / `wps_insert_text` 等 |
+| **G3 读前必写** | 写操作前必须先读文档状态 | 未先调 `getActiveDocument` 就调 `setFont`/`insertText` 等 |
+| **G4 破坏性确认** | 删/清内容需显式确认 | `closeDocument` / `clearRange` 等未传 `confirm: true` |
+| **G5 路径安全** | 文件路径禁止 `..` 穿越 | 路径参数含 `..` |
+| **G7 参数校验** | 行号/索引自动 ≥ 1 | 传了 ≤0 的值 |
+
+**重要**：所有写操作前必须先调用 `getActiveDocument` 了解文档状态，否则被拦截。
+
 ### 安全原则
 
 1. **确认范围**：全文操作前确认影响范围
