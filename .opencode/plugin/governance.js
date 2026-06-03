@@ -22,6 +22,8 @@
  * 规则 T3：填写前必须调用 enableTrackChanges(true) 开启修订模式
  * 规则 T4：填写后建议调用 findInDocument 检查遗漏
  * 规则 T5：批次连续性检查（同 P2，复用 getDocumentParagraphs 规则）
+ * 规则 T6：禁止子串重复填写 — 若新 keyword 是已填 keyword 的子串或超串，拦截
+ * 规则 T7：禁止编造 — 首次填写前必须输出"文档字段 ↔ 用户值"对照表并获用户确认
  */
 
 // ==================== 常量定义 ====================
@@ -151,6 +153,7 @@ let templateFilling = {
   fieldsFilled: 0,
   lastParagraphIndex: 0,
   fillKeywords: [],
+  userConfirmed: false,   // T7：用户是否确认了字段对照表
 };
 
 // ==================== 辅助函数 ====================
@@ -358,6 +361,9 @@ export default async () => {
           const keyword = input.args?.arguments?.keyword;
           if (keyword) {
             templateFilling.fillKeywords.push(keyword);
+          }
+          if (input.args?.arguments?._field_mapping_confirmed) {
+            templateFilling.userConfirmed = true;
           }
           return;
         }
@@ -589,28 +595,60 @@ export default async () => {
         return;
       }
 
-      // ── 模板填写工作流规则（T1-T5） ──
+      // ── 模板填写工作流规则（T1-T7） ──
 
-      // T1 + T2：评估文档 + 分批——smartFillField 前必须调用 getActiveDocument + getDocumentParagraphs
       if (toolName === "smartFillField" || toolName === "replaceBookmarkContent") {
+        // T1：评估文档
         if (!templateFilling.active && !templateFilling.docFetched) {
           throw new Error(
             `【执行治理】模板填写前请先评估文档规模。` +
             `请先调用 getActiveDocument 了解文档总段落数。`
           );
         }
+        // T2：分批
         if (!templateFilling.active && !templateFilling.paragraphsFetched) {
           throw new Error(
             `【执行治理】模板填写前请先分批。` +
             `请先调用 getDocumentParagraphs 以每批 ≤200 段评估文档结构，再逐批填写。`
           );
         }
-        // T3：修订模式 — smartFillField 前必须开启修订
+        // T7：首次填写前必须输出字段对照表并获用户确认（禁止编造）
+        // AI 需先向用户输出"文档字段 ↔ 用户值"对照表，用户确认后，在首次
+        // smartFillField 传 _field_mapping_confirmed: true 放行
+        if (!templateFilling.userConfirmed) {
+          if (!toolArgs._field_mapping_confirmed) {
+            throw new Error(
+              `【执行治理·禁止编造】首次 smartFillField 前，你必须：\n` +
+              `1. 列出文档中所有待填写字段与用户提供值的对照表\n` +
+              `2. 标记出用户未提供的字段（如缺少"采购项目编号"的值）\n` +
+              `3. 要求用户补充缺失值，不得自行编造\n` +
+              `4. 用户确认后，在首次 smartFillField 参数中添加 ` +
+              `_field_mapping_confirmed: true 即可放行`
+            );
+          }
+        }
+        // T3：修订模式
         if (!templateFilling.trackChangesEnabled) {
           throw new Error(
             `【执行治理】模板填写前请先调用 enableTrackChanges(true) 开启修订模式，` +
             `以便追踪填写变更。`
           );
+        }
+        // T6：禁止子串重复填写
+        const newKeyword = toolArgs.keyword;
+        if (newKeyword && templateFilling.fillKeywords.length > 0) {
+          for (const existingKwd of templateFilling.fillKeywords) {
+            if (existingKwd.includes(newKeyword) || newKeyword.includes(existingKwd)) {
+              if (existingKwd !== newKeyword) {
+                throw new Error(
+                  `【执行治理·禁止重复】"${newKeyword}" 与已填写字段 "${existingKwd}" ` +
+                  `存在包含关系（子串/超串）。请确认这是否是同一字段：\n` +
+                  `- 如果是同一字段（如"包号"是"采购包号"的一部分），不要再次填写\n` +
+                  `- 如果是不同字段，请向用户确认后再填写`
+                );
+              }
+            }
+          }
         }
         return;
       }
