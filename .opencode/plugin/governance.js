@@ -404,7 +404,8 @@ export default async () => {
       }
 
       // 以下规则仅针对 wps_office_execute 网关调用
-      if (input.name !== "wps-office_wps_office_execute") return;
+      // OpenCode 插件系统可能传 input.name 为 "wps_office_execute"（无前缀）
+      if (input.name !== "wps-office_wps_office_execute" && input.name !== "wps_office_execute") return;
 
       const toolName = input.args?.tool_name;
       const toolArgs = input.args?.arguments || {};

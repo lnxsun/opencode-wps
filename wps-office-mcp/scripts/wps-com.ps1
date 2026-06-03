@@ -2216,7 +2216,10 @@ switch ($Action) {
             return
         }
 
-        # Step 1: Find the keyword (MatchWholeWord=true to prevent "包号" matching inside "采购包号")
+        # Step 1: Find the keyword
+        # Note: MatchWholeWord($true) doesn't work for CJK text in Word COM.
+        # "项目名称" will still match inside "采购项目名称". So we do a manual CJK
+        # substring check after Find.
         $searchRange = $doc.Content.Duplicate
         $searchRange.Find.ClearFormatting()
         $searchRange.Find.Text = $p.keyword
@@ -2225,6 +2228,17 @@ switch ($Action) {
 
         $matchStart = $searchRange.Start
         $matchEnd = $searchRange.End
+
+        # Manual CJK substring check: if the character immediately before the match
+        # is CJK, then this match is inside a longer CJK word (e.g. "项目名称"
+        # inside "采购项目名称"). Reject — AI must use a more specific keyword.
+        if ($matchStart -gt 1) {
+            $beforeChar = $doc.Range($matchStart - 1, $matchStart).Text
+            if ($beforeChar -match '\p{IsCJKUnifiedIdeographs}') {
+                Output-Json @{ success = $false; error = "Keyword '$($p.keyword)' matched inside longer CJK text. Use a more specific keyword (e.g. use '采购项目名称' instead of '项目名称')." }
+                exit
+            }
+        }
         # Get the paragraph containing the match
         $paraRange = $searchRange.Paragraphs.Item(1).Range
         $paraText = $paraRange.Text
