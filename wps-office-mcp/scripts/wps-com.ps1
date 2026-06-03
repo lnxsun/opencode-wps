@@ -2336,15 +2336,29 @@ switch ($Action) {
                     # Insert value right after colon (safe — preserves structural content like （公章）)
                     $insRange = $doc.Range($insertPos, $insertPos)
                     $insRange.InsertAfter($p.value)
-                    # Clean up trailing template remnants after the inserted value.
+                    # Clean up trailing content after the inserted value.
                     # (InsertAfter shifts existing chars right by valLen)
                     $trailStart = $insertPos + $valLen
                     $trailEnd = $paraEndOrig - 1 + $valLen  # last content char before para mark
                     if ($trailStart -lt $trailEnd) {
                         $trailRange = $doc.Range($trailStart, $trailEnd)
                         $trailText = $trailRange.Text
-                        if ($trailText -match '^[\s\r\n_　年 月日号>]*$') {
-                            $trailRange.Delete()
+                        # Always consume leading whitespace between value and structural content
+                        # (e.g. "                   （公章）" → delete the spaces, keep "（公章）")
+                        if ($trailText -match '^([\s　]+)') {
+                            $wsLen = $Matches[1].Length
+                            $wsRange = $doc.Range($trailStart, $trailStart + $wsLen)
+                            [void]$wsRange.Delete()
+                            $trailStart += $wsLen
+                            $trailEnd += $wsLen  # paragraph shifted after delete
+                        }
+                        # Then check if remaining is date template remnant —— delete entirely
+                        if ($trailStart -lt $trailEnd) {
+                            $trailRange2 = $doc.Range($trailStart, $trailEnd)
+                            $trailText2 = $trailRange2.Text
+                            if ($trailText2 -match '^[\s\r\n_　年 月日号>]*$') {
+                                $trailRange2.Delete()
+                            }
                         }
                     }
                     # Copy underline formatting to the filled text
@@ -2371,14 +2385,27 @@ switch ($Action) {
                 $valLen = $p.value.Length
                 $insertRange = $doc.Range($insertPos, $insertPos)
                 $insertRange.InsertAfter($p.value)
-                # Clean up trailing template remnants (InsertAfter shifts chars right by valLen)
+                # Clean up trailing content (InsertAfter shifts chars right by valLen)
                 $trailStart = $insertPos + $valLen
                 $trailEnd = $paraEndOrig - 1 + $valLen
                 if ($trailStart -lt $trailEnd) {
                     $trailRange = $doc.Range($trailStart, $trailEnd)
                     $trailText = $trailRange.Text
-                    if ($trailText -match '^[\s\r\n_　年 月日号>]*$') {
-                        $trailRange.Delete()
+                    # Always consume leading whitespace
+                    if ($trailText -match '^([\s　]+)') {
+                        $wsLen = $Matches[1].Length
+                        $wsRange = $doc.Range($trailStart, $trailStart + $wsLen)
+                        [void]$wsRange.Delete()
+                        $trailStart += $wsLen
+                        $trailEnd += $wsLen
+                    }
+                    # Then delete date template remnants if any
+                    if ($trailStart -lt $trailEnd) {
+                        $trailRange2 = $doc.Range($trailStart, $trailEnd)
+                        $trailText2 = $trailRange2.Text
+                        if ($trailText2 -match '^[\s\r\n_　年 月日号>]*$') {
+                            $trailRange2.Delete()
+                        }
                     }
                 }
                 $fillResult = "Inserted '$($p.value)' after label '$($p.keyword)'"
