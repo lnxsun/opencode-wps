@@ -2210,6 +2210,12 @@ switch ($Action) {
         if ($null -eq $p.value) { Output-Json @{ success = $false; error = "value required（空字符串将清除该字段内容）" }; exit }
         $fillMode = if ($p.fillMode) { $p.fillMode.ToLower() } else { "auto" }
 
+        # Auto-skip signature fields (签字/签名/签章 need manual hand-signing)
+        if ($p.keyword -match '签字|签名|签章|盖章') {
+            Output-Json @{ success = $true; data = @{ keyword = $p.keyword; value = $p.value; fillMode = "skipped"; result = "Skipped '$($p.keyword)' — signature field requires manual signing" } }
+            return
+        }
+
         # Step 1: Find the keyword (MatchWholeWord=true to prevent "包号" matching inside "采购包号")
         $searchRange = $doc.Content.Duplicate
         $searchRange.Find.ClearFormatting()
@@ -2302,46 +2308,35 @@ switch ($Action) {
                 }
             }
             "afterColon" {
-                # Insert value after the colon that follows the keyword
+                # Insert value after the colon, then cleanup template remnants
                 $afterKeyRange = $doc.Range($matchEnd, $paraRange.End)
                 $afterKeyText = $afterKeyRange.Text
                 $colonOffset = $afterKeyText.IndexOfAny([char[]]@('：', ':'))
                 if ($colonOffset -ge 0) {
                     $insertPos = $matchEnd + $colonOffset + 1
-                    # Check if there's already content after the colon
-                    $afterColonRange = $doc.Range($insertPos, $paraRange.End - 1)
-                    $afterColonText = $afterColonRange.Text.TrimStart().TrimEnd("`r`n", "`r", "`n").TrimEnd()
-                    if ($afterColonText.Length -gt 0 -and $afterColonText -notmatch '^[\s\r\n_　]+$') {
-                        # There's already content — if it contains underscores, replace full content
-                        # (handles date templates like ____年____月____日)
-                        $afterColonRange.Text = $p.value
-                        $fillResult = "Replaced content after colon with '$($p.value)'"
-                    } else {
-                        # Content is empty or only whitespace/underscores — insert at colon
-                        # But first try to find and consume adjacent underscore runs + separators
-                        $searchForUl = $doc.Range($insertPos, $paraRange.End)
-                        $searchForUl.Find.ClearFormatting()
-                        $searchForUl.Find.Text = "\_+"
-                        $searchForUl.Find.MatchWildcards = $true
-                        if ($searchForUl.Find.Execute()) {
-                            $ulStart = $searchForUl.Start
-                            $ulEnd = $searchForUl.End
-                            # Extend for suffix separators + adjacent underscores
-                            $extEnd = $ulEnd
-                            $scanText = $doc.Range($extEnd, $paraRange.End - 1).Text
-                            while ($scanText -match '^[\s：:　]*(\p{IsCJKUnifiedIdeographs}+[\s：:　]*\_+)') {
-                                $extEnd += $Matches[1].Length
-                                $scanText = $doc.Range($extEnd, $paraRange.End - 1).Text
-                            }
-                            $fillRange = $doc.Range($ulStart, $extEnd)
-                            $fillRange.Text = $p.value
-                            $fillResult = "Filled content after colon '$($p.keyword)' with '$($p.value)'"
-                        } else {
-                            $insertRange = $doc.Range($insertPos, $insertPos)
-                            $insertRange.InsertAfter($p.value)
-                            $fillResult = "Inserted '$($p.value)' after colon following '$($p.keyword)'"
+                    $paraEndOrig = $paraRange.End
+                    $valLen = $p.value.Length
+                    # Save original underline state from the fill-area start
+                    $fmtCheck = $doc.Range($insertPos, [Math]::Min($insertPos + 1, $paraEndOrig - 1))
+                    $origUl = $fmtCheck.Font.Underline
+                    # Insert value right after colon (safe — preserves structural content like （公章）)
+                    $insRange = $doc.Range($insertPos, $insertPos)
+                    $insRange.InsertAfter($p.value)
+                    # Clean up trailing template remnants after the inserted value.
+                    # (InsertAfter shifts existing chars right by valLen)
+                    $trailStart = $insertPos + $valLen
+                    $trailEnd = $paraEndOrig - 1 + $valLen  # last content char before para mark
+                    if ($trailStart -lt $trailEnd) {
+                        $trailRange = $doc.Range($trailStart, $trailEnd)
+                        $trailText = $trailRange.Text
+                        if ($trailText -match '^[\s\r\n_　年 月日号>]*$') {
+                            $trailRange.Delete()
                         }
                     }
+                    # Copy underline formatting to the filled text
+                    $filledRange = $doc.Range($insertPos, $insertPos + $valLen)
+                    if ($origUl -ne 0) { $filledRange.Font.Underline = $origUl }
+                    $fillResult = "Filled after colon '$($p.keyword)' with '$($p.value)'"
                 } else {
                     # No colon found, insert right after keyword
                     $insertRange = $doc.Range($matchEnd, $matchEnd)
@@ -2358,8 +2353,20 @@ switch ($Action) {
                 if ($Matches[1].Length -gt 0) {
                     $insertPos = $matchEnd + $Matches[1].Length
                 }
+                $paraEndOrig = $paraRange.End
+                $valLen = $p.value.Length
                 $insertRange = $doc.Range($insertPos, $insertPos)
                 $insertRange.InsertAfter($p.value)
+                # Clean up trailing template remnants (InsertAfter shifts chars right by valLen)
+                $trailStart = $insertPos + $valLen
+                $trailEnd = $paraEndOrig - 1 + $valLen
+                if ($trailStart -lt $trailEnd) {
+                    $trailRange = $doc.Range($trailStart, $trailEnd)
+                    $trailText = $trailRange.Text
+                    if ($trailText -match '^[\s\r\n_　年 月日号>]*$') {
+                        $trailRange.Delete()
+                    }
+                }
                 $fillResult = "Inserted '$($p.value)' after label '$($p.keyword)'"
             }
             default {

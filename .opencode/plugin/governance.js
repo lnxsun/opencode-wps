@@ -24,6 +24,8 @@
  * 规则 T5：批次连续性检查（同 P2，复用 getDocumentParagraphs 规则）
  * 规则 T6：禁止子串重复填写 — 若新 keyword 是已填 keyword 的子串或超串，拦截
  * 规则 T7：禁止编造 — 首次填写前必须输出"文档字段 ↔ 用户值"对照表并获用户确认
+ * 规则 T8：跳过签字字段 — 含"签字/签名/签章"的关键字无需填写（需手动签章）
+ * 规则 T9：日期字段强制 underline — 日期字段禁止使用 afterColon 模式
  */
 
 // ==================== 常量定义 ====================
@@ -632,6 +634,26 @@ export default async () => {
           throw new Error(
             `【执行治理】模板填写前请先调用 enableTrackChanges(true) 开启修订模式，` +
             `以便追踪填写变更。`
+          );
+        }
+        // T8：跳过签字字段（需手动签章，不应由AI填写）
+        if (toolArgs.keyword) {
+          const signaturePatterns = ['签字', '签名', '签章', '盖章'];
+          for (const pattern of signaturePatterns) {
+            if (toolArgs.keyword.includes(pattern)) {
+              throw new Error(
+                `【执行治理·跳过签字】"${toolArgs.keyword}" 包含"${pattern}"，` +
+                `属于手工签章字段，不应由AI填写。请跳过此字段。`
+              );
+            }
+          }
+        }
+        // T9：日期字段禁止 afterColon，必须使用 underline 模式
+        if (toolArgs.keyword === '日期' && toolArgs.fillMode === 'afterColon') {
+          throw new Error(
+            `【执行治理·日期填写错误】日期字段禁止使用 afterColon 模式。\n` +
+            `请在 smartFillField 中改用 fillMode: "underline"。\n` +
+            `underline 模式会正确处理"____年____月____日"或"        年    月    日"日期占位符。`
           );
         }
         // T6：禁止子串重复填写
