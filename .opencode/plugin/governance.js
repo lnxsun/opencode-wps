@@ -273,6 +273,7 @@ export default async () => {
           if (!outText) return;
           docInfoFetched = true;
           appReadState.word.activeDocRead = true;
+          templateFilling.docFetched = true;
           return;
         }
 
@@ -303,6 +304,8 @@ export default async () => {
           batchEndOffset = ranges[ranges.length - 1].end;
           proofreadCalledThisBatch = false;
           aiProofreadDoneThisBatch = false;
+          templateFilling.paragraphsFetched = true;
+          templateFilling.lastParagraphIndex = ranges[ranges.length - 1].index;
           return;
         }
 
@@ -310,6 +313,7 @@ export default async () => {
           const outText = getOutputText(output);
           if (!outText) return;
           trackChangesOn = input.args?.arguments?.enable === true;
+          templateFilling.trackChangesEnabled = input.args?.arguments?.enable === true;
           return;
         }
 
@@ -333,30 +337,6 @@ export default async () => {
           if (match) {
             lastRevisionCount = parseInt(match[1], 10);
           }
-          return;
-        }
-
-        // ── 模板填写状态跟踪 ──
-        if (toolName === "getActiveDocument") {
-          templateFilling.docFetched = true;
-          return;
-        }
-
-        if (toolName === "getDocumentParagraphs") {
-          const outText = getOutputText(output);
-          if (!outText) return;
-          const ranges = parseParagraphRanges(outText);
-          if (ranges.length > 0) {
-            templateFilling.paragraphsFetched = true;
-            templateFilling.lastParagraphIndex = ranges[ranges.length - 1].index;
-          }
-          return;
-        }
-
-        if (toolName === "enableTrackChanges") {
-          const outText = getOutputText(output);
-          if (!outText) return;
-          templateFilling.trackChangesEnabled = input.args?.arguments?.enable === true;
           return;
         }
 
