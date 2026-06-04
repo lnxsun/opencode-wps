@@ -2365,8 +2365,7 @@ switch ($Action) {
                             $wsLen = $Matches[1].Length
                             $wsRange = $doc.Range($trailStart, $trailStart + $wsLen)
                             [void]$wsRange.Delete()
-                            $trailStart += $wsLen
-                            $trailEnd += $wsLen  # paragraph shifted after delete
+                            $trailEnd -= $wsLen  # content shifted LEFT after delete
                         }
                         # Then check if remaining is date template remnant —— delete entirely
                         if ($trailStart -lt $trailEnd) {
@@ -2417,8 +2416,7 @@ switch ($Action) {
                         $wsLen = $Matches[1].Length
                         $wsRange = $doc.Range($trailStart, $trailStart + $wsLen)
                         [void]$wsRange.Delete()
-                        $trailStart += $wsLen
-                        $trailEnd += $wsLen
+                        $trailEnd -= $wsLen  # content shifted LEFT after delete
                     }
                     # Then delete date template remnants if any
                     if ($trailStart -lt $trailEnd) {
