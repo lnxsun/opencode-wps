@@ -606,6 +606,28 @@ export default async () => {
 
       // ── 模板填写工作流规则（T1-T7） ──
 
+      // ==================== 禁止用 replaceInParagraph 做模板填写 ====================
+      // 检测 findText 以 "字段名：" 或 "字段名：" 结尾 → 这是模板填写操作，必须用 smartFillField
+      if (toolName === "replaceInParagraph" || toolName === "findReplace") {
+        const findText = toolArgs.findText || toolArgs.find || '';
+        const colonMatch = findText.match(/^[\u4e00-\u9fff]+[：:]/);
+        if (colonMatch && findText.length >= 2 && findText.length <= 20) {
+          throw new Error(
+            `【执行治理·禁止低级替换】检测到用 ${toolName} 做模板填写。\n` +
+            `findText="${findText}" 看起来是一个模板字段标签。\n` +
+            `请改用 smartFillField 填写模板字段：\n` +
+            `  wps_office_execute({ tool_name: "smartFillField", arguments: { keyword: "${findText.replace(/[：:]/g,'')}", value: "..." } })`
+
+          );
+        }
+        // T9 parallel: 如果 findText 是"日期："，拦截并建议 underline 模式
+        if (findText === '日期' || findText === '日期：' || findText === '日期:') {
+          throw new Error(
+            `【执行治理·禁止低级替换】日期字段请用 smartFillField 的 underline 模式填写。`
+          );
+        }
+      }
+
       if (toolName === "smartFillField" || toolName === "replaceBookmarkContent") {
         // T1：评估文档
         if (!templateFilling.active && !templateFilling.docFetched) {

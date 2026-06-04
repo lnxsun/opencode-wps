@@ -505,21 +505,23 @@ export function searchTools(options: SearchOptions): SearchResult {
   let filtered = TOOLS_INDEX;
   if (category) filtered = filtered.filter(t => t.category === category);
   if (query) {
-    const q = query.toLowerCase();
+    const terms = query.toLowerCase().split(/\s+/).filter(Boolean);
     filtered = filtered.filter(t =>
-      t.name.toLowerCase().includes(q) ||
-      t.description.toLowerCase().includes(q) ||
-      t.keywords.some(k => k.toLowerCase().includes(q))
+      terms.some(term =>
+        t.name.toLowerCase().includes(term) ||
+        t.description.toLowerCase().includes(term) ||
+        t.keywords.some(k => k.toLowerCase().includes(term))
+      )
     );
   }
   if (query) {
-    const q = query.toLowerCase();
+    const sortQ = query.toLowerCase();
     filtered = filtered.sort((a, b) => {
-      const aExact = a.name.toLowerCase() === q ? 1 : 0;
-      const bExact = b.name.toLowerCase() === q ? 1 : 0;
+      const aExact = a.name.toLowerCase() === sortQ ? 1 : 0;
+      const bExact = b.name.toLowerCase() === sortQ ? 1 : 0;
       if (aExact !== bExact) return bExact - aExact;
-      const aStart = a.name.toLowerCase().startsWith(q) ? 1 : 0;
-      const bStart = b.name.toLowerCase().startsWith(q) ? 1 : 0;
+      const aStart = a.name.toLowerCase().startsWith(sortQ) ? 1 : 0;
+      const bStart = b.name.toLowerCase().startsWith(sortQ) ? 1 : 0;
       if (aStart !== bStart) return bStart - aStart;
       return a.name.localeCompare(b.name);
     });
