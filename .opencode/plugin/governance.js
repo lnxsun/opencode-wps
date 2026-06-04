@@ -25,8 +25,8 @@
  * 规则 T6：禁止子串重复填写 — 若新 keyword 是已填 keyword 的子串或超串，拦截
  * 规则 T7：禁止编造 — 首次填写前必须输出"文档字段 ↔ 用户值"对照表并获用户确认
  * 规则 T8：跳过签字字段 — 含"签字/签名/签章"的关键字无需填写（需手动签章）
- * 规则 T9：日期字段强制 underline — 日期字段禁止使用 afterColon 模式
- * 规则 T10：禁止同一 (keyword, value) 重复填写
+ * 规则 T9：日期字段推荐 underline 模式（T11 保证所有模式的值都加下划线，故 afterColon 也允许）
+ * 规则 T10：禁止同一 (keyword, value) 重复填写（仅同一段落内，由 wps-com.ps1 每段落正则校验，governance 层不做跨段落拦截）
  * 规则 T11：所有填入的值必须加下划线（wps-com.ps1 工具层自动执行，填值后立即设置 Font.Underline=1）
  */
 
@@ -625,9 +625,8 @@ export default async () => {
           );
         }
         // T7：首次填写前必须输出字段对照表并获用户确认（禁止编造）
-        // AI 需先向用户输出"文档字段 ↔ 用户值"对照表，用户确认后，在首次
-        // smartFillField 传 _field_mapping_confirmed: true 放行
-        if (!templateFilling.userConfirmed) {
+        // 仅对 smartFillField 生效（replaceBookmarkContent 使用显式书签，无需字段对照）
+        if (toolName === "smartFillField" && !templateFilling.userConfirmed) {
           if (!toolArgs._field_mapping_confirmed) {
             throw new Error(
               `【执行治理·禁止编造】首次 smartFillField 前，你必须：\n` +
@@ -658,14 +657,8 @@ export default async () => {
             }
           }
         }
-        // T9：日期字段禁止 afterColon，必须使用 underline 模式
-        if (toolArgs.keyword === '日期' && toolArgs.fillMode === 'afterColon') {
-          throw new Error(
-            `【执行治理·日期填写错误】日期字段禁止使用 afterColon 模式。\n` +
-            `请在 smartFillField 中改用 fillMode: "underline"。\n` +
-            `underline 模式会正确处理"____年____月____日"或"        年    月    日"日期占位符。`
-          );
-        }
+        // T9：日期字段推荐使用 underline 模式（T11 确保所有模式的值都加下划线）
+        // afterColon 也允许，因为 PS1 工具层自动对填入值加下划线
         // T6：禁止子串重复填写
         const newKeyword = toolArgs.keyword;
         if (newKeyword && templateFilling.fillKeywords.length > 0) {
@@ -680,18 +673,6 @@ export default async () => {
                 );
               }
             }
-          }
-        }
-        // T10：禁止同一 (keyword, value) 重复填写
-        if (newKeyword && toolArgs.value !== undefined) {
-          const dup = templateFilling.fillHistory.find(
-            h => h.keyword === newKeyword && h.value === toolArgs.value
-          );
-          if (dup) {
-            throw new Error(
-              `【执行治理·禁止重复】"${newKeyword}" 已用 "${toolArgs.value}" 填写过。` +
-              `不要重复填写相同的字段。`
-            );
           }
         }
         return;

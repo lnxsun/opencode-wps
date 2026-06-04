@@ -2320,6 +2320,10 @@ switch ($Action) {
                         $extEnd += $Matches[1].Length
                         $scanText = $doc.Range($extEnd, $paraRange.End - 1).Text
                     }
+                    # Consume trailing CJK suffix char without underscores (e.g. "日" in "____年____月____日")
+                    if ($scanText -match '^[\s：:　]*(\p{IsCJKUnifiedIdeographs}+)') {
+                        $extEnd += $Matches[1].Length
+                    }
                     # Replace the entire extended range with the value
                     $fillRange = $doc.Range($ulStart, $extEnd)
                     $fillRange.Text = $p.value
