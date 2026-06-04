@@ -2349,14 +2349,6 @@ switch ($Action) {
                         $fillResult = "Skipped '$($p.keyword)' — already filled with '$($p.value)'"
                         break
                     }
-                    # Scan trailing content for underline formatting (scan ahead to find
-                    # underlined runs that were on placeholder __ chars)
-                    $scanForUl = $doc.Range($insertPos, $paraEndOrig - 1)
-                    $origUl = 0
-                    for ($si = $scanForUl.Start; $si -lt $scanForUl.End; $si++) {
-                        $ulCheck = $doc.Range($si, $si + 1).Font.Underline
-                        if ($ulCheck -ne 0) { $origUl = $ulCheck; break }
-                    }
                     # Insert value right after colon
                     $insRange = $doc.Range($insertPos, $insertPos)
                     $insRange.InsertAfter($p.value)
