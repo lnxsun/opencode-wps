@@ -27,6 +27,7 @@
  * 规则 T8：跳过签字字段 — 含"签字/签名/签章"的关键字无需填写（需手动签章）
  * 规则 T9：日期字段强制 underline — 日期字段禁止使用 afterColon 模式
  * 规则 T10：禁止同一 (keyword, value) 重复填写
+ * 规则 T11：所有填入的值必须加下划线（wps-com.ps1 工具层自动执行，填值后立即设置 Font.Underline=1）
  */
 
 // ==================== 常量定义 ====================
@@ -368,7 +369,7 @@ export default async () => {
             templateFilling.fillKeywords.push(keyword);
           }
           if (keyword && value !== undefined) {
-            templateFilling.fillHistory.push({ keyword, value });
+            templateFilling.fillHistory.push({ keyword, value, underline: true });  // T11: wps-com.ps1 自动加下划线
           }
           if (input.args?.arguments?._field_mapping_confirmed) {
             templateFilling.userConfirmed = true;

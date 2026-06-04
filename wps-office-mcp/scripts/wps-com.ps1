@@ -2293,7 +2293,10 @@ switch ($Action) {
                 $replaceRange.Find.ClearFormatting()
                 $replaceRange.Find.Text = $fullPlaceholder
                 $found2 = $replaceRange.Find.Execute($fullPlaceholder, $false, $false, $false, $false, $false, $true, 1, $false, $p.value, 1)
-                if ($found2) { $fillResult = "Replaced placeholder '$fullPlaceholder' with '$($p.value)'" }
+                if ($found2) {
+                    $replaceRange.Font.Underline = 1
+                    $fillResult = "Replaced placeholder '$fullPlaceholder' with '$($p.value)'"
+                }
                 else { $fillResult = "Failed to replace placeholder" }
             }
             "underline" {
@@ -2320,11 +2323,13 @@ switch ($Action) {
                     # Replace the entire extended range with the value
                     $fillRange = $doc.Range($ulStart, $extEnd)
                     $fillRange.Text = $p.value
-                    $fillRange.Font.Underline = 0
+                    $fillRange.Font.Underline = 1
                     $fillResult = "Filled underlined field after '$($p.keyword)' with '$($p.value)'"
                 } else {
                     $insertRange = $doc.Range($keywordEndPos, $keywordEndPos)
                     $insertRange.InsertAfter($p.value)
+                    $ulRange = $doc.Range($keywordEndPos, $keywordEndPos + $p.value.Length)
+                    $ulRange.Font.Underline = 1
                     $fillResult = "Inserted '$($p.value)' after keyword '$($p.keyword)' (no underline found)"
                 }
             }
@@ -2380,14 +2385,16 @@ switch ($Action) {
                             }
                         }
                     }
-                    # Copy underline formatting to the filled text
+                    # Apply underline to the filled text
                     $filledRange = $doc.Range($insertPos, $insertPos + $valLen)
-                    if ($origUl -ne 0) { $filledRange.Font.Underline = $origUl }
+                    $filledRange.Font.Underline = 1
                     $fillResult = "Filled after colon '$($p.keyword)' with '$($p.value)'"
                 } else {
                     # No colon found, insert right after keyword
                     $insertRange = $doc.Range($matchEnd, $matchEnd)
                     $insertRange.InsertAfter("：" + $p.value)
+                    $ulRange = $doc.Range($matchEnd, $matchEnd + 1 + $p.value.Length)
+                    $ulRange.Font.Underline = 1
                     $fillResult = "No colon found, inserted '：$($p.value)' after '$($p.keyword)'"
                 }
             }
@@ -2404,6 +2411,9 @@ switch ($Action) {
                 $valLen = $p.value.Length
                 $insertRange = $doc.Range($insertPos, $insertPos)
                 $insertRange.InsertAfter($p.value)
+                # Apply underline to filled text
+                $ulRange = $doc.Range($insertPos, $insertPos + $valLen)
+                $ulRange.Font.Underline = 1
                 # Clean up trailing content (InsertAfter shifts chars right by valLen)
                 $trailStart = $insertPos + $valLen
                 $trailEnd = $paraEndOrig - 1 + $valLen
@@ -2432,6 +2442,8 @@ switch ($Action) {
             default {
                 $insertRange = $doc.Range($matchEnd, $matchEnd)
                 $insertRange.InsertAfter($p.value)
+                $ulRange = $doc.Range($matchEnd, $matchEnd + $p.value.Length)
+                $ulRange.Font.Underline = 1
                 $fillResult = "Inserted '$($p.value)' after '$($p.keyword)' (default mode)"
             }
         }
