@@ -376,8 +376,8 @@ if (fsEx.existsSync(agentsSrcDir)) {
 // ============================================================
 console.log('\n【第 6 步】安装 OpenCode 插件');
 
-const pluginSrcDir = path.resolve(rootDir, '.opencode', 'plugin');
-const pluginDstDir = path.join(homeDir, '.opencode', 'plugin');
+const pluginSrcDir = path.resolve(rootDir, '.opencode', 'plugins');
+const pluginDstDir = path.join(opencodeConfigDir, 'plugins');
 
 if (fsEx.existsSync(pluginSrcDir)) {
     const pluginFiles = fs.readdirSync(pluginSrcDir).filter(f => f.endsWith('.js'));
@@ -396,6 +396,17 @@ if (fsEx.existsSync(pluginSrcDir)) {
     }
 } else {
     console.log('  [跳过] 插件源目录不存在: ' + pluginSrcDir);
+}
+
+// 清理旧版插件路径（`~/.opencode/plugin/` → `~/.config/opencode/plugins/`）
+const oldPluginDir = path.join(homeDir, '.opencode', 'plugin');
+try {
+    if (fsEx.existsSync(oldPluginDir)) {
+        fsEx.removeSync(oldPluginDir);
+        console.log('  已清理旧版插件目录: ' + oldPluginDir);
+    }
+} catch(e) {
+    console.log('  [警告] 无法清理旧版插件目录: ' + e.message);
 }
 
 // ============================================================
@@ -513,7 +524,7 @@ console.log('  2. MCP 服务器 → ' + mcpServer.src);
 console.log('  3. OpenCode MCP 配置 → opencode.json');
 console.log('  4. Skills → ~/.opencode/skills/');
 console.log('  5. Agents → ~/.config/opencode/agents/ 和 ~/.opencode/agents/');
-console.log('  6. Plugins → ~/.opencode/plugin/');
+console.log('  6. Plugins → ~/.config/opencode/plugins/');
 console.log('  7. launcher 进程管理 → http://127.0.0.1:14097');
 console.log('');
 console.log('后续步骤:');

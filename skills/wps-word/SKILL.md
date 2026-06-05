@@ -206,23 +206,97 @@ wps_office_execute({
 
 **用户说**：「帮我填写项目名称为"XX信息化项目"」
 
-**处理步骤**：
-1. 调用 `wps_office_search` 搜索 `段落` 找到 `getDocumentParagraphs` 了解文档结构
-2. 调用 `wps_office_search` 搜索 `查找` 找到 `findInDocument` 定位关键字
-3. 调用 `wps_office_search` 搜索 `填写` 找到 `smartFillField` 智能填写
-4. 调用 `wps_office_execute` 执行：
-   - `keyword: "项目名称"`
-   - `value: "XX信息化项目"`
-5. 验证填写结果，告知用户
+#### 标准工作流（严格执行以下5步，不可跳步）
 
-**填写模式说明**：
-- 默认：自动判断填写模式，推荐优先使用
-- `underline`：关键字后有下划线`___`，替换下划线部分为填写内容
-- `afterColon`：关键字后有`：`或`:`，在冒号后插入
+**Step 1 — 评估文档规模**
+```javascript
+// 先了解文档总段落数，评估是否需要分批
+wps_get_active_document()
+// 再以每批 ≤200 段获取段落列表，规划分批方案
+wps_office_execute({
+  tool_name: "getDocumentParagraphs",
+  arguments: { start_paragraph: 1, end_paragraph: 200 }
+})
+```
+
+**Step 2 — 核对填写信息（必须先做字段对照表，禁止编造）**
+- **先列出「文档中的字段 ↔ 用户提供的值」对照表**，发给用户确认
+- 逐一比对：文档中的每个字段标签，检查用户是否提供了对应的值
+- **⚠️ 绝对禁止（Critical Rule）**：
+  - ❌ 禁止从文件名推断值（如文件名含"2包"不能推断包号=2）
+  - ❌ 禁止从路径/上下文编造未提供的值
+  - ❌ 禁止自己替用户决定"这个应该是什么"
+- 如果信息不全，**必须列出缺少的字段并要求用户补充**，不得跳过
+- 示例："您提供了项目名称和供应商名称，但文档中还有'采购项目编号'和'包号'没有对应值，请提供"
+- **扫描下划线标记**：用 `findInDocument("___")` 查找下划线占位符位置，判断哪些字段原本有下划线（如 `________`），记录在对照表中
+  - 示例：文档中 `供应商名称：____________（公章）` → 供应商名称需添加下划线
+  - 示例：文档中 `日期：        年    月    日` → 日期无需添加下划线
+  - 目的是还原模板原始样式，不需要询问用户
+
+#### 日期字段特殊处理
+- 对 `____年____月____日` 或 `年    月    日` 类占位符：使用 `fillMode: "afterColon"`（不要用 afterLabel）
+- 示例：`smartFillField("日期", "2026年04月27日", "afterColon")`
+
+**Step 3 — 开启修订模式**
+```javascript
+// 每次填写前必须开启修订，追踪所有变更
+wps_office_execute({
+  tool_name: "enableTrackChanges",
+  arguments: { enable: true }
+})
+```
+
+**Step 4 — 逐批填写**
+
+对每批段落中的模板字段，调用 `smartFillField` 填写：
+```javascript
+wps_office_execute({
+  tool_name: "smartFillField",
+  arguments: { keyword: "项目名称", value: "XX信息化项目" }
+})
+```
+
+如果使用书签标记字段，使用 `replaceBookmarkContent`：
+```javascript
+wps_office_execute({
+  tool_name: "replaceBookmarkContent",
+  arguments: { name: "project_name", text: "XX信息化项目" }
+})
+```
+
+**Step 5 — 检查遗漏并循环**
+
+填写一批后，查找是否还有未填写的字段：
+```javascript
+// 对每个已填写的关键字，检查是否还有剩余
+wps_office_execute({
+  tool_name: "findInDocument",
+  arguments: { text: "________" }
+})
+```
+- 如果还有未填字段 → 回到 Step 4 继续填写
+- 如果全部填写完毕 → 对 Step 2 中标记为"原有下划线"的字段，检查下划线是否正确保留，如缺失则补设
+  ```javascript
+  wps_office_execute({
+    tool_name: "setFont",
+    arguments: { keyword: "项目名称", underline: true }
+  })
+  ```
+  - 使用 `wps_office_search` 搜索 `underline` 找到下划线设置工具
+  - 只对 Step 2 记录的原下划线字段执行，不要擅自给其他字段加下划线
+- 然后告知用户完成
+
+#### 填写模式说明
+- `auto`（默认）：自动判断填写模式，推荐优先使用
+- `underline`：关键字后有下划线`___`，替换下划线及相连的占位符（如`____年____月____日`整体替换）
+- `afterColon`：关键字后有`：`或`:`，在冒号后插入或替换
 - `afterLabel`：关键字是标签，直接在关键字后插入
 - `placeholder`：关键字被`{}`/`【】`包裹，替换整个占位符
 
-**重要提示**：模板填写场景必须使用 `smartFillField`，不要使用 `findReplace`。`findReplace` 会删除关键字本身并可能破坏格式（丢失下划线、加粗等）。
+**重要提示**：
+- 必须使用 `smartFillField`，不要使用 `findReplace`。`findReplace` 会删除关键字本身并可能破坏格式
+- 治理插件会强制执行上述流程(T1-T5)，跳步将被拦截
+- 大文档（>200段）必须分批填写，否则超时
 
 ## 文档排版规范
 
@@ -341,6 +415,7 @@ wps_office_execute({
 | 工具名称 | 功能 | 关键参数 |
 |---------|------|---------|
 | `smartFillField` | 智能填写（支持 fillMode: auto/underline/afterColon/afterLabel/placeholder） | `keyword`, `value`, `fillMode` |
+| `replaceBookmarkContent` | 替换书签内容（书签模板用） | `name`, `text` |
 
 ## 注意事项
 
@@ -351,10 +426,13 @@ wps_office_execute({
 | 规则 | 说明 | 触发条件 |
 |------|------|---------|
 | **G1 网关强制** | 6 个内置工具必须走 `wps_office_execute` 网关 | 直接调用 `wps_get_active_document` / `wps_insert_text` 等 |
-| **G3 读前必写** | 写操作前必须先读文档状态 | 未先调 `getActiveDocument` 就调 `setFont`/`insertText` 等 |
+| **G3 读前必写** | 写操作前必须先读文档状态 | 未先调 `getActiveDocument` 就调 `setFont`/`smartFillField` 等 |
 | **G4 破坏性确认** | 删/清内容需显式确认 | `closeDocument` / `clearRange` 等未传 `confirm: true` |
 | **G5 路径安全** | 文件路径禁止 `..` 穿越 | 路径参数含 `..` |
 | **G7 参数校验** | 行号/索引自动 ≥ 1 | 传了 ≤0 的值 |
+| **T1 文档评估** | 模板填写前先了解文档规模 | 未调 `getActiveDocument` 就调 `smartFillField` |
+| **T2 分批限制** | 每批 ≤200 段，防止超时 | 未调 `getDocumentParagraphs` 就调 `smartFillField` |
+| **T3 修订模式** | 填写前必须开启修订追踪变更 | 未调 `enableTrackChanges(true)` 就调 `smartFillField` |
 
 **重要**：所有写操作前必须先调用 `getActiveDocument` 了解文档状态，否则被拦截。
 
@@ -367,9 +445,11 @@ wps_office_execute({
 ### 模板填写原则
 
 1. **优先使用 smartFillField**：模板填写场景应使用 `smartFillField`，而非 `findReplace`
-2. **先读取后填写**：填写前先用 `getDocumentParagraphs` 了解文档结构
-3. **精确指定模式**：如果 auto 模式判断不准确，可以手动指定 fillMode
-4. **书签模板**：如果模板使用书签标记填写位置，使用 `replaceBookmarkContent`
+2. **严格执行 5 步工作流**：评估→核对→修订→填写→检查，不可跳步
+3. **大文档分批**：文档超 200 段必须分批，每批 ≤200 段
+4. **开启修订模式**：填写前必须调用 `enableTrackChanges(true)`
+5. **检查遗漏**：填写后调用 `findInDocument` 或 `getDocumentParagraphs` 检查是否还有未填字段
+6. **书签模板**：如果模板使用书签标记填写位置，使用 `replaceBookmarkContent`
 
 ### 沟通原则
 

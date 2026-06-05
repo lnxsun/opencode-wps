@@ -914,6 +914,14 @@ export const smartFillFieldDefinition: ToolDefinition = {
         description: '填写模式: auto(自动判断), underline(下划线), afterColon(冒号后), afterLabel(标签后), placeholder(占位符)。默认auto',
         enum: ['auto', 'underline', 'afterColon', 'afterLabel', 'placeholder'],
       },
+      occurrence: {
+        type: 'number',
+        description: '关键字出现的序号（从1开始）。默认1（第一个匹配项）。文档中有多个相同字段时使用，如"日期"在第2处出现',
+      },
+      paragraphIndex: {
+        type: 'number',
+        description: '所在段落索引（从1开始）。指定后只在该段落内搜索关键字，忽略其他段落。优先级高于 occurrence',
+      },
     },
     required: ['keyword', 'value'],
   },
@@ -922,10 +930,12 @@ export const smartFillFieldDefinition: ToolDefinition = {
 export const smartFillFieldHandler: ToolHandler = async (
   args: Record<string, unknown>
 ): Promise<ToolCallResult> => {
-  const { keyword, value, fill_mode } = args as {
+  const { keyword, value, fill_mode, occurrence, paragraphIndex } = args as {
     keyword: string;
     value: string;
     fill_mode?: string;
+    occurrence?: number;
+    paragraphIndex?: number;
   };
 
   if (!keyword || keyword.trim() === '') {
@@ -958,6 +968,8 @@ export const smartFillFieldHandler: ToolHandler = async (
         keyword,
         value,
         fillMode: fill_mode || 'auto',
+        occurrence: occurrence || 1,
+        paragraphIndex: paragraphIndex || 0,
       },
       WpsAppType.WRITER
     );

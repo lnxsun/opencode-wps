@@ -2209,20 +2209,85 @@ switch ($Action) {
         if (-not $p.keyword) { Output-Json @{ success = $false; error = "keyword required" }; exit }
         if ($null -eq $p.value) { Output-Json @{ success = $false; error = "value required（空字符串将清除该字段内容）" }; exit }
         $fillMode = if ($p.fillMode) { $p.fillMode.ToLower() } else { "auto" }
+        $occurrence = if ($null -ne $p.occurrence) { [int]$p.occurrence } else { 1 }
+        if ($occurrence -lt 1) { $occurrence = 1 }
+        $paraIdx = if ($null -ne $p.paragraphIndex -and $p.paragraphIndex -gt 0) { [int]$p.paragraphIndex } else { 0 }
 
-        # Step 1: Find the keyword
-        $searchRange = $doc.Content.Duplicate
+        # Auto-skip signature fields (签字/签名/签章 need manual hand-signing)
+        if ($p.keyword -match '签字|签名|签章|盖章') {
+            Output-Json @{ success = $true; data = @{ keyword = $p.keyword; value = $p.value; fillMode = "skipped"; result = "Skipped '$($p.keyword)' — signature field requires manual signing" } }
+            return
+        }
+
+        # Step 1: Find the keyword (by paragraphIndex or occurrence)
+        # Note: MatchWholeWord($true) doesn't work for CJK text in Word COM.
+        # "项目名称" will still match inside "采购项目名称".
+        if ($paraIdx -gt 0) {
+            # Search only within the specified paragraph
+            if ($paraIdx -gt $doc.Paragraphs.Count) {
+                Output-Json @{ success = $false; error = "Paragraph index $paraIdx exceeds document paragraph count $($doc.Paragraphs.Count)" }
+                exit
+            }
+            $searchRange = $doc.Paragraphs.Item($paraIdx).Range.Duplicate
+        } else {
+            $searchRange = $doc.Content.Duplicate
+        }
         $searchRange.Find.ClearFormatting()
         $searchRange.Find.Text = $p.keyword
-        $found = $searchRange.Find.Execute($p.keyword, $false, $false, $false, $false, $false, $true, 1, $false, "", 0)
-        if (-not $found) { Output-Json @{ success = $false; error = "Keyword '$($p.keyword)' not found" }; exit }
+        $foundCount = 0
+        $matchStart = $null
+        $matchEnd = $null
+        while ($searchRange.Find.Execute($p.keyword, $false, $true, $false, $false, $false, $true, 0, $false, "", 0)) {
+            $foundCount++
+            if ($foundCount -eq $occurrence) {
+                $matchStart = $searchRange.Start
+                $matchEnd = $searchRange.End
+                break
+            }
+            # Continue search from after current match (no wrap)
+            # Stay within paragraph bounds if paragraphIndex was specified
+            if ($paraIdx -gt 0) {
+                $paraEnd = $doc.Paragraphs.Item($paraIdx).Range.End
+                $newStart = [Math]::Min($searchRange.End, $paraEnd)
+                if ($newStart -ge $paraEnd) { break }
+                $searchRange = $doc.Range($newStart, $paraEnd)
+            } else {
+                $searchRange = $doc.Range($searchRange.End, $doc.Content.End)
+            }
+            $searchRange.Find.ClearFormatting()
+            $searchRange.Find.Text = $p.keyword
+        }
+        if ($null -eq $matchStart) {
+            if ($occurrence -gt 1) {
+                Output-Json @{ success = $false; error = "Keyword '$($p.keyword)' occurrence $occurrence not found (only $foundCount occurrences total)" }
+            } else {
+                Output-Json @{ success = $false; error = "Keyword '$($p.keyword)' not found" }
+            }
+            exit
+        }
 
-        $matchStart = $searchRange.Start
-        $matchEnd = $searchRange.End
+        # Manual CJK substring check: skip when:
+        # - occurrence > 1 (user explicitly wants a specific match)
+        # - paragraphIndex is set (user already pinpointed the exact paragraph)
+        # Only check when occurrence=1 AND no paragraphIndex (auto-detect mode)
+        if ($occurrence -eq 1 -and $paraIdx -eq 0 -and $matchStart -gt 1) {
+            $beforeChar = $doc.Range($matchStart - 1, $matchStart).Text
+            if ($beforeChar -match '\p{IsCJKUnifiedIdeographs}') {
+                Output-Json @{ success = $false; error = "Keyword '$($p.keyword)' matched inside longer CJK text. Use a more specific keyword (e.g. use '采购项目名称' instead of '项目名称'), or specify occurrence/paragraphIndex parameter to skip to a later match." }
+                exit
+            }
+        }
         # Get the paragraph containing the match
         $paraRange = $searchRange.Paragraphs.Item(1).Range
         $paraText = $paraRange.Text
         $detectedMode = $fillMode
+
+        # General dedup: if keyword + colon + value exists in this paragraph, skip
+        $colonForm = [regex]::Escape($p.keyword) + '\s*[：:]\s*' + [regex]::Escape($p.value)
+        if ($paraText -match $colonForm) {
+            Output-Json @{ success = $true; data = @{ keyword = $p.keyword; value = $p.value; fillMode = $detectedMode; result = "Skipped '$($p.keyword)' — already filled" } }
+            return
+        }
 
         # Step 2: Auto-detect fill mode
         if ($fillMode -eq "auto") {
@@ -2266,80 +2331,150 @@ switch ($Action) {
                 $replaceRange.Find.ClearFormatting()
                 $replaceRange.Find.Text = $fullPlaceholder
                 $found2 = $replaceRange.Find.Execute($fullPlaceholder, $false, $false, $false, $false, $false, $true, 1, $false, $p.value, 1)
-                if ($found2) { $fillResult = "Replaced placeholder '$fullPlaceholder' with '$($p.value)'" }
+                if ($found2) {
+                    $replaceRange.Font.Underline = 1
+                    $fillResult = "Replaced placeholder '$fullPlaceholder' with '$($p.value)'"
+                }
                 else { $fillResult = "Failed to replace placeholder" }
             }
             "underline" {
-                # Find runs with underline after the keyword and replace underline text with value
-                # Strategy: find the keyword, then look for underlined runs after it
+                # Find underscore range after keyword and replace with value
+                # Also consumes adjacent suffix chars (年/月/日/号/等) + underscore runs
                 $keywordEndPos = $matchEnd
-                $fillDone = $false
-                # Check the paragraph runs
-                for ($ri = 1; $ri -le $paraRange.Words.Count; $ri++) {
-                    $wordObj = $paraRange.Words.Item($ri)
-                    if ($wordObj.Start -gt $keywordEndPos -and $wordObj.Font.Underline -ne 0 -and $wordObj.Text -match '_+') {
-                        # Found underlined underscore run - replace with value
-                        $wordObj.Text = $p.value
-                        $wordObj.Font.Underline = 1  # Keep underline
-                        $fillDone = $true
-                        $fillResult = "Filled underlined field after '$($p.keyword)' with '$($p.value)'"
-                        break
+                $afterKeyRange = $doc.Range($keywordEndPos, $paraRange.End)
+                $afterKeyFind = $afterKeyRange.Duplicate
+                $afterKeyFind.Find.ClearFormatting()
+                $afterKeyFind.Find.Text = "\_+"
+                $afterKeyFind.Find.MatchWildcards = $true
+                $foundUl = $afterKeyFind.Find.Execute()
+                if ($foundUl) {
+                    $ulStart = $afterKeyFind.Start
+                    $ulEnd = $afterKeyFind.End
+                    # Extend range to consume separator chars + adjacent underscore runs
+                    $extEnd = $ulEnd
+                    $scanText = $doc.Range($extEnd, $paraRange.End - 1).Text
+                    # Match optional colon, whitespace, then CJK suffix char(s) + underscores
+                    while ($scanText -match '^[\s：:　]*(\p{IsCJKUnifiedIdeographs}+[\s：:　]*\_+)') {
+                        $extEnd += $Matches[1].Length
+                        $scanText = $doc.Range($extEnd, $paraRange.End - 1).Text
                     }
-                }
-                if (-not $fillDone) {
-                    # Fallback: find underscore text after keyword in the paragraph and replace via Find
-                    $underscorePattern = "_+"
-                    $afterKeyRange = $doc.Range($keywordEndPos, $paraRange.End)
-                    $afterKeyRange.Find.ClearFormatting()
-                    $afterKeyRange.Find.Text = $underscorePattern
-                    $afterKeyRange.Find.MatchWildcards = $true
-                    $foundUl = $afterKeyRange.Find.Execute($underscorePattern, $false, $false, $false, $false, $false, $true, 1, $false, $p.value, 1)
-                    if ($foundUl) {
-                        $fillResult = "Filled underline after '$($p.keyword)' with '$($p.value)'"
-                    } else {
-                        # Last fallback: insert after keyword
-                        $insertRange = $doc.Range($keywordEndPos, $keywordEndPos)
-                        $insertRange.InsertAfter($p.value)
-                        $fillResult = "Inserted '$($p.value)' after keyword '$($p.keyword)' (no underline found)"
+                    # Consume trailing CJK suffix char without underscores (e.g. "日" in "____年____月____日")
+                    if ($scanText -match '^[\s：:　]*(\p{IsCJKUnifiedIdeographs}+)') {
+                        $extEnd += $Matches[1].Length
                     }
+                    # Replace the entire extended range with the value
+                    $fillRange = $doc.Range($ulStart, $extEnd)
+                    $fillRange.Text = $p.value
+                    $fillRange.Font.Underline = 1
+                    $fillResult = "Filled underlined field after '$($p.keyword)' with '$($p.value)'"
+                } else {
+                    $insertRange = $doc.Range($keywordEndPos, $keywordEndPos)
+                    $insertRange.InsertAfter($p.value)
+                    $ulRange = $doc.Range($keywordEndPos, $keywordEndPos + $p.value.Length)
+                    $ulRange.Font.Underline = 1
+                    $fillResult = "Inserted '$($p.value)' after keyword '$($p.keyword)' (no underline found)"
                 }
             }
             "afterColon" {
-                # Insert value after the colon that follows the keyword
+                # Insert value after the colon, then cleanup template remnants
                 $afterKeyRange = $doc.Range($matchEnd, $paraRange.End)
                 $afterKeyText = $afterKeyRange.Text
                 $colonOffset = $afterKeyText.IndexOfAny([char[]]@('：', ':'))
                 if ($colonOffset -ge 0) {
                     $insertPos = $matchEnd + $colonOffset + 1
-                    # Check if there's already content after the colon
-                    $afterColonRange = $doc.Range($insertPos, $paraRange.End - 1)
-                    $afterColonText = $afterColonRange.Text.TrimStart().TrimEnd("`r`n", "`r", "`n").TrimEnd()
-                    if ($afterColonText.Length -gt 0 -and $afterColonText -notmatch '^[\s\r\n_　]+$') {
-                        # There's already content, replace it
-                        $afterColonRange.Text = $p.value
-                        $fillResult = "Replaced content after colon with '$($p.value)'"
-                    } else {
-                        # Insert at colon position
-                        $insertRange = $doc.Range($insertPos, $insertPos)
-                        $insertRange.InsertAfter($p.value)
-                        $fillResult = "Inserted '$($p.value)' after colon following '$($p.keyword)'"
+                    $paraEndOrig = $paraRange.End
+                    $valLen = $p.value.Length
+                    # Dedup: if the text after the colon already starts with the value, skip
+                    $postColonText = $doc.Range($insertPos, $paraEndOrig - 1).Text
+                    $postColonTrimmed = $postColonText.TrimStart()
+                    if ($postColonTrimmed.Length -ge $valLen -and $postColonTrimmed.Substring(0, $valLen) -eq $p.value) {
+                        $fillResult = "Skipped '$($p.keyword)' — already filled with '$($p.value)'"
+                        break
                     }
+                    # Insert value right after colon
+                    $insRange = $doc.Range($insertPos, $insertPos)
+                    $insRange.InsertAfter($p.value)
+                    # Clean up trailing template remnants after the inserted value.
+                    # (InsertAfter shifts existing chars right by valLen)
+                    # Scan forward from trailStart, delete chars that are whitespace,
+                    # underscores, full-width spaces, or CJK date template chars (年月日号).
+                    # Stop at the first "real" content character (e.g. "（", letters, digits).
+                    $trailStart = $insertPos + $valLen
+                    $trailEnd = $paraEndOrig - 1 + $valLen  # last content char before para mark
+                    if ($trailStart -lt $trailEnd) {
+                        $delEnd = $trailStart
+                        while ($delEnd -lt $trailEnd) {
+                            $ch = $doc.Range($delEnd, $delEnd + 1).Text
+                            # Match: whitespace, full-width space, underscore, 年月日号, >, non-breaking space
+                            if ($ch -match '[\s\xA0_年月日号>]') {
+                                $delEnd++
+                            } else {
+                                break
+                            }
+                        }
+                        if ($delEnd -gt $trailStart) {
+                            $delRange = $doc.Range($trailStart, $delEnd)
+                            [void]$delRange.Delete()
+                        }
+                    }
+                    # Apply underline to the filled text
+                    $filledRange = $doc.Range($insertPos, $insertPos + $valLen)
+                    $filledRange.Font.Underline = 1
+                    $fillResult = "Filled after colon '$($p.keyword)' with '$($p.value)'"
                 } else {
                     # No colon found, insert right after keyword
                     $insertRange = $doc.Range($matchEnd, $matchEnd)
                     $insertRange.InsertAfter("：" + $p.value)
+                    $ulRange = $doc.Range($matchEnd, $matchEnd + 1 + $p.value.Length)
+                    $ulRange.Font.Underline = 1
                     $fillResult = "No colon found, inserted '：$($p.value)' after '$($p.keyword)'"
                 }
             }
             "afterLabel" {
-                # Insert value right after the keyword
-                $insertRange = $doc.Range($matchEnd, $matchEnd)
+                # Insert value after the keyword, skipping trailing whitespace/colons/delimiters
+                $insertPos = $matchEnd
+                $afterText = $doc.Range($matchEnd, [Math]::Min($matchEnd + 10, $paraRange.End)).Text
+                # Skip whitespace, colons, and common delimiters between keyword and fill area
+                $afterText -match '^([\s：:　，,、。.、]*)' | Out-Null
+                if ($Matches[1].Length -gt 0) {
+                    $insertPos = $matchEnd + $Matches[1].Length
+                }
+                $paraEndOrig = $paraRange.End
+                $valLen = $p.value.Length
+                $insertRange = $doc.Range($insertPos, $insertPos)
                 $insertRange.InsertAfter($p.value)
+                # Apply underline to filled text
+                $ulRange = $doc.Range($insertPos, $insertPos + $valLen)
+                $ulRange.Font.Underline = 1
+                # Clean up trailing content (InsertAfter shifts chars right by valLen)
+                $trailStart = $insertPos + $valLen
+                $trailEnd = $paraEndOrig - 1 + $valLen
+                if ($trailStart -lt $trailEnd) {
+                    $trailRange = $doc.Range($trailStart, $trailEnd)
+                    $trailText = $trailRange.Text
+                    # Consume leading whitespace and/or underscore placeholders
+                    if ($trailText -match '^([\s　_]+)') {
+                        $wsLen = $Matches[1].Length
+                        $wsRange = $doc.Range($trailStart, $trailStart + $wsLen)
+                        [void]$wsRange.Delete()
+                        $trailEnd -= $wsLen  # content shifted LEFT after delete
+                    }
+                    # Then delete date template remnants if any
+                    if ($trailStart -lt $trailEnd) {
+                        $trailRange2 = $doc.Range($trailStart, $trailEnd)
+                        $trailText2 = $trailRange2.Text
+                        if ($trailText2 -match '^[ \t_　年 月日号>]*$') {
+                            $trailRange2.Delete()
+                        }
+                    }
+                }
                 $fillResult = "Inserted '$($p.value)' after label '$($p.keyword)'"
             }
             default {
                 $insertRange = $doc.Range($matchEnd, $matchEnd)
                 $insertRange.InsertAfter($p.value)
+                $ulRange = $doc.Range($matchEnd, $matchEnd + $p.value.Length)
+                $ulRange.Font.Underline = 1
                 $fillResult = "Inserted '$($p.value)' after '$($p.keyword)' (default mode)"
             }
         }
