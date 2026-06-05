@@ -2209,6 +2209,9 @@ switch ($Action) {
         if (-not $p.keyword) { Output-Json @{ success = $false; error = "keyword required" }; exit }
         if ($null -eq $p.value) { Output-Json @{ success = $false; error = "value required（空字符串将清除该字段内容）" }; exit }
         $fillMode = if ($p.fillMode) { $p.fillMode.ToLower() } else { "auto" }
+        $occurrence = if ($null -ne $p.occurrence) { [int]$p.occurrence } else { 1 }
+        if ($occurrence -lt 1) { $occurrence = 1 }
+        $paraIdx = if ($null -ne $p.paragraphIndex -and $p.paragraphIndex -gt 0) { [int]$p.paragraphIndex } else { 0 }
 
         # Auto-skip signature fields (签字/签名/签章 need manual hand-signing)
         if ($p.keyword -match '签字|签名|签章|盖章') {
@@ -2216,26 +2219,61 @@ switch ($Action) {
             return
         }
 
-        # Step 1: Find the keyword
+        # Step 1: Find the keyword (by paragraphIndex or occurrence)
         # Note: MatchWholeWord($true) doesn't work for CJK text in Word COM.
-        # "项目名称" will still match inside "采购项目名称". So we do a manual CJK
-        # substring check after Find.
-        $searchRange = $doc.Content.Duplicate
+        # "项目名称" will still match inside "采购项目名称".
+        if ($paraIdx -gt 0) {
+            # Search only within the specified paragraph
+            if ($paraIdx -gt $doc.Paragraphs.Count) {
+                Output-Json @{ success = $false; error = "Paragraph index $paraIdx exceeds document paragraph count $($doc.Paragraphs.Count)" }
+                exit
+            }
+            $searchRange = $doc.Paragraphs.Item($paraIdx).Range.Duplicate
+        } else {
+            $searchRange = $doc.Content.Duplicate
+        }
         $searchRange.Find.ClearFormatting()
         $searchRange.Find.Text = $p.keyword
-        $found = $searchRange.Find.Execute($p.keyword, $false, $true, $false, $false, $false, $true, 1, $false, "", 0)
-        if (-not $found) { Output-Json @{ success = $false; error = "Keyword '$($p.keyword)' not found" }; exit }
+        $foundCount = 0
+        $matchStart = $null
+        $matchEnd = $null
+        while ($searchRange.Find.Execute($p.keyword, $false, $true, $false, $false, $false, $true, 0, $false, "", 0)) {
+            $foundCount++
+            if ($foundCount -eq $occurrence) {
+                $matchStart = $searchRange.Start
+                $matchEnd = $searchRange.End
+                break
+            }
+            # Continue search from after current match (no wrap)
+            # Stay within paragraph bounds if paragraphIndex was specified
+            if ($paraIdx -gt 0) {
+                $paraEnd = $doc.Paragraphs.Item($paraIdx).Range.End
+                $newStart = [Math]::Min($searchRange.End, $paraEnd)
+                if ($newStart -ge $paraEnd) { break }
+                $searchRange = $doc.Range($newStart, $paraEnd)
+            } else {
+                $searchRange = $doc.Range($searchRange.End, $doc.Content.End)
+            }
+            $searchRange.Find.ClearFormatting()
+            $searchRange.Find.Text = $p.keyword
+        }
+        if ($null -eq $matchStart) {
+            if ($occurrence -gt 1) {
+                Output-Json @{ success = $false; error = "Keyword '$($p.keyword)' occurrence $occurrence not found (only $foundCount occurrences total)" }
+            } else {
+                Output-Json @{ success = $false; error = "Keyword '$($p.keyword)' not found" }
+            }
+            exit
+        }
 
-        $matchStart = $searchRange.Start
-        $matchEnd = $searchRange.End
-
-        # Manual CJK substring check: if the character immediately before the match
-        # is CJK, then this match is inside a longer CJK word (e.g. "项目名称"
-        # inside "采购项目名称"). Reject — AI must use a more specific keyword.
-        if ($matchStart -gt 1) {
+        # Manual CJK substring check: skip when:
+        # - occurrence > 1 (user explicitly wants a specific match)
+        # - paragraphIndex is set (user already pinpointed the exact paragraph)
+        # Only check when occurrence=1 AND no paragraphIndex (auto-detect mode)
+        if ($occurrence -eq 1 -and $paraIdx -eq 0 -and $matchStart -gt 1) {
             $beforeChar = $doc.Range($matchStart - 1, $matchStart).Text
             if ($beforeChar -match '\p{IsCJKUnifiedIdeographs}') {
-                Output-Json @{ success = $false; error = "Keyword '$($p.keyword)' matched inside longer CJK text. Use a more specific keyword (e.g. use '采购项目名称' instead of '项目名称')." }
+                Output-Json @{ success = $false; error = "Keyword '$($p.keyword)' matched inside longer CJK text. Use a more specific keyword (e.g. use '采购项目名称' instead of '项目名称'), or specify occurrence/paragraphIndex parameter to skip to a later match." }
                 exit
             }
         }
@@ -2356,28 +2394,27 @@ switch ($Action) {
                     # Insert value right after colon
                     $insRange = $doc.Range($insertPos, $insertPos)
                     $insRange.InsertAfter($p.value)
-                    # Clean up trailing content after the inserted value.
+                    # Clean up trailing template remnants after the inserted value.
                     # (InsertAfter shifts existing chars right by valLen)
+                    # Scan forward from trailStart, delete chars that are whitespace,
+                    # underscores, full-width spaces, or CJK date template chars (年月日号).
+                    # Stop at the first "real" content character (e.g. "（", letters, digits).
                     $trailStart = $insertPos + $valLen
                     $trailEnd = $paraEndOrig - 1 + $valLen  # last content char before para mark
                     if ($trailStart -lt $trailEnd) {
-                        $trailRange = $doc.Range($trailStart, $trailEnd)
-                        $trailText = $trailRange.Text
-                        # Consume leading whitespace and/or underscore placeholders
-                        # (e.g. "____________（公章）" → delete "____________", keep "（公章）")
-                        if ($trailText -match '^([\s　_]+)') {
-                            $wsLen = $Matches[1].Length
-                            $wsRange = $doc.Range($trailStart, $trailStart + $wsLen)
-                            [void]$wsRange.Delete()
-                            $trailEnd -= $wsLen  # content shifted LEFT after delete
-                        }
-                        # Then check if remaining is date template remnant —— delete entirely
-                        if ($trailStart -lt $trailEnd) {
-                            $trailRange2 = $doc.Range($trailStart, $trailEnd)
-                            $trailText2 = $trailRange2.Text
-                            if ($trailText2 -match '^[ \t_　年 月日号>]*$') {
-                                $trailRange2.Delete()
+                        $delEnd = $trailStart
+                        while ($delEnd -lt $trailEnd) {
+                            $ch = $doc.Range($delEnd, $delEnd + 1).Text
+                            # Match: whitespace, full-width space, underscore, 年月日号, >, non-breaking space
+                            if ($ch -match '[\s\xA0_年月日号>]') {
+                                $delEnd++
+                            } else {
+                                break
                             }
+                        }
+                        if ($delEnd -gt $trailStart) {
+                            $delRange = $doc.Range($trailStart, $delEnd)
+                            [void]$delRange.Delete()
                         }
                     }
                     # Apply underline to the filled text

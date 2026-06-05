@@ -35,7 +35,7 @@ opencode-wps/
 │   └── README.md        # ⚠️ 必须先读：skills 修改流程
 ├── agents/               # 自定义 Agents (wps-expert + 3 个子 agents)
 ├── .opencode/
-│   ├── plugin/
+│   ├── plugins/
 │   │   └── governance.js # ⚙️ 执行治理插件（19 条规则，代码层强制执行）
 │   └── package.json
 └── install-addons.js     # 一键安装脚本 (7 步)
@@ -104,7 +104,7 @@ OpenCode 通过 Launcher 进程管理自动启动：
 
 ## 执行治理插件
 
-`.opencode/plugin/governance.js` 是项目的执行治理核心，使用 OpenCode Plugin Hooks 在运行时拦截所有 MCP 工具调用：
+`.opencode/plugins/governance.js` 是项目的执行治理核心，使用 OpenCode Plugin Hooks 在运行时拦截所有 MCP 工具调用：
 
 ### 通用规则（G1-G8，始终生效）
 - **G1 网关强制**：6 个双路径工具必须走 `wps_office_execute` 网关
@@ -120,8 +120,8 @@ OpenCode 通过 Launcher 进程管理自动启动：
 - 批次大小 ≤200、连续性、startOffset 匹配、修订模式等 11 条规则
 
 ### 修改治理插件
-1. 修改 `.opencode/plugin/governance.js`
-2. 运行 `node install-addons.js` 同步到 `~/.opencode/plugin/`
+1. 修改 `.opencode/plugins/governance.js`
+2. 运行 `node install-addons.js` 同步到 `~/.config/opencode/plugins/`
 3. 重启 OpenCode 服务
 
 ## 参考文档

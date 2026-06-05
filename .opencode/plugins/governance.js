@@ -11,7 +11,6 @@
  * 规则 G5：文件路径参数校验（防路径穿越）
  * 规则 G6：密码参数保护（日志脱敏 + 使用限制）
  * 规则 G7：参数范围校验（行号/列号/索引 ≥ 1）
- * 规则 G8：跨应用数据传递必须通过缓存（cacheData/getCachedData）
  *
  * ── 分批校对规则（校对激活时生效） ──
  * 规则 P1-P11：继承 enforce-batch.js 的全部 11 条规则
@@ -27,7 +26,7 @@
  * 规则 T8：跳过签字字段 — 含"签字/签名/签章"的关键字无需填写（需手动签章）
  * 规则 T9：日期字段推荐 underline 模式（T11 保证所有模式的值都加下划线，故 afterColon 也允许）
  * 规则 T10：禁止同一 (keyword, value) 重复填写（仅同一段落内，由 wps-com.ps1 每段落正则校验，governance 层不做跨段落拦截）
- * 规则 T11：所有填入的值必须加下划线（wps-com.ps1 工具层自动执行，填值后立即设置 Font.Underline=1）
+ * 规则 T11：所有填入的值必须加下划线（smartFillField 工具层自动执行，填值后立即设置 Font.Underline=1）
  */
 
 // ==================== 常量定义 ====================
@@ -86,7 +85,6 @@ const FILE_PATH_PARAMS = new Set([
   "filePath", "imagePath", "outputPath", "path",
 ]);
 
-// 参数范围校验定义
 const PARAM_RANGES = {
   "getCellValue":    { row: [1, null], col: [1, null] },
   "setCellValue":    { row: [1, null], col: [1, null] },
@@ -119,7 +117,6 @@ const PARAM_RANGES = {
   "groupRows":       { startRow: [1, null], endRow: [1, null] },
 };
 
-// wps_execute_method 白名单 API
 const EXECUTE_METHOD_WHITELIST = new Set([
   "Application.ActiveDocument",
   "Application.ActiveWorkbook",
@@ -141,14 +138,12 @@ let batchStartOffset = null;
 let batchEndOffset = null;
 let proofreadCalledThisBatch = false;
 
-// 通用状态：各应用的读取状态
 let appReadState = {
   word: { activeDocRead: false },
   excel: { activeWorkbookRead: false },
   ppt: { activePresentationRead: false },
 };
 
-// 模板填写状态跟踪
 let templateFilling = {
   active: false,
   docFetched: false,
@@ -157,8 +152,8 @@ let templateFilling = {
   fieldsFilled: 0,
   lastParagraphIndex: 0,
   fillKeywords: [],
-  userConfirmed: false,   // T7：用户是否确认了字段对照表
-  fillHistory: [],        // T10：已填 (keyword, value) 记录，防重复
+  userConfirmed: false,
+  fillHistory: [],
 };
 
 // ==================== 辅助函数 ====================
@@ -175,6 +170,9 @@ function parseParagraphRanges(outputText) {
 
 function getOutputText(output) {
   if (!output) return '';
+  if (typeof output === 'string') return output;
+  // after hook format: { output: "string result", title, metadata }
+  if (typeof output.output === 'string' && output.output.length > 0) return output.output;
   const result = output.result || output;
   if (typeof result === 'string') return result;
   if (typeof result?.text === 'string') return result.text;
@@ -256,24 +254,37 @@ function checkPasswordProtection(toolName, toolArgs) {
   }
 }
 
-// ==================== 插件默认导出 ====================
+// ==================== 插件导出 ====================
 
-export default async () => {
+export const WpsGovernancePlugin = async () => {
   return {
 
     // ── 执行后钩子：输出成功后才提交可变状态 ──
     "tool.execute.after": async (input, output) => {
-      if (input.name === "wps-office_wps_office_execute") {
+      const outerTool = input.tool;
+
+      if (outerTool === "wps-office_wps_office_execute" || outerTool === "wps_office_execute") {
         if (output?.isError) return;
 
-        const toolName = input.args?.tool_name;
+        // after hook: args come from input.args (type: {tool, sessionID, callID, args})
+        const toolArgs = input.args || {};
+        const toolName = toolArgs.tool_name;
+        const innerArgs = toolArgs.arguments || {};
 
         if (toolName === "getActiveDocument") {
           const outText = getOutputText(output);
           if (!outText) return;
           docInfoFetched = true;
           appReadState.word.activeDocRead = true;
+          // 重置模板填写状态（新文档）
+          templateFilling.active = false;
           templateFilling.docFetched = true;
+          templateFilling.paragraphsFetched = false;
+          templateFilling.trackChangesEnabled = false;
+          templateFilling.userConfirmed = false;
+          templateFilling.fillKeywords = [];
+          templateFilling.fillHistory = [];
+          templateFilling.fieldsFilled = 0;
           return;
         }
 
@@ -312,8 +323,8 @@ export default async () => {
         if (toolName === "enableTrackChanges") {
           const outText = getOutputText(output);
           if (!outText) return;
-          trackChangesOn = input.args?.arguments?.enable === true;
-          templateFilling.trackChangesEnabled = input.args?.arguments?.enable === true;
+          trackChangesOn = innerArgs.enable === true;
+          templateFilling.trackChangesEnabled = innerArgs.enable === true;
           return;
         }
 
@@ -343,15 +354,15 @@ export default async () => {
         if (toolName === "smartFillField") {
           templateFilling.active = true;
           templateFilling.fieldsFilled++;
-          const keyword = input.args?.arguments?.keyword;
-          const value = input.args?.arguments?.value;
+          const keyword = innerArgs.keyword;
+          const value = innerArgs.value;
           if (keyword) {
             templateFilling.fillKeywords.push(keyword);
           }
           if (keyword && value !== undefined) {
-            templateFilling.fillHistory.push({ keyword, value, underline: true });  // T11: wps-com.ps1 自动加下划线
+            templateFilling.fillHistory.push({ keyword, value, underline: true });
           }
-          if (input.args?.arguments?._field_mapping_confirmed) {
+          if (innerArgs._field_mapping_confirmed) {
             templateFilling.userConfirmed = true;
           }
           return;
@@ -367,18 +378,21 @@ export default async () => {
 
     // ── 执行前钩子：所有规则校验 ──
     "tool.execute.before": async (input, output) => {
+      const outerTool = input.tool;
+
       // ==================== 规则 G1：网关强制 ====================
-      const gatewayName = DIRECT_TO_GATEWAY[input.name];
+      const gatewayName = DIRECT_TO_GATEWAY[outerTool];
       if (gatewayName) {
         throw new Error(
-          `【执行治理】请通过网关调用 ${gatewayName}，不要直接调用 ${input.name}。` +
+          `【执行治理】请通过网关调用 ${gatewayName}，不要直接调用 ${outerTool}。` +
           `使用方法：wps_office_execute({ tool_name: "${gatewayName}", arguments: {...} })`
         );
       }
 
       // ==================== 规则 G2：wps_execute_method 白名单 ====================
-      if (input.name === "wps-office_wps_execute_method" || input.name === "wps_execute_method") {
-        const method = input.args?.method || input.args?.arguments?.method || '';
+      if (outerTool === "wps-office_wps_execute_method" || outerTool === "wps_execute_method") {
+        const args = output.args || {};
+        const method = args.method || '';
         const allowed = Array.from(EXECUTE_METHOD_WHITELIST).some(a => method.startsWith(a));
         if (!allowed) {
           throw new Error(
@@ -391,24 +405,24 @@ export default async () => {
       }
 
       // 以下规则仅针对 wps_office_execute 网关调用
-      // OpenCode 插件系统可能传 input.name 为 "wps_office_execute"（无前缀）
-      if (input.name !== "wps-office_wps_office_execute" && input.name !== "wps_office_execute") return;
+      if (outerTool !== "wps-office_wps_office_execute" && outerTool !== "wps_office_execute") return;
 
-      const toolName = input.args?.tool_name;
-      const toolArgs = input.args?.arguments || {};
+      const toolArgs = output.args || {};
+      const toolName = toolArgs.tool_name;
+      const innerArgs = toolArgs.arguments || {};
 
       // 跳过检测/信息类工具
       if (!toolName) return;
 
       // ==================== 规则 G5：文件路径安全检查 ====================
-      checkFilePathSafety(toolArgs);
+      checkFilePathSafety(innerArgs);
 
       // ==================== 规则 G6：密码参数保护 ====================
-      checkPasswordProtection(toolName, toolArgs);
+      checkPasswordProtection(toolName, innerArgs);
 
       // ==================== 规则 G3：读前必写 ====================
       if (requiresReadBeforeWrite(toolName)) {
-        const appType = appTypeFromConfig(toolArgs.appType) || getAppType(toolName);
+        const appType = appTypeFromConfig(innerArgs.appType) || getAppType(toolName);
         const state = appReadState[appType];
         if (state && !state.activeDocRead) {
           throw new Error(
@@ -421,7 +435,7 @@ export default async () => {
 
       // ==================== 规则 G4：破坏性操作确认 ====================
       if (DESTRUCTIVE_TOOLS.has(toolName)) {
-        const confirm = toolArgs.confirm;
+        const confirm = innerArgs.confirm;
         if (confirm !== true) {
           throw new Error(
             `【执行治理】${toolName} 是破坏性操作，必须传递 confirm: true 确认。` +
@@ -431,12 +445,7 @@ export default async () => {
       }
 
       // ==================== 规则 G7：参数范围校验 ====================
-      checkParamRange(toolName, toolArgs);
-
-      // ==================== 规则 G8：跨应用缓存检查 ====================
-      if (toolName === "getCachedData" || toolName === "wps-office_wps_get_cached_data") {
-        return;
-      }
+      checkParamRange(toolName, innerArgs);
 
       // ── 以下为分批校对专用规则（P1-P11） ──
 
@@ -452,8 +461,8 @@ export default async () => {
             `再获取段落列表。`
           );
         }
-        const start = toolArgs.start_paragraph ?? 1;
-        const end = toolArgs.end_paragraph ?? (start + 49);
+        const start = innerArgs.start_paragraph ?? 1;
+        const end = innerArgs.end_paragraph ?? (start + 49);
         const count = end - start + 1;
         if (start < 1) {
           throw new Error(`【执行治理】start_paragraph 必须 ≥ 1（当前值: ${start}）。`);
@@ -497,7 +506,7 @@ export default async () => {
             `确认分批计划后再调 proofreadBasic。`
           );
         }
-        const so = toolArgs.startOffset;
+        const so = innerArgs.startOffset;
         if (so === undefined || so === null) {
           throw new Error(
             `【执行治理】proofreadBasic 缺少 startOffset 参数。` +
@@ -516,8 +525,8 @@ export default async () => {
             `${batchStartOffset} 不匹配。`
           );
         }
-        if (!toolArgs.file_path && batchEndOffset !== null) {
-          const text = toolArgs.text || '';
+        if (!innerArgs.file_path && batchEndOffset !== null) {
+          const text = innerArgs.text || '';
           if (text.length === 0) {
             throw new Error(
               `【执行治理】proofreadBasic 传入文本为空。` +
@@ -548,26 +557,51 @@ export default async () => {
             `请统一改用 replaceInParagraph。`
           );
         }
-        if (toolName === "findReplace" && batchStarted) {
-          throw new Error(
-            `【执行治理】分批校对流程中禁止使用 findReplace（不支持修订标记）。` +
-            `请改用 replaceInParagraph。`
-          );
+        if (toolName === "findReplace") {
+          if (batchStarted) {
+            throw new Error(
+              `【执行治理】分批校对流程中禁止使用 findReplace（不支持修订标记）。` +
+              `请改用 replaceInParagraph。`
+            );
+          }
+          // 非校对场景下也禁止用 findReplace 做模板填写
+          const findTextFR = innerArgs.findText || innerArgs.find || '';
+          const colonMatchFR = findTextFR.match(/^[\u4e00-\u9fff]+[：:]/);
+          if (colonMatchFR && findTextFR.length >= 2 && findTextFR.length <= 20) {
+            throw new Error(
+              `【执行治理·禁止低级替换】检测到用 findReplace 做模板填写。\n` +
+              `findText="${findTextFR}" 看起来是一个模板字段标签。\n` +
+              `请改用 smartFillField 填写模板字段。`
+            );
+          }
+          return;
         }
         if (toolName === "replaceInParagraph") {
-          if (batchStarted && !proofreadCalledThisBatch) {
+          // 模板填写场景的"禁止低级替换"检查（优先级高于 P10）
+          const findText = innerArgs.findText || innerArgs.find || '';
+          const colonMatch = findText.match(/^[\u4e00-\u9fff]+[：:]/);
+          if (colonMatch && findText.length >= 2 && findText.length <= 20) {
+            throw new Error(
+              `【执行治理·禁止低级替换】检测到用 replaceInParagraph 做模板填写。\n` +
+              `findText="${findText}" 看起来是一个模板字段标签。\n` +
+              `请改用 smartFillField 填写模板字段。`
+            );
+          }
+          // P10/P11：仅在校对流程中强制 proofreadBeforeReplace
+          // 模板填写/修复场景（templateFilling.active）跳过此检查
+          if (!templateFilling.active && batchStarted && !proofreadCalledThisBatch) {
             throw new Error(
               `【执行治理】replaceInParagraph 必须在同一批的 proofreadBasic 之后调用。`
             );
           }
-          if (batchStarted && !aiProofreadDoneThisBatch) {
+          if (!templateFilling.active && batchStarted && !aiProofreadDoneThisBatch) {
             throw new Error(
               `【执行治理】AI 智能校对未完成。请在 proofreadBasic 之后调用 ` +
               `confirmBatchAiProofread 确认 AI 校对已完成，再执行替换操作。`
             );
           }
           if (batchStarted) {
-            const paraIdx = toolArgs.paragraphIndex;
+            const paraIdx = innerArgs.paragraphIndex;
             if (paraIdx !== undefined) {
               if (paraIdx < batchStartParaIndex) {
                 throw new Error(
@@ -585,30 +619,7 @@ export default async () => {
         return;
       }
 
-      // ── 模板填写工作流规则（T1-T7） ──
-
-      // ==================== 禁止用 replaceInParagraph 做模板填写 ====================
-      // 检测 findText 以 "字段名：" 或 "字段名：" 结尾 → 这是模板填写操作，必须用 smartFillField
-      if (toolName === "replaceInParagraph" || toolName === "findReplace") {
-        const findText = toolArgs.findText || toolArgs.find || '';
-        const colonMatch = findText.match(/^[\u4e00-\u9fff]+[：:]/);
-        if (colonMatch && findText.length >= 2 && findText.length <= 20) {
-          throw new Error(
-            `【执行治理·禁止低级替换】检测到用 ${toolName} 做模板填写。\n` +
-            `findText="${findText}" 看起来是一个模板字段标签。\n` +
-            `请改用 smartFillField 填写模板字段：\n` +
-            `  wps_office_execute({ tool_name: "smartFillField", arguments: { keyword: "${findText.replace(/[：:]/g,'')}", value: "..." } })`
-
-          );
-        }
-        // T9 parallel: 如果 findText 是"日期："，拦截并建议 underline 模式
-        if (findText === '日期' || findText === '日期：' || findText === '日期:') {
-          throw new Error(
-            `【执行治理·禁止低级替换】日期字段请用 smartFillField 的 underline 模式填写。`
-          );
-        }
-      }
-
+      // ── 模板填写工作流规则（T1-T11） ──
       if (toolName === "smartFillField" || toolName === "replaceBookmarkContent") {
         // T1：评估文档
         if (!templateFilling.active && !templateFilling.docFetched) {
@@ -624,10 +635,9 @@ export default async () => {
             `请先调用 getDocumentParagraphs 以每批 ≤200 段评估文档结构，再逐批填写。`
           );
         }
-        // T7：首次填写前必须输出字段对照表并获用户确认（禁止编造）
-        // 仅对 smartFillField 生效（replaceBookmarkContent 使用显式书签，无需字段对照）
+        // T7：首次填写前必须输出字段对照表并获用户确认
         if (toolName === "smartFillField" && !templateFilling.userConfirmed) {
-          if (!toolArgs._field_mapping_confirmed) {
+          if (!innerArgs._field_mapping_confirmed) {
             throw new Error(
               `【执行治理·禁止编造】首次 smartFillField 前，你必须：\n` +
               `1. 列出文档中所有待填写字段与用户提供值的对照表\n` +
@@ -645,23 +655,22 @@ export default async () => {
             `以便追踪填写变更。`
           );
         }
-        // T8：跳过签字字段（需手动签章，不应由AI填写）
-        if (toolArgs.keyword) {
+        // T8：跳过签字字段
+        if (innerArgs.keyword) {
           const signaturePatterns = ['签字', '签名', '签章', '盖章'];
           for (const pattern of signaturePatterns) {
-            if (toolArgs.keyword.includes(pattern)) {
+            if (innerArgs.keyword.includes(pattern)) {
               throw new Error(
-                `【执行治理·跳过签字】"${toolArgs.keyword}" 包含"${pattern}"，` +
+                `【执行治理·跳过签字】"${innerArgs.keyword}" 包含"${pattern}"，` +
                 `属于手工签章字段，不应由AI填写。请跳过此字段。`
               );
             }
           }
         }
-        // T9：日期字段推荐使用 underline 模式（T11 确保所有模式的值都加下划线）
-        // afterColon 也允许，因为 PS1 工具层自动对填入值加下划线
-        // T6：禁止子串重复填写
-        const newKeyword = toolArgs.keyword;
-        if (newKeyword && templateFilling.fillKeywords.length > 0) {
+        // T6：禁止子串重复填写（可传 _substring_confirmed: true 绕过）
+        // 使用场景：封面用"采购项目名称"，商务应答表用"项目名称"——不同字段，用户已确认
+        const newKeyword = innerArgs.keyword;
+        if (newKeyword && !innerArgs._substring_confirmed && templateFilling.fillKeywords.length > 0) {
           for (const existingKwd of templateFilling.fillKeywords) {
             if (existingKwd.includes(newKeyword) || newKeyword.includes(existingKwd)) {
               if (existingKwd !== newKeyword) {
@@ -669,7 +678,7 @@ export default async () => {
                   `【执行治理·禁止重复】"${newKeyword}" 与已填写字段 "${existingKwd}" ` +
                   `存在包含关系（子串/超串）。请确认这是否是同一字段：\n` +
                   `- 如果是同一字段（如"包号"是"采购包号"的一部分），不要再次填写\n` +
-                  `- 如果是不同字段，请向用户确认后再填写`
+                  `- 如果是不同字段，请向用户确认后在参数中添加 _substring_confirmed: true 绕过`
                 );
               }
             }
