@@ -73,7 +73,7 @@ function checkDocument() {
 }
 
 function GetUrlPath() {
-    var pluginPath = 'C:\\Users\\Administrator\\AppData\\Roaming\\kingsoft\\wps\\jsaddons\\opencode-wps_';
+    var pluginPath = '___ADDON_INSTALL_PATH___';
     return pluginPath.replace(/\\/g, '/');
 }
 
