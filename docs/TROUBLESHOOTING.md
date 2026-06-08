@@ -50,9 +50,10 @@ WPS 的 taskpane 是特殊的运行环境，document 对象和浏览器不一致
 
 1. **taskpane 中使用绝对路径**
    ```javascript
-   // 正确代码 - 硬编码插件目录
+   // 正确代码 - 安装时动态注入路径
    function GetUrlPath() {
-       return 'file:///C:/Users/Administrator/AppData/Roaming/kingsoft/wps/jsaddons/opencode-wps_';
+       var pluginPath = '___WPS_ADDON_PATH___'; // install-addons.js 替换为实际路径
+       return pluginPath.replace(/\\/g, '/');
    }
    ```
 

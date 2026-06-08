@@ -607,7 +607,7 @@ function confirmCwdChange() {
 function startOpenCode() {
     // 如果用户输入了目录就用用户输入的，否则用用户目录
     var userInput = $setupCwd.value.replace(/\\/g, '\\\\').trim()
-    var cwd = userInput || 'C:\\Users\\' + 'Administrator'
+    var cwd = userInput || CONFIG.plugin.userHome
 
     // 保存 CWD 到历史
     addCwdHistory(cwd)
