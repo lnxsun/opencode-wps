@@ -13,7 +13,7 @@
  * 规则 G7：参数范围校验（行号/列号/索引 ≥ 1）
  *
  * ── 分批校对规则（校对激活时生效） ──
- * 规则 P1-P12：继承 enforce-batch.js 的全部 11 条规则 + P12 严格逐批（当前批修复完成前禁止获取下一批）
+ * 规则 P1-P13：继承 enforce-batch.js 的全部 11 条规则 + P12+P13 严格逐批（当前批校对周期完成前方可获取下一批；getDocumentTextByRange 限本批范围）
  *
  * ── 模板填写工作流规则（模板填写时生效） ──
  * 规则 T1：填写前必须调用 getActiveDocument 评估文档规模
@@ -472,13 +472,18 @@ export const WpsGovernancePlugin = async () => {
 
       // ── 规则 P1 + P2：getDocumentParagraphs ──
       if (toolName === "getDocumentParagraphs") {
-        // 新增：严格的逐批处理 — 当前批有校对问题但未修复前，禁止获取下一批
+        // P12：严格的逐批处理 — 当前批校对周期未完成前，禁止获取下一批
+        if (batchStarted && proofreadCalledThisBatch && !aiProofreadDoneThisBatch) {
+          throw new Error(
+            `【执行治理】【P12】当前批的 AI 智能校对尚未确认。` +
+            `调完 proofreadBasic 后必须调用 confirmBatchAiProofread 确认 AI 校对完成。`
+          );
+        }
         if (batchStarted && proofreadCalledThisBatch && proofreadHadIssues && !replaceCalledThisBatch) {
           throw new Error(
-            `【执行治理】当前批（段落 ${batchStartParaIndex}-${lastBatchParaIndex}）的校对问题尚未修复，` +
-            `不得获取下一批。\n` +
-            `请先用 replaceInParagraph 完成本批所有修复，再调用 getDocumentParagraphs 获取下一批。\n` +
-            `（如果 proofreadBasic 检查未发现问题，请检查 proofreadHadIssues 状态）`
+            `【执行治理】【P12】当前批（段落 ${batchStartParaIndex}-${lastBatchParaIndex}）` +
+            `的校对问题尚未修复，不得获取下一批。\n` +
+            `请先调用 replaceInParagraph 完成本批修复。`
           );
         }
         if (!docInfoFetched) {
@@ -564,6 +569,36 @@ export const WpsGovernancePlugin = async () => {
               `【执行治理】proofreadBasic 传入文本仅 ${text.length} 字符，` +
               `明显不足（预期约 ${batchEndOffset - so} 字符）。`
             );
+          }
+          if (batchStartOffset !== null) {
+            const expectedLen = batchEndOffset - batchStartOffset;
+            const maxLen = Math.max(expectedLen * 2, 50000);
+            if (text.length > maxLen) {
+              throw new Error(
+                `【执行治理】【P6b】proofreadBasic 传入文本 ${text.length} 字符 ` +
+                `远超本批预期范围 ${expectedLen} 字符。` +
+                `禁止一次性校对多批。请严格每批 ≤200 段、单次 proofreadBasic 只传本批文本。`
+              );
+            }
+          }
+        }
+        return;
+      }
+
+      // ── 规则 P13：getDocumentTextByRange 范围上限 ──
+      if (toolName === "getDocumentTextByRange") {
+        if (batchStarted && batchStartOffset !== null && batchEndOffset !== null) {
+          const requestedLen = innerArgs.length;
+          if (requestedLen !== undefined && requestedLen !== null) {
+            const expectedBatchLen = batchEndOffset - batchStartOffset;
+            const maxLen = Math.max(expectedBatchLen * 2, 50000);
+            if (requestedLen > maxLen) {
+              throw new Error(
+                `【执行治理】【P13】getDocumentTextByRange length=${requestedLen} ` +
+                `远超本批预期范围长度 ${expectedBatchLen}。` +
+                `禁止一次性拉取多批文本。请只获取本批范围内的文本（≤200 段）。`
+              );
+            }
           }
         }
         return;
