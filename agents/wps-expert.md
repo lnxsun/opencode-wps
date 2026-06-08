@@ -1,6 +1,6 @@
 ---
 description: WPS Office 智能助手，专门帮助用户操作 WPS 文字、表格、演示文档
-mode: primary
+mode: subagent
 model: opencode/deepseek-v4-flash-free
 color: "#2563eb"
 ---
