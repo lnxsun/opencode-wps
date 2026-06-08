@@ -128,13 +128,19 @@ addons.forEach(addon => {
     console.log('    已复制 ' + copiedCount + ' 个文件');
 
     // 动态注入安装路径（修复硬编码路径问题）
-    const mainJsPath = path.join(destDir, 'main.js');
-    if (fsEx.existsSync(mainJsPath)) {
-        const mainJsContent = fs.readFileSync(mainJsPath, 'utf-8');
-        const actualPath = destDir.replace(/\\/g, '\\\\');
-        const updatedContent = mainJsContent.replace('___ADDON_INSTALL_PATH___', actualPath);
-        fs.writeFileSync(mainJsPath, updatedContent, 'utf-8');
-        console.log('    已注入安装路径: ' + destDir);
+    if (addon.name === 'opencode-wps') {
+        const mainJsPath = path.join(destDir, 'main.js');
+        if (fsEx.existsSync(mainJsPath)) {
+            const mainJsContent = fs.readFileSync(mainJsPath, 'utf-8');
+            const actualPath = destDir.replace(/\\/g, '\\\\');
+            const updatedContent = mainJsContent.replace('___WPS_ADDON_PATH___', actualPath);
+            if (updatedContent === mainJsContent) {
+                console.warn('    [警告] main.js 中未找到 ___WPS_ADDON_PATH___，路径注入失败');
+            } else {
+                fs.writeFileSync(mainJsPath, updatedContent, 'utf-8');
+                console.log('    已注入安装路径: ' + destDir);
+            }
+        }
     }
 });
 

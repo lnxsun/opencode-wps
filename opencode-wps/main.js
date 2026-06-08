@@ -73,7 +73,7 @@ function checkDocument() {
 }
 
 function GetUrlPath() {
-    var pluginPath = '___ADDON_INSTALL_PATH___';
+    var pluginPath = '___WPS_ADDON_PATH___';
     return pluginPath.replace(/\\/g, '/');
 }
 
