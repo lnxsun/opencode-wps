@@ -133,9 +133,9 @@ addons.forEach(addon => {
         if (fsEx.existsSync(mainJsPath)) {
             const mainJsContent = fs.readFileSync(mainJsPath, 'utf-8');
             const actualPath = destDir.replace(/\\/g, '\\\\');
-            const updatedContent = mainJsContent.replace('___WPS_ADDON_PATH___', actualPath);
+            const updatedContent = mainJsContent.replace(/___WPS_ADDON_PATH___/g, actualPath);
             if (updatedContent === mainJsContent) {
-                console.warn('    [警告] main.js 中未找到 ___WPS_ADDON_PATH___，路径注入失败');
+                console.log('    [警告] main.js 中未找到 ___WPS_ADDON_PATH___，路径注入失败');
             } else {
                 fs.writeFileSync(mainJsPath, updatedContent, 'utf-8');
                 console.log('    已注入安装路径: ' + destDir);
