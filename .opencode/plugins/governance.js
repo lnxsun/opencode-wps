@@ -13,7 +13,7 @@
  * 规则 G7：参数范围校验（行号/列号/索引 ≥ 1）
  *
  * ── 分批校对规则（校对激活时生效） ──
- * 规则 P1-P11：继承 enforce-batch.js 的全部 11 条规则
+ * 规则 P1-P12：继承 enforce-batch.js 的全部 11 条规则 + P12 严格逐批（当前批修复完成前禁止获取下一批）
  *
  * ── 模板填写工作流规则（模板填写时生效） ──
  * 规则 T1：填写前必须调用 getActiveDocument 评估文档规模
@@ -137,6 +137,8 @@ let lastRevisionCount = 0;
 let batchStartOffset = null;
 let batchEndOffset = null;
 let proofreadCalledThisBatch = false;
+let replaceCalledThisBatch = false;
+let proofreadHadIssues = false;
 
 let appReadState = {
   word: { activeDocRead: false },
@@ -315,6 +317,8 @@ export const WpsGovernancePlugin = async () => {
           batchEndOffset = ranges[ranges.length - 1].end;
           proofreadCalledThisBatch = false;
           aiProofreadDoneThisBatch = false;
+          replaceCalledThisBatch = false;
+          proofreadHadIssues = false;
           templateFilling.paragraphsFetched = true;
           templateFilling.lastParagraphIndex = ranges[ranges.length - 1].index;
           return;
@@ -333,6 +337,19 @@ export const WpsGovernancePlugin = async () => {
           if (!outText) return;
           proofreadCalledThisBatch = true;
           aiProofreadDoneThisBatch = false;
+          replaceCalledThisBatch = false;
+          proofreadHadIssues = false;
+          try {
+            const parsed = JSON.parse(outText);
+            if (parsed && Array.isArray(parsed.issues) && parsed.issues.length > 0) {
+              proofreadHadIssues = true;
+            }
+          } catch (_e) {}
+          return;
+        }
+
+        if (toolName === "replaceInParagraph") {
+          replaceCalledThisBatch = true;
           return;
         }
 
@@ -455,6 +472,15 @@ export const WpsGovernancePlugin = async () => {
 
       // ── 规则 P1 + P2：getDocumentParagraphs ──
       if (toolName === "getDocumentParagraphs") {
+        // 新增：严格的逐批处理 — 当前批有校对问题但未修复前，禁止获取下一批
+        if (batchStarted && proofreadCalledThisBatch && proofreadHadIssues && !replaceCalledThisBatch) {
+          throw new Error(
+            `【执行治理】当前批（段落 ${batchStartParaIndex}-${lastBatchParaIndex}）的校对问题尚未修复，` +
+            `不得获取下一批。\n` +
+            `请先用 replaceInParagraph 完成本批所有修复，再调用 getDocumentParagraphs 获取下一批。\n` +
+            `（如果 proofreadBasic 检查未发现问题，请检查 proofreadHadIssues 状态）`
+          );
+        }
         if (!docInfoFetched) {
           throw new Error(
             `【执行治理】请先调用 getActiveDocument 了解文档总段落数，` +
