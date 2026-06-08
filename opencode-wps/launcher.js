@@ -3,6 +3,7 @@ var http = require('http');
 var { spawn, exec } = require('child_process');
 var path = require('path');
 var fs = require('fs');
+var os = require('os');
 
 var PORT = 14097;
 var opencodeProcess = null;
@@ -241,8 +242,8 @@ function findOpenCodeBin() {
 
     // 2. 尝试常见安装路径
     var commonPaths = [
-        path.join(process.env.USERPROFILE || 'C:\\Users\\Administrator', '.trae-cn', 'bin', 'opencode.exe'),
-        path.join(process.env.LOCALAPPDATA || 'C:\\Users\\Administrator\\AppData\\Local', 'Programs', 'opencode', 'opencode.exe'),
+        path.join(process.env.USERPROFILE || os.homedir(), '.trae-cn', 'bin', 'opencode.exe'),
+        path.join(process.env.LOCALAPPDATA || path.join(os.homedir(), 'AppData', 'Local'), 'Programs', 'opencode', 'opencode.exe'),
         'C:\\Program Files\\opencode\\opencode.exe',
         'C:\\Program Files (x86)\\opencode\\opencode.exe'
     ];

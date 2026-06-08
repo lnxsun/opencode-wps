@@ -128,13 +128,33 @@ addons.forEach(addon => {
     console.log('    已复制 ' + copiedCount + ' 个文件');
 
     // 动态注入安装路径（修复硬编码路径问题）
-    const mainJsPath = path.join(destDir, 'main.js');
-    if (fsEx.existsSync(mainJsPath)) {
-        const mainJsContent = fs.readFileSync(mainJsPath, 'utf-8');
-        const actualPath = destDir.replace(/\\/g, '\\\\');
-        const updatedContent = mainJsContent.replace('___ADDON_INSTALL_PATH___', actualPath);
-        fs.writeFileSync(mainJsPath, updatedContent, 'utf-8');
-        console.log('    已注入安装路径: ' + destDir);
+    if (addon.name === 'opencode-wps') {
+        const mainJsPath = path.join(destDir, 'main.js');
+        if (fsEx.existsSync(mainJsPath)) {
+            const mainJsContent = fs.readFileSync(mainJsPath, 'utf-8');
+            const actualPath = destDir.replace(/\\/g, '\\\\');
+            const updatedContent = mainJsContent.replace(/___WPS_ADDON_PATH___/g, () => actualPath);
+            if (updatedContent === mainJsContent) {
+                console.log('    [警告] main.js 中未找到 ___WPS_ADDON_PATH___，路径注入失败');
+            } else {
+                fs.writeFileSync(mainJsPath, updatedContent, 'utf-8');
+                console.log('    已注入安装路径: ' + destDir);
+            }
+        }
+
+        // 注入用户主目录到 config.js（修复 CWD 硬编码问题）
+        const configJsPath = path.join(destDir, 'config.js');
+        if (fsEx.existsSync(configJsPath)) {
+            const configJsContent = fs.readFileSync(configJsPath, 'utf-8');
+            const userHome = process.env.USERPROFILE || require('os').homedir();
+            const updatedConfig = configJsContent.replace(/___WPS_USER_HOME___/g, () => userHome.replace(/\\/g, '\\\\'));
+            if (updatedConfig === configJsContent) {
+                console.log('    [警告] config.js 中未找到 ___WPS_USER_HOME___，用户目录注入失败');
+            } else {
+                fs.writeFileSync(configJsPath, updatedConfig, 'utf-8');
+                console.log('    已注入用户目录: ' + userHome);
+            }
+        }
     }
 });
 
