@@ -167,6 +167,9 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:-apple-system,Blink
 .dd-item .dd-badge.free{background:#dcfce7;color:#16a34a}
 .dd-item-danger{color:#dc2626}
 .dd-item-danger:hover{background:#fef2f2}
+.dd-search{padding:8px 12px 4px 12px;position:sticky;top:0;background:#fff;z-index:1}
+.dd-search-input{width:100%;border:1px solid #e5e7eb;border-radius:8px;padding:7px 10px;font-size:13px;outline:none;font-family:inherit;box-sizing:border-box}
+.dd-search-input:focus{border-color:#2563eb}
 
 /* Sidebar */
 .sidebar-backdrop{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.3);z-index:60}
@@ -842,7 +845,8 @@ function toggleModelDropdown(e) {
         fetchAvailableModels(function() { closeAllDropdowns(); toggleModelDropdown(e) })
         return
     }
-    var html = '<div class="dd-header">选择模型</div>'
+    var html = '<div class="dd-search"><input class="dd-search-input" placeholder="搜索模型..." oninput="filterModelDropdown(this.value)" onkeydown="event.stopPropagation()" onclick="event.stopPropagation()"/></div>'
+    html += '<div class="dd-header">选择模型 (' + AVAILABLE_MODELS.length + ')</div>'
     for (var i = 0; i < AVAILABLE_MODELS.length; i++) {
         var m = AVAILABLE_MODELS[i]
         var sel = (m.id === CURRENT_MODEL)
@@ -853,6 +857,23 @@ function toggleModelDropdown(e) {
         html += '</span></div>'
     }
     createDropdown(btn, html, 'bottom-up')
+    // 自动聚焦搜索框
+    setTimeout(function() {
+        var inp = document.querySelector('.dd-search-input')
+        if (inp) inp.focus()
+    }, 50)
+}
+function filterModelDropdown(text) {
+    var q = (text || '').toLowerCase()
+    var items = document.querySelectorAll('.dd-item[onclick*="selectModel"]')
+    var visible = 0
+    for (var i = 0; i < items.length; i++) {
+        var el = items[i]
+        var txt = (el.textContent || '').toLowerCase()
+        var match = !q || txt.indexOf(q) >= 0
+        el.style.display = match ? '' : 'none'
+        if (match) visible++
+    }
 }
 function selectModel(id) { CURRENT_MODEL = id; CONFIG.model = id; $modelName.textContent = id; closeAllDropdowns() }
 var FALLBACK_MODELS = [
