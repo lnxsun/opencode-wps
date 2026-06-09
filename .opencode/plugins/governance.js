@@ -13,7 +13,7 @@
  * 规则 G7：参数范围校验（行号/列号/索引 ≥ 1）
  *
  * ── 分批校对规则（校对激活时生效） ──
- * 规则 P1-P13：继承 enforce-batch.js 的全部 11 条规则 + P12+P13 严格逐批（当前批校对周期完成前方可获取下一批；getDocumentTextByRange 限本批范围）
+ * 规则 P1-P14：继承 enforce-batch.js 的全部 11 条规则 + P12+P13+P14 严格逐批（P12：周期未完成禁止获取下一批；P13：getDocumentTextByRange 限本批范围；P14：confirmBatchAiProofread 前必须 proofreadBasic）
  *
  * ── 模板填写工作流规则（模板填写时生效） ──
  * 规则 T1：填写前必须调用 getActiveDocument 评估文档规模
@@ -473,6 +473,13 @@ export const WpsGovernancePlugin = async () => {
       // ── 规则 P1 + P2：getDocumentParagraphs ──
       if (toolName === "getDocumentParagraphs") {
         // P12：严格的逐批处理 — 当前批校对周期未完成前，禁止获取下一批
+        if (batchStarted && !proofreadCalledThisBatch) {
+          throw new Error(
+            `【执行治理】【P12】当前批（段落 ${batchStartParaIndex}-${lastBatchParaIndex}）` +
+            `尚未调用 proofreadBasic，不得获取下一批。\n` +
+            `每批必须先调 proofreadBasic 进行基础校对，禁止仅凭视觉判断跳过。`
+          );
+        }
         if (batchStarted && proofreadCalledThisBatch && !aiProofreadDoneThisBatch) {
           throw new Error(
             `【执行治理】【P12】当前批的 AI 智能校对尚未确认。` +
@@ -600,6 +607,18 @@ export const WpsGovernancePlugin = async () => {
               );
             }
           }
+        }
+        return;
+      }
+
+      // ── 规则 P14：confirmBatchAiProofread 必须 proofreadBasic 已调用 ──
+      if (toolName === "confirmBatchAiProofread") {
+        if (batchStarted && !proofreadCalledThisBatch) {
+          throw new Error(
+            `【执行治理】【P14】confirmBatchAiProofread 必须在 proofreadBasic 之后调用。\n` +
+            `当前批尚未进行基础校对，请先调用 proofreadBasic。` +
+            `（禁止跳过基础校对直接确认 AI 校对）`
+          );
         }
         return;
       }
