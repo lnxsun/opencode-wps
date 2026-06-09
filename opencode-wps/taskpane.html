@@ -387,7 +387,9 @@ var CONFIG = {
     get agent() { return getPS('opencode_agent') || 'wps-expert'; },
     set agent(val) { setPS('opencode_agent', val); },
     get model() { return getCK('opencode_model') || getLS('opencode_model') || getPS('opencode_model') || ''; },
-    set model(val) { setCK('opencode_model', val); setLS('opencode_model', val); setPS('opencode_model', val); }
+    set model(val) { setCK('opencode_model', val); setLS('opencode_model', val); setPS('opencode_model', val); },
+    get provider() { return getCK('opencode_provider') || getLS('opencode_provider') || getPS('opencode_provider') || 'opencode'; },
+    set provider(val) { setCK('opencode_provider', val); setLS('opencode_provider', val); setPS('opencode_provider', val); }
 };
 
 // --- 常量定义 ---
@@ -408,6 +410,7 @@ var CONSTANTS = {
     PROJECT_DIR = CONFIG.cwd;
     CURRENT_AGENT = CONFIG.agent;
     CURRENT_MODEL = CONFIG.model;
+    CURRENT_PROVIDER = CONFIG.provider;
 
     // 开发者模式：直接从源目录读取 Skills/Agents
     var devMode = getPS('opencode_dev_mode') === 'true';
@@ -690,7 +693,15 @@ function onServerConnected() {
     CONNECTED = true
     updateServerStatus(true)
     showChat()
-    fetchAvailableModels(function() { $modelName.textContent = CURRENT_MODEL || 'AI 模型' })
+    fetchAvailableModels(function() { 
+        // 恢复模型名称显示
+        if (CURRENT_MODEL) $modelName.textContent = CURRENT_MODEL
+        else $modelName.textContent = 'AI 模型'
+        // 恢复供应商名称显示 + 按供应商过滤模型
+        var p = AVAILABLE_PROVIDERS.find(function(x) { return x.id === CURRENT_PROVIDER })
+        $providerName.textContent = p ? p.name : (CURRENT_PROVIDER || 'OpenCode')
+        updateModelsForProvider()
+    })
     fetchAvailableAgents(function() { 
         var displayName = CURRENT_AGENT || '智能体'
         $agentName.textContent = displayName
@@ -791,6 +802,7 @@ function toggleProviderDropdown(e) {
 }
 function selectProvider(id) {
     CURRENT_PROVIDER = id
+    CONFIG.provider = id
     var p = AVAILABLE_PROVIDERS.find(function(x) { return x.id === id })
     $providerName.textContent = p ? p.name : id
     closeAllDropdowns()
@@ -801,8 +813,16 @@ function updateModelsForProvider() {
     if (p && p.models) {
         AVAILABLE_MODELS = p.models.slice()
         if (AVAILABLE_MODELS.length > 0) {
-            CURRENT_MODEL = AVAILABLE_MODELS[0].id
-            $modelName.textContent = AVAILABLE_MODELS[0].name
+            // 如果当前模型属于这个供应商，保留；否则选第一个
+            var found = false
+            for (var i = 0; i < AVAILABLE_MODELS.length; i++) {
+                if (AVAILABLE_MODELS[i].id === CURRENT_MODEL) { found = true; break }
+            }
+            if (!found) {
+                CURRENT_MODEL = AVAILABLE_MODELS[0].id
+                CONFIG.model = CURRENT_MODEL
+                $modelName.textContent = AVAILABLE_MODELS[0].name
+            }
         }
     }
 }
