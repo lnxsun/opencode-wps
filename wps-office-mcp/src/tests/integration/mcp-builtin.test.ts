@@ -1,6 +1,6 @@
 /**
  * MCP Server 内置工具测试
- * 验证 14 个内置工具正确注册、gateway 工具正确注册
+ * 验证 12 个内置工具正确注册、gateway 工具正确注册
  *
  * @date 2026-05-18
  */
@@ -88,30 +88,22 @@ describe('MCP Server 内置工具注册', () => {
   });
 
   describe('内置工具数量验证', () => {
-    it('应注册 14 个内置工具', () => {
-      // 内置 12 个 + gateway 2 个
-      expect(registry.size).toBe(14);
-    });
-  });
-
-  describe('12 个内置工具必须存在', () => {
-    const builtinTools = [
-      'wps_check_connection',
-      'wps_get_active_document',
-      'wps_insert_text',
-      'wps_get_active_workbook',
-      'wps_get_cell_value',
-      'wps_set_cell_value',
-      'wps_get_active_presentation',
-      'wps_execute_method',
-      'wps_cache_data',
-      'wps_get_cached_data',
-      'wps_list_cache',
-      'wps_clear_cache',
-    ];
-
-    builtinTools.forEach(name => {
-      it(`工具 ${name} 应该存在`, () => {
+    it('应注册 12 个内置工具（不含 Gateway）', () => {
+      const builtinTools = [
+        'wps_check_connection',
+        'wps_get_active_document',
+        'wps_insert_text',
+        'wps_get_active_workbook',
+        'wps_get_cell_value',
+        'wps_set_cell_value',
+        'wps_get_active_presentation',
+        'wps_execute_method',
+        'wps_cache_data',
+        'wps_get_cached_data',
+        'wps_list_cache',
+        'wps_clear_cache',
+      ];
+      builtinTools.forEach(name => {
         expect(registry.hasTool(name)).toBe(true);
       });
     });

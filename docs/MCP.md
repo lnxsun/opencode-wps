@@ -139,7 +139,7 @@ MCP 使用 JSON-RPC 2.0 消息格式：
 
 本项目的 MCP 服务器采用**渐进式加载模式**——启动时只注册 14 个工具，其余 471 个通过 Gateway 按需发现和执行：
 
-- **14 个内置工具** — 启动时直接注册（`wps_check_connection`、`wps_get_cell_value` 等）
+- **12 个内置工具** — 启动时直接注册（`wps_check_connection`、`wps_get_cell_value` 等）
 - **2 个 Gateway 工具** — `wps_office_search` 搜索、`wps_office_execute` 执行
 - **235 个注册工具** — 未注册到 MCP 但作为 TS handler 供 Gateway 优先调用（含参数校验、类型安全、详细错误信息）
 - **240 个 COM Actions** — Gateway 索引，无 TS handler 时透传 PS1 脚本执行 COM API
