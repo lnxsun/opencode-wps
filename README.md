@@ -13,11 +13,14 @@ OpenCode WPS 将 OpenCode AI 的能力集成到 WPS Office 中，通过侧边栏
 核心特性：
 
 - **WPS 内嵌 AI 对话** — 侧边栏 Chat UI，支持 SSE 流式输出、Markdown 渲染
+- **自动检测工作目录** — 打开侧边栏自动以当前文档所在目录为工作目录，无需手动选择
 - **多会话管理** — 创建、重命名、切换、删除对话会话
+- **模型搜索** — 模型选择下拉框支持关键词实时搜索过滤
+- **选择持久化** — 供应商和模型选择自动记住，下次打开无需重新选择
 - **MCP 工具集成** — 通过 WPS Office MCP 服务器，AI 可以直接操作文档（读/写/格式化）
 - **WPS 专用 Agents** — 自定义 wps-expert 主 agent 和 wps-word/wps-excel/wps-ppt 子 agents
 - **Agent 选择** — 底部工具栏支持切换不同 agent，消息自动传递 agent 参数
-- **一键安装** — 运行 `node install-addons.js` 自动完成全部组件安装
+- **一键安装** — 运行 `node install-addons.js` 自动完成全部组件安装，安装时动态注入用户路径
 - **开机自启** — 通过 Launcher 进程自动管理 OpenCode 服务（监听 14097 端口），用户登录时自动启动
 - **完整技术文档** — `docs/` 目录包含开发指南、API 参考、问题排查等 10+ 份文档
 
@@ -40,7 +43,7 @@ opencode-wps/
 ├──
 ├── opencode-wps/              # 第 1 层：WPS JS 插件（前台 Chat 窗口 + 后台 Launcher）
 │   ├── main.js                # Ribbon 回调、状态管理、OpenCode 连接
-│   ├── taskpane.html          # Chat UI（SSE 流式对话、Markdown 渲染、会话管理、Agent 选择）
+│   ├── taskpane.html          # Chat UI（SSE 流式对话、Markdown 渲染、模型搜索、自动检测文档目录、供应商/模型持久化）
 │   ├── launcher.js            # Launcher 进程（自动启动 opencode serve，管理 14097 端口）
 │   ├── ribbon.xml             # 功能区按钮定义
 │   └── manifest.xml           # 加载项清单
@@ -137,7 +140,7 @@ node install-addons.js
 
 | 步骤 | 操作 | 说明 |
 |------|------|------|
-| 1 | 安装 WPS 插件 | 复制 opencode-wps 到 `%APPDATA%\kingsoft\wps\jsaddons\`，注册到 publish.xml/jsplugins.xml |
+| 1 | 安装 WPS 插件 | 复制 opencode-wps 到 `%APPDATA%\kingsoft\wps\jsaddons\`，注册到 publish.xml/jsplugins.xml，并动态注入当前用户的安装路径 |
 | 2 | 安装 MCP 依赖 | 在 wps-office-mcp 目录执行 `npm install` |
 | 3 | 编译 MCP 服务器 | 在 wps-office-mcp 目录执行 `npm run build` |
 | 4 | 配置 OpenCode MCP | 修改 `~/.config/opencode/opencode.json`，添加 wps-office MCP 服务器 |
@@ -154,15 +157,19 @@ node install-addons.js
 ### 打开 AI 对话面板
 
 1. 在 WPS 功能区点击 **OpenCode AI** 标签页
-2. 点击 **打开面板** 按钮，右侧弹出 Chat 侧边栏
-3. 点击 **连接状态** 按钮查看 OpenCode 服务状态
+2. 打开一个文档后，点击 **打开面板** 按钮，右侧弹出 Chat 侧边栏
+3. 侧边栏会自动检测当前文档所在目录作为工作目录，并自动启动服务
+4. 如果未打开任何文档，侧边栏会显示手动选择目录的界面
+5. 点击 **连接状态** 按钮查看 OpenCode 服务状态
 
 ### 对话操作
 
 - **发送消息** — 在输入框输入问题，按 Enter 或点击发送
 - **SSE 流式输出** — AI 回复实时流式显示，支持 Markdown 渲染（代码块、表格、列表等）
-- **会话管理** — 点击会话列表切换对话，支持创建、重命名、删除会话
+- **会话管理** — 点击汉堡菜单打开会话列表，支持创建、重命名、删除会话
 - **Agent 选择** — 点击底部工具栏的 Agent 按钮，选择不同的 AI 助手
+- **模型选择** — 点击底部工具栏的模型按钮打开下拉框，支持关键词搜索过滤模型
+- **供应商切换** — 点击底部工具栏供应商按钮选择不同供应商，选择会自动持久化
 
 ### WPS Agents
 
@@ -170,10 +177,12 @@ node install-addons.js
 
 | Agent | 类型 | 说明 |
 |-------|------|------|
-| **wps-expert** | 主 agent | WPS Office 智能助手，综合处理 Word/Excel/PPT |
+| **wps-expert** | 子 agent | WPS Office 智能助手，综合处理 Word/Excel/PPT（可在 WPS 侧边栏或通过 `@wps-expert` 调用）|
 | **wps-word** | 子 agent | Word 文档处理专家（可用 `@wps-word` 调用）|
 | **wps-excel** | 子 agent | Excel 数据处理专家（可用 `@wps-excel` 调用）|
 | **wps-ppt** | 子 agent | PPT 演示文稿专家（可用 `@wps-ppt` 调用）|
+
+> **注意**：所有 WPS agents 均使用 `mode: subagent`，不会出现在 OpenCode 主界面的模式切换列表中，仅在 WPS 侧边栏和通过 `@agent-name` 方式使用。
 
 **使用方式**：
 1. 点击底部 **Agent** 按钮选择主 agent（默认 wps-expert）
