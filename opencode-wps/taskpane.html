@@ -429,6 +429,20 @@ window.onunhandledrejection = function(event) {
     logError('UnhandledPromise', { reason: event.reason ? event.reason.message : String(event.reason) });
 };
 
+// --- 获取当前文档所在目录 ---
+function getDocumentDir() {
+    try {
+        var doc = window.Application.ActiveDocument
+            || window.Application.ActiveWorkbook
+            || window.Application.ActivePresentation
+        if (doc) {
+            var p = doc.Path || doc.FullName || ''
+            if (p) return p.replace(/\\/g, '/')
+        }
+    } catch(e) {}
+    return ''
+}
+
 // --- View switching ---
 function showSetup() {
     $viewSetup.classList.remove('hidden')
@@ -604,10 +618,10 @@ function confirmCwdChange() {
 }
 
 // --- Server start / stop ---
-function startOpenCode() {
-    // 如果用户输入了目录就用用户输入的，否则用用户目录
-    var userInput = $setupCwd.value.replace(/\\/g, '\\\\').trim()
-    var cwd = userInput || 'C:\\Users\\' + 'Administrator'
+function startOpenCode(optCwd) {
+    // 优先使用传入的目录 → 输入框 → 文档目录 → 上次记录
+    var userInput = (optCwd || $setupCwd.value).replace(/\\/g, '\\\\').trim()
+    var cwd = userInput || getPS('opencode_cwd') || 'C:/Users/'
 
     // 保存 CWD 到历史
     addCwdHistory(cwd)
@@ -1425,12 +1439,13 @@ function inlineFmt(s) {
 function scrollToBottom() { setTimeout(function() { $messages.scrollTop = $messages.scrollHeight }, 50) }
 
 // ============================================================
-// 启动流程：检查服务是否已在运行 → 是则直接进 chat；否则显示 setup
-// 同时检查 launcher 状态
+// 启动流程：自动检测当前文档目录 → 自动启动服务
 // ============================================================
 (function init() {
     var lastCwd = getPS('opencode_cwd')
-    if (lastCwd) $setupCwd.value = lastCwd.replace(/\\\\/g, '\\')
+    var docDir = getDocumentDir()
+    var autoCwd = docDir || lastCwd || ''
+    if (autoCwd) $setupCwd.value = autoCwd.replace(/\\\\/g, '\\')
 
     // 并行检查 launcher 和 opencode 服务
     var checkLauncher = function(cb) {
@@ -1454,16 +1469,18 @@ function scrollToBottom() { setTimeout(function() { $messages.scrollTop = $messa
         checkOpenCode(function(opencodeOk) {
             if (opencodeOk) {
                 // 服务已运行，直接进 chat
-                PROJECT_DIR = lastCwd || ''
+                PROJECT_DIR = autoCwd || ''
                 $topbarCwd.textContent = PROJECT_DIR.replace(/\\\\/g, '\\')
                 $topbarCwd.title = PROJECT_DIR.replace(/\\\\/g, '\\')
                 onServerConnected()
-            } else if (launcherOk) {
-                // launcher 在运行但 opencode 没启动，显示 setup
+            } else if (launcherOk && autoCwd) {
+                // launcher 在运行，自动用文档目录启动
+                $setupCwd.value = autoCwd.replace(/\\\\/g, '\\')
                 updateServerStatus(false)
-                showSetup()
+                showChat()
+                startOpenCode(autoCwd)
             } else {
-                // 都未运行，显示 setup
+                // 无文档或无 launcher，显示 setup
                 updateServerStatus(false)
                 showSetup()
             }
