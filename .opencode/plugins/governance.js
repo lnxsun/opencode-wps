@@ -13,7 +13,7 @@
  * 规则 G7：参数范围校验（行号/列号/索引 ≥ 1）
  *
  * ── 分批校对规则（校对激活时生效） ──
- * 规则 P1-P14：继承 enforce-batch.js 的全部 11 条规则 + P12+P13+P14 严格逐批（P12：周期未完成禁止获取下一批；P13：getDocumentTextByRange 限本批范围；P14：confirmBatchAiProofread 前必须 proofreadBasic）
+ * 规则 P1-P16：继承 enforce-batch.js 的全部 11 条规则 + P12-P16 严格逐批（P12：周期未完成禁止获取下一批；P13：getDocumentTextByRange 限本批范围；P14：confirmBatchAiProofread 前必须 proofreadBasic；P15：基础校对无 issue 时禁止 AI 自行大量修复；P16：替换内容与已知 issue 交叉校验）
  *
  * ── 模板填写工作流规则（模板填写时生效） ──
  * 规则 T1：填写前必须调用 getActiveDocument 评估文档规模
@@ -139,6 +139,9 @@ let batchEndOffset = null;
 let proofreadCalledThisBatch = false;
 let replaceCalledThisBatch = false;
 let proofreadHadIssues = false;
+let proofreadIssueOriginals = [];
+let replaceCountThisBatch = 0;
+const MAX_AI_FIXES_NO_ISSUES = 1;
 
 let appReadState = {
   word: { activeDocRead: false },
@@ -319,6 +322,8 @@ export const WpsGovernancePlugin = async () => {
           aiProofreadDoneThisBatch = false;
           replaceCalledThisBatch = false;
           proofreadHadIssues = false;
+          proofreadIssueOriginals = [];
+          replaceCountThisBatch = 0;
           templateFilling.paragraphsFetched = true;
           templateFilling.lastParagraphIndex = ranges[ranges.length - 1].index;
           return;
@@ -339,10 +344,14 @@ export const WpsGovernancePlugin = async () => {
           aiProofreadDoneThisBatch = false;
           replaceCalledThisBatch = false;
           proofreadHadIssues = false;
+          proofreadIssueOriginals = [];
           try {
             const parsed = JSON.parse(outText);
-            if (parsed && Array.isArray(parsed.issues) && parsed.issues.length > 0) {
-              proofreadHadIssues = true;
+            if (parsed && Array.isArray(parsed.issues)) {
+              proofreadHadIssues = parsed.issues.length > 0;
+              proofreadIssueOriginals = parsed.issues
+                .map(i => i.original)
+                .filter(Boolean);
             }
           } catch (_e) {}
           return;
@@ -350,6 +359,7 @@ export const WpsGovernancePlugin = async () => {
 
         if (toolName === "replaceInParagraph") {
           replaceCalledThisBatch = true;
+          replaceCountThisBatch++;
           return;
         }
 
@@ -679,6 +689,42 @@ export const WpsGovernancePlugin = async () => {
               `【执行治理】AI 智能校对未完成。请在 proofreadBasic 之后调用 ` +
               `confirmBatchAiProofread 确认 AI 校对已完成，再执行替换操作。`
             );
+          }
+          // P15：基础校对无 issue 时，禁止 AI 自行大量修复
+          // 当 proofreadHadIssues = false（基础校对未发现问题），最多允许 1 次 AI 自定修复
+          // 超过限制需传 _force_ai_fix: true 显式确认
+          if (!templateFilling.active && batchStarted && !proofreadHadIssues) {
+            if (replaceCountThisBatch >= MAX_AI_FIXES_NO_ISSUES) {
+              if (!innerArgs._force_ai_fix) {
+                throw new Error(
+                  `【执行治理】【P15】基础校对未发现本批存在任何问题，` +
+                  `AI 已自行修复 ${replaceCountThisBatch} 处。\n` +
+                  `禁止 AI 编造不存在的校对问题。如确认此处确需修复，` +
+                  `请在参数中添加 _force_ai_fix: true 以强制放行。`
+                );
+              }
+            }
+          }
+          // P16：交叉校验 — 替换内容应与已知校对 issue 对应
+          // 防止 AI 擅自修复 proofreadBasic 未发现的问题（"把正确的改成错误的"）
+          if (!templateFilling.active && batchStarted && proofreadHadIssues && proofreadIssueOriginals.length > 0) {
+            const findText = innerArgs.findText || innerArgs.find || '';
+            if (findText && !innerArgs._force_ai_fix) {
+              const matchesIssue = proofreadIssueOriginals.some(orig =>
+                (orig && (orig.includes(findText) || findText.includes(orig)))
+              );
+              if (!matchesIssue) {
+                const maxShow = 5;
+                const shown = proofreadIssueOriginals.slice(0, maxShow);
+                const more = proofreadIssueOriginals.length > maxShow ? `...等共 ${proofreadIssueOriginals.length} 条` : '';
+                throw new Error(
+                  `【执行治理】【P16】replaceInParagraph findText="${findText}" ` +
+                  `与 proofreadBasic 找到的任何 issue 原文都不匹配。\n` +
+                  `已知问题原文：${shown.join('、')}${more}\n` +
+                  `AI 不应修复基础校对未发现的问题。如需强制修复请传 _force_ai_fix: true。`
+                );
+              }
+            }
           }
           if (batchStarted) {
             const paraIdx = innerArgs.paragraphIndex;
