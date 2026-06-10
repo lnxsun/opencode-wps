@@ -379,7 +379,7 @@ function safeInput(str) {
 }
 
 // --- 配置持久化 ---
-var CONFIG = {
+var PERSIST = {
     get apiUrl() { return getPS('opencode_api_url') || 'http://127.0.0.1:14096'; },
     set apiUrl(val) { setPS('opencode_api_url', val); },
     get cwd() { return getPS('opencode_cwd') || ''; },
@@ -590,7 +590,7 @@ function confirmCwdChange() {
     // 设置新的 CWD 并启动
     PROJECT_DIR = newCwd
     setPS('opencode_cwd', newCwd)
-    CONFIG.cwd = newCwd
+    PERSIST.cwd = newCwd
     setPS('opencode_start_cwd', newCwd)
     $topbarCwd.textContent = newCwd.replace(/\\\\/g, '\\')
     $topbarCwd.title = newCwd.replace(/\\\\/g, '\\')
@@ -895,7 +895,7 @@ function filterModelDropdown(text) {
         if (match) visible++
     }
 }
-function selectModel(id) { CURRENT_MODEL = id; CONFIG.model = id; $modelName.textContent = id; closeAllDropdowns() }
+function selectModel(id) { CURRENT_MODEL = id; PERSIST.model = id; $modelName.textContent = id; closeAllDropdowns() }
 var FALLBACK_MODELS = [
     { id: 'opencode/deepseek-v4-flash-free', name: 'DeepSeek V4 Flash Free', providerID: 'opencode', free: true }
 ]
@@ -1036,7 +1036,7 @@ function toggleAgentDropdown(e) {
     xhr.open('GET', API_BASE + '/agent', true)
     xhr.send()
 }
-function selectAgent(id) { CURRENT_AGENT = id; CONFIG.agent = id; $agentName.textContent = id; closeAllDropdowns() }
+function selectAgent(id) { CURRENT_AGENT = id; PERSIST.agent = id; $agentName.textContent = id; closeAllDropdowns() }
 
 // Session menu
 function toggleSessionMenu(e) {

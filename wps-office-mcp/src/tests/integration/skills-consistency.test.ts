@@ -1,6 +1,6 @@
 /**
- * Skills/Agents 一致性测试
- * 验证 Skills 和 Agents 中引用的所有工具名称在 TOOLS_INDEX 中存在
+ * Skills/Agents ä¸€è‡´æ€§æµ‹è¯?
+ * éªŒè¯ Skills å’?Agents ä¸­å¼•ç”¨çš„æ‰€æœ‰å·¥å…·åç§°åœ¨ TOOLS_INDEX ä¸­å­˜åœ?
  *
  * @date 2026-05-18
  */
@@ -20,13 +20,13 @@ const path = require('path') as typeof import('path');
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const fs = require('fs') as typeof import('fs');
 
-// Skills 和 Agents 在项目根目录，不在 MCP 模块内
+// Skills å’?Agents åœ¨é¡¹ç›®æ ¹ç›®å½•ï¼Œä¸åœ?MCP æ¨¡å—å†?
 const PROJECT_ROOT = path.resolve(__dirname, '../../../..');
 const skillsDir = path.resolve(PROJECT_ROOT, 'skills');
 const agentsDir = path.resolve(PROJECT_ROOT, 'agents');
 
-// 14 个内置工具（直接注册，不在 gateway index 中）
-const BUILTIN_TOOLS = new Set([
+// 14 ä¸ª MCP å·¥å…·ï¼ˆ12 å†…ç½® + 2 Gatewayï¼Œç›´æŽ¥æ³¨å†Œï¼Œä¸åœ¨ gateway index ä¸­ï¼‰
+const ALL_MCP_TOOLS = new Set([
   'wps_check_connection',
   'wps_get_active_document',
   'wps_insert_text',
@@ -45,7 +45,7 @@ const BUILTIN_TOOLS = new Set([
 
 const indexNames = TOOLS_INDEX.map(t => t.name);
 
-// Legacy 工具名称映射：旧的 wps_office_* 工具名 -> gateway index 中的实际工具名
+// Legacy å·¥å…·åç§°æ˜ å°„ï¼šæ—§ç‰ˆ wps_office_* å·¥å…·å -> gateway index ä¸­çš„å®žé™…å·¥å…·å
 const LEGACY_TOOLS: Record<string, string> = {
   'wps_office_check_status': 'getContext',
   'wps_office_activate_app': 'getContext',
@@ -60,7 +60,7 @@ const LEGACY_TOOLS: Record<string, string> = {
   'wps_office_print': 'convertToPDF',
 };
 
-describe('Skills 引用的工具名称一致性', () => {
+describe('Skills å¼•ç”¨çš„å·¥å…·åç§°ä¸€è‡´æ€?, () => {
   const skillFiles = [
     'wps-excel/SKILL.md',
     'wps-word/SKILL.md',
@@ -71,37 +71,37 @@ describe('Skills 引用的工具名称一致性', () => {
   skillFiles.forEach(skillPath => {
     const filePath = path.join(skillsDir, skillPath);
 
-    it(`文件 ${skillPath} 不应引用不存在的工具`, () => {
+    it(`æ–‡ä»¶ ${skillPath} ä¸åº”å¼•ç”¨ä¸å­˜åœ¨çš„å·¥å…·`, () => {
       if (!fs.existsSync(filePath)) {
-        // 在 MCP 测试环境中，skills 目录可能不存在，跳过
+        // åœ?MCP æµ‹è¯•çŽ¯å¢ƒä¸­ï¼Œskills ç›®å½•å¯èƒ½ä¸å­˜åœ¨ï¼Œè·³è¿‡
         return;
       }
 
       const content = fs.readFileSync(filePath, 'utf8');
 
-      // 提取所有反引号包裹的工具名称
-      // 排除：纯下划线（如 ___）、布局类型（如 title_content）、动画类型（如 fly_in）
+      // æå–æ‰€æœ‰åå¼•å·åŒ…è£¹çš„å·¥å…·åç§?
+      // æŽ’é™¤ï¼šçº¯ä¸‹åˆ’çº¿ï¼ˆå¦?___ï¼‰ã€å¸ƒå±€ç±»åž‹ï¼ˆå¦‚ title_contentï¼‰ã€åŠ¨ç”»ç±»åž‹ï¼ˆå¦?fly_inï¼?
       const toolNamePattern = /`(\w+(?:_\w+)+)`/g;
       const matches = new Set<string>();
       let m;
       while ((m = toolNamePattern.exec(content)) !== null) {
         const name = m[1];
-        // 排除纯下划线、布局类型（含有常见分隔符）、动画类型
-        if (/^_+$/.test(name)) continue;  // 纯下划线如 ___
-        if (/^(title_content|two_column|comparison|blank|fly_in|zoom|fade|wipe|appear)$/.test(name)) continue;  // 布局/动画类型
+        // æŽ’é™¤çº¯ä¸‹åˆ’çº¿ã€å¸ƒå±€ç±»åž‹ï¼ˆå«æœ‰å¸¸è§åˆ†éš”ç¬¦ï¼‰ã€åŠ¨ç”»ç±»åž?
+        if (/^_+$/.test(name)) continue;  // çº¯ä¸‹åˆ’çº¿å¦?___
+        if (/^(title_content|two_column|comparison|blank|fly_in|zoom|fade|wipe|appear)$/.test(name)) continue;  // å¸ƒå±€/åŠ¨ç”»ç±»åž‹
         matches.add(name);
       }
 
-      // 验证每个引用的工具名称
+      // éªŒè¯æ¯ä¸ªå¼•ç”¨çš„å·¥å…·åç§?
       const errors: string[] = [];
       const indexNames = TOOLS_INDEX.map(t => t.name);
 
       matches.forEach(name => {
-        if (BUILTIN_TOOLS.has(name)) return;
-        if (LEGACY_TOOLS[name]) return; // 已映射到 legacy
+        if (ALL_MCP_TOOLS.has(name)) return;
+        if (LEGACY_TOOLS[name]) return; // å·²æ˜ å°„åˆ° legacy
         if (indexNames.includes(name)) return;
 
-        // gateway index 工具名称不带 wps_ 前缀，尝试去掉前缀
+        // gateway index å·¥å…·åç§°ä¸å¸¦ wps_ å‰ç¼€ï¼Œå°è¯•åŽ»æŽ‰å‰ç¼€
         const shortName = name
           .replace('wps_excel_', '')
           .replace('wps_word_', '')
@@ -109,18 +109,18 @@ describe('Skills 引用的工具名称一致性', () => {
 
         if (indexNames.includes(shortName)) return;
 
-        errors.push(`  ${name} (尝试匹配: ${shortName})`);
+        errors.push(`  ${name} (å°è¯•åŒ¹é…: ${shortName})`);
       });
 
       if (errors.length > 0) {
-        console.error(`\n${skillPath} 引用了不存在的工具:\n${errors.join('\n')}`);
+        console.error(`\n${skillPath} å¼•ç”¨äº†ä¸å­˜åœ¨çš„å·¥å…·\n${errors.join('\n')}`);
       }
       expect(errors.length).toBe(0);
     });
   });
 });
 
-describe('Agents 引用的工具名称一致性', () => {
+describe('Agents å¼•ç”¨çš„å·¥å…·åç§°ä¸€è‡´æ€?, () => {
   const agentFiles = [
     'wps-expert.md',
     'wps-excel.md',
@@ -131,9 +131,9 @@ describe('Agents 引用的工具名称一致性', () => {
   agentFiles.forEach(agentPath => {
     const filePath = path.join(agentsDir, agentPath);
 
-    it(`文件 ${agentPath} 不应引用不存在的工具`, () => {
+    it(`æ–‡ä»¶ ${agentPath} ä¸åº”å¼•ç”¨ä¸å­˜åœ¨çš„å·¥å…·`, () => {
       if (!fs.existsSync(filePath)) {
-        // 在 MCP 测试环境中，agents 目录可能不存在，跳过
+        // åœ?MCP æµ‹è¯•çŽ¯å¢ƒä¸­ï¼Œagents ç›®å½•å¯èƒ½ä¸å­˜åœ¨ï¼Œè·³è¿‡
         return;
       }
 
@@ -148,7 +148,7 @@ describe('Agents 引用的工具名称一致性', () => {
 
       const errors: string[] = [];
       matches.forEach(name => {
-        if (BUILTIN_TOOLS.has(name)) return;
+        if (ALL_MCP_TOOLS.has(name)) return;
         if (LEGACY_TOOLS[name]) return;
 
         const shortName = name
@@ -163,15 +163,15 @@ describe('Agents 引用的工具名称一致性', () => {
       });
 
       if (errors.length > 0) {
-        console.error(`\n${agentPath} 引用了不存在的工具:\n${errors.join('\n')}`);
+        console.error(`\n${agentPath} å¼•ç”¨äº†ä¸å­˜åœ¨çš„å·¥å…·\n${errors.join('\n')}`);
       }
       expect(errors.length).toBe(0);
     });
   });
 });
 
-describe('wps-expert.md tools 字段验证', () => {
-  it('wps-expert.md 不应引用不存在的工具', () => {
+describe('wps-expert.md tools å­—æ®µéªŒè¯', () => {
+  it('wps-expert.md ä¸åº”å¼•ç”¨ä¸å­˜åœ¨çš„å·¥å…·', () => {
     const filePath = path.resolve(agentsDir, 'wps-expert.md');
     if (!fs.existsSync(filePath)) return;
 
@@ -187,7 +187,7 @@ describe('wps-expert.md tools 字段验证', () => {
     const errors: string[] = [];
 
     tools.forEach(name => {
-      if (BUILTIN_TOOLS.has(name)) return;
+      if (ALL_MCP_TOOLS.has(name)) return;
       if (LEGACY_TOOLS[name]) return;
 
       const shortName = name
@@ -202,7 +202,7 @@ describe('wps-expert.md tools 字段验证', () => {
     });
 
     if (errors.length > 0) {
-      console.error(`\nwps-expert.md 引用了不存在的工具:\n${errors.join('\n')}`);
+      console.error(`\nwps-expert.md å¼•ç”¨äº†ä¸å­˜åœ¨çš„å·¥å…·\n${errors.join('\n')}`);
     }
     expect(errors.length).toBe(0);
   });

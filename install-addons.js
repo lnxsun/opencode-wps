@@ -80,6 +80,7 @@ const opencodeAgentsProjectDir = path.join(homeDir, '.opencode', 'agents');
 // ===== 4. OpenCode 全局配置 =====
 const opencodeConfigDir = path.join(homeDir, '.config', 'opencode');
 const opencodeConfigPath = path.join(opencodeConfigDir, 'opencode.json');
+const opencodeConfigTemplate = path.resolve(rootDir, '.opencode', 'opencode.jsonc');
 
 // ===== 5. 废弃的 Claude 目录（需要清理） =====
 const staleClaudeDirs = [
@@ -128,13 +129,33 @@ addons.forEach(addon => {
     console.log('    已复制 ' + copiedCount + ' 个文件');
 
     // 动态注入安装路径（修复硬编码路径问题）
-    const mainJsPath = path.join(destDir, 'main.js');
-    if (fsEx.existsSync(mainJsPath)) {
-        const mainJsContent = fs.readFileSync(mainJsPath, 'utf-8');
-        const actualPath = destDir.replace(/\\/g, '\\\\');
-        const updatedContent = mainJsContent.replace('___ADDON_INSTALL_PATH___', actualPath);
-        fs.writeFileSync(mainJsPath, updatedContent, 'utf-8');
-        console.log('    已注入安装路径: ' + destDir);
+    if (addon.name === 'opencode-wps') {
+        const mainJsPath = path.join(destDir, 'main.js');
+        if (fsEx.existsSync(mainJsPath)) {
+            const mainJsContent = fs.readFileSync(mainJsPath, 'utf-8');
+            const actualPath = destDir.replace(/\\/g, '\\\\');
+            const updatedContent = mainJsContent.replace(/___WPS_ADDON_PATH___/g, () => actualPath);
+            if (updatedContent === mainJsContent) {
+                console.log('    [警告] main.js 中未找到 ___WPS_ADDON_PATH___，路径注入失败');
+            } else {
+                fs.writeFileSync(mainJsPath, updatedContent, 'utf-8');
+                console.log('    已注入安装路径: ' + destDir);
+            }
+        }
+
+        // 注入用户主目录到 config.js（修复 CWD 硬编码问题）
+        const configJsPath = path.join(destDir, 'config.js');
+        if (fsEx.existsSync(configJsPath)) {
+            const configJsContent = fs.readFileSync(configJsPath, 'utf-8');
+            const userHome = process.env.USERPROFILE || require('os').homedir();
+            const updatedConfig = configJsContent.replace(/___WPS_USER_HOME___/g, () => userHome.replace(/\\/g, '\\\\'));
+            if (updatedConfig === configJsContent) {
+                console.log('    [警告] config.js 中未找到 ___WPS_USER_HOME___，用户目录注入失败');
+            } else {
+                fs.writeFileSync(configJsPath, updatedConfig, 'utf-8');
+                console.log('    已注入用户目录: ' + userHome);
+            }
+        }
     }
 });
 
@@ -285,31 +306,91 @@ const mcpEntryPath = path.resolve(mcpServer.src, mcpServer.entryPoint);
 const mcpEntryForward = mcpEntryPath.replace(/\\/g, '/');  // opencode.json 用正斜杠
 
 if (fsEx.existsSync(mcpEntryPath)) {
-    // 读取或创建 opencode.json
-    let config = {};
     fsEx.ensureDirSync(opencodeConfigDir);
 
+    // 辅助：去除 JSONC 注释（行注释 // 和块注释 /* */）
+    function stripJsoncComments(text) {
+        return text.replace(/\\"|"(?:[^"\\]|\\.)*"|\/\/.*|\/\*[\s\S]*?\*\//g, function(m) {
+            // 保留字符串内的内容，去除注释
+            return m.startsWith('"') || m.startsWith('\\"') ? m : '';
+        });
+    }
+
+    // 第 1 步：从模板加载默认配置
+    let config = {};
+    if (fsEx.existsSync(opencodeConfigTemplate)) {
+        try {
+            const raw = fs.readFileSync(opencodeConfigTemplate, 'utf-8');
+            config = JSON.parse(stripJsoncComments(raw));
+            console.log('  已加载配置模板: ' + opencodeConfigTemplate);
+        } catch (e) {
+            console.log('  [警告] 无法解析配置模板: ' + e.message);
+            config = {};
+        }
+    } else {
+        console.log('  [跳过] 配置模板不存在: ' + opencodeConfigTemplate);
+    }
+
+    // 第 2 步：用已有配置覆盖（保留用户自定义内容如 API Key）
     if (fsEx.existsSync(opencodeConfigPath)) {
         try {
             const raw = fs.readFileSync(opencodeConfigPath, 'utf-8');
             // 去掉 BOM
-            config = JSON.parse(raw.replace(/^\uFEFF/, ''));
+            const existing = JSON.parse(raw.replace(/^\uFEFF/, ''));
+            // 深度合并：existing 覆盖 template（已有配置优先）
+            function deepMerge(target, source) {
+                for (var key in source) {
+                    if (source.hasOwnProperty(key)) {
+                        if (Array.isArray(source[key])) {
+                            target[key] = source[key].slice();
+                        } else if (typeof source[key] === 'object' && source[key] !== null && !Array.isArray(source[key])) {
+                            if (!target[key] || typeof target[key] !== 'object' || Array.isArray(target[key])) {
+                                target[key] = {};
+                            }
+                            deepMerge(target[key], source[key]);
+                        } else {
+                            // source（已有配置）始终覆盖 target（模板）
+                            target[key] = source[key];
+                        }
+                    }
+                }
+            }
+            deepMerge(config, existing);
+            console.log('  已合并已有配置: ' + opencodeConfigPath);
         } catch (e) {
-            console.log('  [警告] 无法解析 opencode.json，将重新创建');
-            config = {};
+            console.log('  [警告] 无法解析 opencode.json: ' + e.message);
         }
     }
 
-    // 确保 mcp 字段存在
-    if (!config.mcp) config.mcp = {};
+    // 第 3 步：替换占位符
+    function replacePlaceholders(obj) {
+        for (var key in obj) {
+            if (typeof obj[key] === 'string') {
+                // ___AGNES_API_KEY___ → 环境变量 AGNES_API_KEY（如存在）
+                if (obj[key] === '___AGNES_API_KEY___') {
+                    var envVal = process.env.AGNES_API_KEY;
+                    if (envVal) obj[key] = envVal;
+                }
+                // ___WPS_USER_HOME___ → 用户主目录
+                if (obj[key] === '___WPS_USER_HOME___') {
+                    var userHome = process.env.USERPROFILE || require('os').homedir();
+                    obj[key] = userHome.replace(/\\/g, '\\\\');
+                }
+            } else if (typeof obj[key] === 'object' && obj[key] !== null) {
+                replacePlaceholders(obj[key]);
+            }
+        }
+    }
+    replacePlaceholders(config);
 
-    // 更新 wps-office MCP 配置
+    // 第 4 步：更新 MCP 配置
+    if (!config.mcp) config.mcp = {};
     config.mcp[mcpServer.name] = {
         command: ['node', mcpEntryForward],
         type: 'local'
     };
 
-    // 写回配置
+    // 第 5 步：写回配置
     fs.writeFileSync(opencodeConfigPath, JSON.stringify(config, null, 2) + '\n', 'utf-8');
     console.log('  已配置 MCP 服务器: ' + mcpServer.name);
     console.log('  入口: ' + mcpEntryForward);

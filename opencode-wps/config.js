@@ -35,7 +35,9 @@ var CONFIG = {
         // 加载项名称
         addonName: 'OpenCode AI',
         // 插件版本
-        version: '1.1.0'
+        version: '1.1.0',
+        // 用户主目录（安装时注入，见 install-addons.js）
+        userHome: '___WPS_USER_HOME___'
     },
 
     // 会话配置

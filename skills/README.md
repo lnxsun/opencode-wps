@@ -4,11 +4,11 @@
 
 ```
 skills/           ← 源文件（此目录，被 git 跟踪）
-    wps-excel/
-    wps-word/
-    wps-ppt/
-    wps-office/
-    wps-proofread/       # 文档校对技能
+    wps-excel/           # Excel 数据处理技能
+    wps-word/            # Word 文档操作技能
+    wps-ppt/             # PPT 演示文稿技能
+    wps-office/          # WPS 通用技能
+    wps-proofread/       # 文档校对技能（P1-P16 严格逐批校验）
 
 ↓ 安装后复制到 ↓
 

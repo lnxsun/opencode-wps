@@ -30,13 +30,13 @@ npm run mcp:install      # 安装 MCP 依赖
 ```
 opencode-wps/
 ├── opencode-wps/         # WPS JS 加载项 (main.js, taskpane.html, ribbon.xml)
-├── wps-office-mcp/       # MCP 服务器 (TypeScript, 240 个 COM Actions + 14 内置工具)
+├── wps-office-mcp/       # MCP 服务器 (TypeScript, 240 个 COM Actions + 12 内置工具)
 ├── skills/               # 5 个 OpenCode Skills (wps-excel/word/ppt/office/proofread)
 │   └── README.md        # ⚠️ 必须先读：skills 修改流程
 ├── agents/               # 自定义 Agents (wps-expert + 3 个子 agents)
 ├── .opencode/
 │   ├── plugins/
-│   │   └── governance.js # ⚙️ 执行治理插件（19 条规则，代码层强制执行）
+│   │   └── governance.js # ⚙️ 执行治理插件（G1-G7 + P1-P16 + T1-T11，代码层强制执行）
 │   └── package.json
 └── install-addons.js     # 一键安装脚本 (7 步)
 ```
@@ -50,15 +50,16 @@ opencode-wps/
 ### 现有 Agents
 | Agent | 角色 | 说明 |
 |-------|------|------|
-| wps-expert | primary | WPS Office 智能助手主 agent |
+| wps | primary | WPS Office 综合助手（OpenCode 默认 agent） |
+| wps-expert | subagent | WPS Office 智能助手，综合处理 Word/Excel/PPT |
 | wps-word | subagent | Word 文档处理专家 |
 | wps-excel | subagent | Excel 数据处理专家 |
 | wps-ppt | subagent | PPT 演示文稿专家 |
 
 ### 使用方式
-1. 在 WPS 侧边栏底部点击 **Agent** 按钮选择
-2. 消息中可用 `@wps-word`、`@wps-excel`、`@wps-ppt` 调用子 agents
-3. 发送消息时会自动传递 `agent` 参数到 OpenCode API
+1. 在消息中使用 `@wps-expert`、`@wps-word`、`@wps-excel`、`@wps-ppt` 调用子 agents
+2. 消息中自动传递 `agent` 参数到 OpenCode API
+3. 默认使用 wps 主 agent（无需 @ 前缀）
 
 ### 修改 Agents
 1. 修改 `~/.config/opencode/agents/` 下的 `.md` 文件
@@ -106,7 +107,7 @@ OpenCode 通过 Launcher 进程管理自动启动：
 
 `.opencode/plugins/governance.js` 是项目的执行治理核心，使用 OpenCode Plugin Hooks 在运行时拦截所有 MCP 工具调用：
 
-### 通用规则（G1-G8，始终生效）
+### 通用规则（G1-G7，始终生效）
 - **G1 网关强制**：6 个双路径工具必须走 `wps_office_execute` 网关
 - **G2 wps_execute_method 白名单**：仅允许白名单 API 通过
 - **G3 读前必写**：写操作前必须先读取文档状态
@@ -114,10 +115,12 @@ OpenCode 通过 Launcher 进程管理自动启动：
 - **G5 文件路径安全**：禁止 `..` 路径穿越
 - **G6 密码保护**：保护/取消保护密码脱敏
 - **G7 参数范围校验**：行号/索引自动 ≥ 1
-- **G8 跨应用缓存**：跨应用数据传递提示
 
-### 校对规则（P1-P11，分批校对时生效）
-- 批次大小 ≤200、连续性、startOffset 匹配、修订模式等 11 条规则
+### 校对规则（P1-P16，分批校对时生效）
+- **P1-P11**：批次大小 ≤200、连续性、startOffset 匹配、修订模式、proofreadBasic 必调、P14(P13) 确认前必须 proofread、P15 无 issue 限制 AI 修复、P16 替换内容与已知 issue 交叉校验
+
+### 模板填写规则（T1-T11，模板填写时生效）
+- 填写前评估文档、分批 ≤200 段、开启修订模式、禁止编造字段、跳过签字字段、所有填值加下划线
 
 ### 修改治理插件
 1. 修改 `.opencode/plugins/governance.js`
