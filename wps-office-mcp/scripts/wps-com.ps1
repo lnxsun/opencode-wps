@@ -31,14 +31,7 @@ function Get-WpsPpt {
 }
 
 function Sanitize-Text($text) {
-    if ($null -eq $text) { return $text }
-    # 剥离控制字符（保留 \n \r \t），供后续 JSON 输出使用
-    # WPS COM 的 Range.Text 可能在正文中返回 \a(0x07 表格分隔符)、\f(0x0C 分页符) 等
-    $text = $text -replace "`a", ""
-    $text = $text -replace "`b", ""
-    $text = $text -replace "`f", ""
-    $text = $text -replace "`v", ""
-    $text = $text -replace "`0", ""
+    # ⚠️ NOT USED directly — controls chars are handled by Escape-JsonControlChars in Output-Json
     return $text
 }
 
@@ -2197,6 +2190,7 @@ switch ($Action) {
         # 限制单次最多 100 段，防止 Information() 调用耗时过长
         $maxBatch = [Math]::Min($indices.Count, 100)
         $results = @()
+        $truncated = $false
         for ($i = 0; $i -lt $maxBatch; $i++) {
             $idx = $indices[$i]
             try {
@@ -2210,15 +2204,16 @@ switch ($Action) {
                     pageNumber = [int]$pageNum
                     lineNumber = [int]$lineNum
                 }
-                # 单段耗时 > 5s 时警告，不再继续处理后续段落
+                # 单段耗时 > 5s 时警告，跳过后续段落
                 if ($elapsed.TotalSeconds -gt 5) {
                     $results += @{
                         paragraphIndex = -1
                         pageNumber = $null
                         lineNumber = $null
-                        error = "段落 $idx 的 Information() 调用耗时 ${elapsed.TotalSeconds:F1}s，超出 5s 限制，已截断后续段落"
+                        error = "段落 $idx 的 Information() 调用耗时 ${elapsed.TotalSeconds:F1}s，超出 5s 限制，已跳过"
                     }
-                    break
+                    $truncated = $true
+                    continue
                 }
             } catch {
                 $results += @{ paragraphIndex = [int]$idx; pageNumber = $null; lineNumber = $null; error = $_.Exception.Message }
@@ -2226,8 +2221,11 @@ switch ($Action) {
         }
         if ($indices.Count -gt $maxBatch) {
             $results += @{ paragraphIndex = -1; pageNumber = $null; lineNumber = $null; error = "请求 ${($indices.Count)} 段超过单次上限 100，已截断，请分批调用" }
+            $truncated = $true
         }
-        Output-Json @{ success = $true; data = @{ locations = $results; totalRequested = $indices.Count; processed = $results.Count } }
+        $successCount = ($results | Where-Object { $null -eq $_.error }).Count
+        $errorCount = $results.Count - $successCount
+        Output-Json @{ success = $true; data = @{ locations = $results; totalRequested = $indices.Count; successCount = $successCount; errorCount = $errorCount; truncated = $truncated } }
     }
 
     "findInDocument" {

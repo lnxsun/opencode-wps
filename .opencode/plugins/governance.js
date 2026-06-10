@@ -650,7 +650,8 @@ export const WpsGovernancePlugin = async () => {
             `⚠️ 描述校对位置时，永远用「第x页第x行」格式，禁止用「第x段」。\n` +
             `请先收集本批有问题的段落索引，然后调用：\n` +
             `wps_office_execute({ tool_name: "getParagraphPageInfo", ` +
-            `arguments: { paragraphIndices: [...] } })`
+            `arguments: { paragraphIndices: [...] } })\n` +
+            `（如果本批无问题段落，传空数组即可：{ paragraphIndices: [] }）`
           );
         }
         return;
@@ -750,17 +751,15 @@ export const WpsGovernancePlugin = async () => {
             }
           }
           // P18：目录段落禁止修改（目录自动从正文生成，修改正文后会自动同步）
-          if (toolName === "replaceInParagraph") {
-            const paraIdx = innerArgs.paragraphIndex;
-            if (paraIdx !== undefined) {
-              const style = batchParaStyles[paraIdx];
-              if (style && /目录/.test(style)) {
-                throw new Error(
-                  `【执行治理】【P18】段落 ${paraIdx} 样式为"${style}"（目录段落）。\n` +
-                  `目录是自动生成的，修改正文后目录会自动更新。\n` +
-                  `请去正文对应位置修改，不要修改目录条目。`
-                );
-              }
+          const p18ParaIdx = innerArgs.paragraphIndex;
+          if (p18ParaIdx !== undefined) {
+            const style = batchParaStyles[p18ParaIdx];
+            if (style && /目录/.test(style)) {
+              throw new Error(
+                `【执行治理】【P18】段落 ${p18ParaIdx} 样式为"${style}"（目录段落）。\n` +
+                `目录是自动生成的，修改正文后目录会自动更新。\n` +
+                `请去正文对应位置修改，不要修改目录条目。`
+              );
             }
           }
           if (batchStarted) {
