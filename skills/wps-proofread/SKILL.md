@@ -307,22 +307,32 @@ wps_office_execute({
 // 返回精确的文档原始文本（包含空段落标记）
 ```
 
-> **⚠️ 关键：必须用 `file_path` 传文本给 proofreadBasic**  
-> 本批文本通过 2b 获得后，**必须写为临时文件**再传 `file_path`，**不得**直接通过 `text` 参数传递。原因：
-> - `\f`（分页符）、`\u201c`/`\u201d` 等字符会导致 JSON 序列化失败（"JSON Parse error: Unterminated string"）
-> - 实际测试中 ≥ 2000 字符的文本就可能在 MCP JSON-RPC 层解析失败
-> - `file_path` 完全避免此问题，且不影响 `startOffset` 偏移定位
+> **🚨 硬性规则：必须用 `file_path` 传文本给 proofreadBasic，禁止用 `text` 参数！**
 >
-> **正确做法：**
+> **为什么？** Word 文档中的分页符（`\f`, 0x0C）、表格分隔符（`\a`, 0x07）、智能引号（`\u201c`/`\u201d`）在 JSON-RPC 传输时会导致"JSON Parse error: Unterminated string"——这是一个**已知的、无法在代码层面彻底解决**的 MCP 协议层问题（控制字符通过 JSON 传输时会被损坏或导致解析失败）。
+>
+> 唯一可靠的解决方案：**永远不走 JSON，通过文件传递**。
+>
+> **正确做法（每批必须执行）：**
 > ```javascript
-> // 1. 写文件
-> $text | Out-File -FilePath $tempFile -Encoding utf8
-> // 2. 传 file_path
+> // 1. 用 bash 将文本写入临时文件
+> wps_office_execute({
+>   tool_name: "getDocumentTextByRange",
+>   arguments: { startOffset: batchStartOffset, length: rangeLength }
+> })
+> // → 返回 text, 不要直接用这个 text 调 proofreadBasic！
+>
+> // 2. 用 bash 写入临时文件
+> bash: Set-Content -Path $env:TEMP\batch.txt -Value (要用到的文本) -Encoding utf8
+>
+> // 3. 传 file_path
 > wps_office_execute({
 >   tool_name: "proofreadBasic",
->   arguments: { file_path: $tempFile, startOffset: batchStartOffset }
+>   arguments: { file_path: "$env:TEMP\\batch.txt", startOffset: batchStartOffset }
 > })
 > ```
+>
+> **⚠️ 注意**：`Out-File -Encoding utf8` 会写入 BOM (UTF8-BOM)，MCP 的 proofread 处理器会自动跳过 BOM 前 3 字节，所以用 `Out-File` 或 `Set-Content` 均可。
 
 **注意：禁止手动拼接段落文本（如 `paragraphs.map(...).join('\n')`）。**
 **手动拼接会跳过空段落，导致 text.length 与本批字符范围不匹配，被插件拒绝。**
@@ -533,34 +543,46 @@ wps_office_execute({
 
 ### Step 3: 生成校对报告
 
+**🚨 关键警告：禁止在生成报告时花费大量 Token 思考格式！**
+- 你已完成所有校对工作，**报告格式本身不是校对的一部分**
+- 最多用 1 次思考列出问题清单，然后立刻用 `write` 工具写入文件
+- 如果花了 >30 秒思考报告格式，说明你在浪费时间，请立即停止并写入
+
 报告写入文档同目录的 `{文档名}.校对报告.md`。
 
-```markdown
+**推荐做法：用 `write` 工具直接写入，禁止在自己的输出内容中先生成报告再复制。**
+
+格式可以是简单列表（不必做表格），关键是把所有问题列全：
+
+```
 # 校对报告
 
-- **文档**：XXX.docx
-- **校对时间**：2026-05-28 15:30
-- **总字数**：12,345
-- **修订总数**：28
+文档：{文档名}
+校对时间：{时间}
+总字数：{字数}
+修订总数：{修订数}
 
 ## 发现的问题
 
-**位置列使用 `第x页第x行` 格式**（通过 `getParagraphPageInfo` 将段落索引转换得到）。
-
-| # | 位置 | 原文 | 修改为 | 问题类型 | 检测方式 |
-|---|------|------|--------|---------|---------|
-| 1 | 第1页第5行 | 发明了很多 | 发明了很多 | 重复字符 | MCP |
-| 2 | 第2页第3行 | 这个方案非常好 | 这个方案非常好 | "的"多余 | MCP |
-
-## 统计摘要
-
-| 类型 | 数量 |
-|------|------|
-| 正则基础校对 | 18 处 |
-| AI 智能校对 | 10 处 |
-| **合计** | **28 处** |
-| 全部已修复 | ✅ |
+1. 第{页}页第{行}行：「{原文}」→「{修改为}」（{问题类型}）
+2. ...
 ```
+
+**统计摘要也简化：**
+
+```
+- 基础校对：N 处
+- AI 校对：N 处
+- 合计：N 处
+- 全部已修复
+```
+
+**严禁行为：**
+- ❌ 先在自己的思考中反复排版报告再复制（→ 导致模型死循环，卡 84 分钟）
+- ❌ 在用户对话中输出报告完整内容后再写文件（→ 浪费上下文）
+- ✅ 直接调用 `write` 将报告写入文件，只在对话中提示"报告已生成"
+
+> **如果发现自己卡在报告生成的思考中 → 立即终止思考，以最简格式写入文件。**
 
 ### Step 4: 收尾
 
@@ -571,6 +593,20 @@ wps_office_execute({
 ---
 
 ## 常见问题
+
+### 0. 生成报告时卡死（模型思考超长）怎么办？
+
+**症状**：所有批次校对完成，但在生成校对报告时模型思考了数分钟甚至数十分钟。
+
+**原因**：你的上下文已非常大（3 批校对的所有工具调用 + 思考），模型在"构思报告格式"时发生死循环。
+
+**立刻解决**：
+1. **终止当前思考**
+2. 不要排版，直接用最简格式写文件：
+   ```
+   # 校对报告\n\n1. 第X页第X行：修正内容\n...
+   ```
+3. 调用 `write` 工具写入，不要在对话中输出完整报告
 
 ### 1. getDocumentParagraphs(200) 超时怎么办？
 

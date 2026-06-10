@@ -30,8 +30,34 @@ function Get-WpsPpt {
     catch { return $null }
 }
 
+function Sanitize-Text($text) {
+    if ($null -eq $text) { return $text }
+    # 剥离控制字符（保留 \n \r \t），供后续 JSON 输出使用
+    # WPS COM 的 Range.Text 可能在正文中返回 \a(0x07 表格分隔符)、\f(0x0C 分页符) 等
+    $text = $text -replace "`a", ""
+    $text = $text -replace "`b", ""
+    $text = $text -replace "`f", ""
+    $text = $text -replace "`v", ""
+    $text = $text -replace "`0", ""
+    return $text
+}
+
+function Escape-JsonControlChars($json) {
+    # ConvertTo-Json 不转义 \a(0x07) \b(0x08) \f(0x0C) \v(0x0B) \0(0x00)
+    # 这些控制字符在 WPS 文档（表格分隔符 \a、分页符 \f）中很常见，
+    # 直接传给 JSON.parse 会导致 "Unterminated string"
+    $json = $json -replace "`a", "\u0007"
+    $json = $json -replace "`b", "\u0008"
+    $json = $json -replace "`f", "\u000c"
+    $json = $json -replace "`v", "\u000b"
+    $json = $json -replace "`0", "\u0000"
+    return $json
+}
+
 function Output-Json($obj) {
-    $obj | ConvertTo-Json -Depth 10 -Compress
+    $json = $obj | ConvertTo-Json -Depth 10 -Compress
+    $json = Escape-JsonControlChars $json
+    return $json
 }
 
 function Convert-ColumnLetterToNumber([string]$letters) {
