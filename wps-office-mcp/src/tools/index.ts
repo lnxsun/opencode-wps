@@ -20,7 +20,7 @@ import { pptTools } from './ppt';
 import { commonTools } from './common';
 
 /**
- * 所有MCP Tools集合（共240个直接注册工具，另有12个内置工具 + 240个Gateway COM Actions）
+ * 所有MCP Tools集合（共238个直接注册工具，另有12个内置工具 + 240个Gateway COM Actions）
  *
  * 三层工具体系：
  *   1. 内置工具（12个，在 mcp-server.ts 中注册）：wps_check_connection, wps_get_cell_value 等
@@ -29,7 +29,7 @@ import { commonTools } from './common';
  *
  * 直接注册工具分类：
  *   Excel (82个):   公式/数据/图表/透视表/工作表/格式化/工作簿/高级数据
- *   Word   (32个):  格式化(5)/内容(14)/文档管理(9)/校对(4)
+ *   Word   (35个):  格式化(5)/内容(14)/文档管理(9)/校对(4)/其他(3)
  *   PPT   (112个):  幻灯片/幻灯片操作/演示文稿管理/文本框/动画/背景/图片/表格/形状
  *   Common (9个):   转换/通用
  */

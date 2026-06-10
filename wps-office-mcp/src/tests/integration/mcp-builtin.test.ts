@@ -88,6 +88,10 @@ describe('MCP Server 内置工具注册', () => {
   });
 
   describe('内置工具数量验证', () => {
+    it('registry 应包含 14 个工具（12 内置 + 2 Gateway）', () => {
+      expect(registry.size).toBe(14);
+    });
+
     it('应注册 12 个内置工具（不含 Gateway）', () => {
       const builtinTools = [
         'wps_check_connection',
