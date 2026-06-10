@@ -1,0 +1,31 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  // 默认模型（provider/model_id 格式）
+  "model": "agnes/agnes-2.0-flash",
+  // 自定义 AI 供应商
+  "provider": {
+    "agnes": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "Agnes AI",
+      "options": {
+        "baseURL": "https://apihub.agnes-ai.com/v1",
+        // API Key：可通过环境变量 AGNES_API_KEY 设置，或直接替换下方占位符
+        "apiKey": "___AGNES_API_KEY___"
+      },
+      "models": {
+        "agnes-2.0-flash": {
+          "name": "Agnes2.0 Flash"
+        },
+        "agnes-1.5-flash": {
+          "name": "Agnes1.5 Flash"
+        },
+        "agnes-image-2.1-flash": {
+          "name": "Agnes Image2.1 Flash"
+        },
+        "agnes-video-v2.0": {
+          "name": "Agnes Video V2.0"
+        }
+      }
+    }
+  }
+}
