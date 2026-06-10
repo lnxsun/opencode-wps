@@ -13,17 +13,15 @@ OpenCode WPS 将 OpenCode AI 的能力集成到 WPS Office 中，通过侧边栏
 核心特性：
 
 - **WPS 内嵌 AI 对话** — 侧边栏 Chat UI，支持 SSE 流式输出、Markdown 渲染
-- **自动检测工作目录** — 打开侧边栏自动以当前文档所在目录为工作目录，无需手动选择
 - **多会话管理** — 创建、重命名、切换、删除对话会话
 - **模型搜索** — 模型选择下拉框支持关键词实时搜索过滤
 - **选择持久化** — 供应商和模型选择自动记住，下次打开无需重新选择
 - **MCP 工具集成** — 通过 WPS Office MCP 服务器，AI 可以直接操作文档（读/写/格式化），492 个工具覆盖三大应用
-- **WPS 专用 Agents** — 自定义 wps-expert 主 agent 和 wps-word/wps-excel/wps-ppt 子 agents，通过 Agent 选择实现功能聚焦
+- **WPS 专用 Agents** — 自定义 wps-expert/wps-word/wps-excel/wps-ppt agents，通过 Agent 选择实现功能聚焦
 - **执行治理插件** — `.opencode/plugins/governance.js` 使用 7 条通用规则（G1-G7）+ 16 条校对规则（P1-P16）+ 11 条模板填写规则（T1-T11），运行时拦截所有 MCP 调用
 - **Agent 选择** — 底部工具栏支持切换不同 agent，消息自动传递 agent 参数
 - **一键安装** — 运行 `node install-addons.js` 自动完成全部组件安装（8 步），安装时动态注入用户路径
 - **开机自启** — 通过 Launcher 进程自动管理 OpenCode 服务（监听 14097 端口），用户登录时自动启动
-- **执行治理** — governance.js 使用 P1-P16 规则强制 AI 遵守工具调用规范（严格逐批校对、禁止 AI 编造问题、交叉校验修复内容）
 - **完整技术文档** — `docs/` 目录包含开发指南、API 参考、问题排查等 10+ 份文档
 
 ## 项目组成（4 层架构）
@@ -45,7 +43,7 @@ opencode-wps/
 ├──
 ├── opencode-wps/              # 第 1 层：WPS JS 插件（前台 Chat 窗口 + 后台 Launcher）
 │   ├── main.js                # Ribbon 回调、状态管理、OpenCode 连接
-│   ├── taskpane.html          # Chat UI（SSE 流式对话、Markdown 渲染、模型搜索、自动检测文档目录、供应商/模型持久化）
+│   ├── taskpane.html          # Chat UI（SSE 流式对话、Markdown 渲染、会话管理、Agent 选择）
 │   ├── launcher.js            # Launcher 进程（自动启动 opencode serve，管理 14097 端口）
 │   ├── ribbon.xml             # 功能区按钮定义
 │   └── manifest.xml           # 加载项清单
@@ -274,10 +272,9 @@ node install-addons.js
 ### 打开 AI 对话面板
 
 1. 在 WPS 功能区点击 **OpenCode AI** 标签页
-2. 打开一个文档后，点击 **打开面板** 按钮，右侧弹出 Chat 侧边栏
-3. 侧边栏会自动检测当前文档所在目录作为工作目录，并自动启动服务
-4. 如果未打开任何文档，侧边栏会显示手动选择目录的界面
-5. 点击 **连接状态** 按钮查看 OpenCode 服务状态
+2. 点击 **打开面板** 按钮，右侧弹出 Chat 侧边栏
+3. 首次使用需点击输入框选择工作目录（工具/Skills/MCP 所在目录），或直接启动服务使用默认 `~` 目录
+4. 点击 **连接状态** 按钮查看 OpenCode 服务状态
 
 ### 对话操作
 
