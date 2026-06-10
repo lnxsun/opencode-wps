@@ -2168,18 +2168,40 @@ switch ($Action) {
         $doc = $word_app.ActiveDocument
         if ($null -eq $doc) { Output-Json @{ success = $false; error = "No active document" }; exit }
         $indices = if ($null -ne $p.paragraphIndices) { $p.paragraphIndices } else { @($p.paragraphIndex) }
+        # 限制单次最多 100 段，防止 Information() 调用耗时过长
+        $maxBatch = [Math]::Min($indices.Count, 100)
         $results = @()
-        foreach ($idx in $indices) {
+        for ($i = 0; $i -lt $maxBatch; $i++) {
+            $idx = $indices[$i]
             try {
                 $para = $doc.Paragraphs.Item([int]$idx)
+                $startTime = [DateTime]::Now
                 $pageNum = $para.Range.Information(3)
                 $lineNum = $para.Range.Information(10)
-                $results += @{ paragraphIndex = [int]$idx; pageNumber = [int]$pageNum; lineNumber = [int]$lineNum }
+                $elapsed = [DateTime]::Now - $startTime
+                $results += @{
+                    paragraphIndex = [int]$idx
+                    pageNumber = [int]$pageNum
+                    lineNumber = [int]$lineNum
+                }
+                # 单段耗时 > 5s 时警告，不再继续处理后续段落
+                if ($elapsed.TotalSeconds -gt 5) {
+                    $results += @{
+                        paragraphIndex = -1
+                        pageNumber = $null
+                        lineNumber = $null
+                        error = "段落 $idx 的 Information() 调用耗时 ${elapsed.TotalSeconds:F1}s，超出 5s 限制，已截断后续段落"
+                    }
+                    break
+                }
             } catch {
                 $results += @{ paragraphIndex = [int]$idx; pageNumber = $null; lineNumber = $null; error = $_.Exception.Message }
             }
         }
-        Output-Json @{ success = $true; data = @{ locations = $results } }
+        if ($indices.Count -gt $maxBatch) {
+            $results += @{ paragraphIndex = -1; pageNumber = $null; lineNumber = $null; error = "请求 ${($indices.Count)} 段超过单次上限 100，已截断，请分批调用" }
+        }
+        Output-Json @{ success = $true; data = @{ locations = $results; totalRequested = $indices.Count; processed = $results.Count } }
     }
 
     "findInDocument" {

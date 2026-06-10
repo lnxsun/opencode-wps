@@ -13,7 +13,7 @@
  * 规则 G7：参数范围校验（行号/列号/索引 ≥ 1）
  *
  * ── 分批校对规则（校对激活时生效） ──
- * 规则 P1-P16：继承 enforce-batch.js 的全部 11 条规则 + P12-P16 严格逐批（P12：周期未完成禁止获取下一批；P13：getDocumentTextByRange 限本批范围；P14：confirmBatchAiProofread 前必须 proofreadBasic；P15：基础校对无 issue 时禁止 AI 自行大量修复；P16：替换内容与已知 issue 交叉校验）
+ * 规则 P1-P17：继承 enforce-batch.js 的全部 11 条规则 + P12-P16 严格逐批（P12：周期未完成禁止获取下一批；P13：getDocumentTextByRange 限本批范围；P14：confirmBatchAiProofread 前必须 proofreadBasic；P15：基础校对无 issue 时禁止 AI 自行大量修复；P16：替换内容与已知 issue 交叉校验；P17：确认前必须调用 getParagraphPageInfo 获取页码/行号）
  *
  * ── 模板填写工作流规则（模板填写时生效） ──
  * 规则 T1：填写前必须调用 getActiveDocument 评估文档规模
@@ -141,6 +141,7 @@ let replaceCalledThisBatch = false;
 let proofreadHadIssues = false;
 let proofreadIssueOriginals = [];
 let replaceCountThisBatch = 0;
+let pageInfoCalledThisBatch = false;
 const MAX_AI_FIXES_NO_ISSUES = 1;
 
 let appReadState = {
@@ -324,6 +325,7 @@ export const WpsGovernancePlugin = async () => {
           proofreadHadIssues = false;
           proofreadIssueOriginals = [];
           replaceCountThisBatch = 0;
+          pageInfoCalledThisBatch = false;
           templateFilling.paragraphsFetched = true;
           templateFilling.lastParagraphIndex = ranges[ranges.length - 1].index;
           return;
@@ -360,6 +362,11 @@ export const WpsGovernancePlugin = async () => {
         if (toolName === "replaceInParagraph") {
           replaceCalledThisBatch = true;
           replaceCountThisBatch++;
+          return;
+        }
+
+        if (toolName === "getParagraphPageInfo") {
+          pageInfoCalledThisBatch = true;
           return;
         }
 
@@ -628,6 +635,17 @@ export const WpsGovernancePlugin = async () => {
             `【执行治理】【P14】confirmBatchAiProofread 必须在 proofreadBasic 之后调用。\n` +
             `当前批尚未进行基础校对，请先调用 proofreadBasic。` +
             `（禁止跳过基础校对直接确认 AI 校对）`
+          );
+        }
+        // ── 规则 P17：确认前必须调用 getParagraphPageInfo 获取页码/行号 ──
+        if (batchStarted && !pageInfoCalledThisBatch) {
+          throw new Error(
+            `【执行治理】【P17】确认本批 AI 校对前，必须先调用 ` +
+            `getParagraphPageInfo 获取本批问题段落的页码/行号。\n` +
+            `⚠️ 描述校对位置时，永远用「第x页第x行」格式，禁止用「第x段」。\n` +
+            `请先收集本批有问题的段落索引，然后调用：\n` +
+            `wps_office_execute({ tool_name: "getParagraphPageInfo", ` +
+            `arguments: { paragraphIndices: [...] } })`
           );
         }
         return;
