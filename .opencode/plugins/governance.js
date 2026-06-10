@@ -13,7 +13,7 @@
  * 规则 G7：参数范围校验（行号/列号/索引 ≥ 1）
  *
  * ── 分批校对规则（校对激活时生效） ──
- * 规则 P1-P17：继承 enforce-batch.js 的全部 11 条规则 + P12-P16 严格逐批（P12：周期未完成禁止获取下一批；P13：getDocumentTextByRange 限本批范围；P14：confirmBatchAiProofread 前必须 proofreadBasic；P15：基础校对无 issue 时禁止 AI 自行大量修复；P16：替换内容与已知 issue 交叉校验；P17：确认前必须调用 getParagraphPageInfo 获取页码/行号）
+ * 规则 P1-P18：继承 enforce-batch.js 的全部 11 条规则 + P12-P16 严格逐批（P12：周期未完成禁止获取下一批；P13：getDocumentTextByRange 限本批范围；P14：confirmBatchAiProofread 前必须 proofreadBasic；P15：基础校对无 issue 时禁止 AI 自行大量修复；P16：替换内容与已知 issue 交叉校验；P17：确认前必须调用 getParagraphPageInfo 获取页码/行号；P18：目录段落禁止修改）
  *
  * ── 模板填写工作流规则（模板填写时生效） ──
  * 规则 T1：填写前必须调用 getActiveDocument 评估文档规模
@@ -142,6 +142,7 @@ let proofreadHadIssues = false;
 let proofreadIssueOriginals = [];
 let replaceCountThisBatch = 0;
 let pageInfoCalledThisBatch = false;
+let batchParaStyles = {}; // { [paragraphIndex]: styleName } — 当前批各段落的样式
 const MAX_AI_FIXES_NO_ISSUES = 1;
 
 let appReadState = {
@@ -169,7 +170,7 @@ function parseParagraphRanges(outputText) {
   const matches = [];
   let m;
   while ((m = regex.exec(outputText)) !== null) {
-    matches.push({ index: parseInt(m[1], 10), start: parseInt(m[3], 10), end: parseInt(m[4], 10) });
+    matches.push({ index: parseInt(m[1], 10), start: parseInt(m[3], 10), end: parseInt(m[4], 10), style: m[2] });
   }
   return matches;
 }
@@ -326,6 +327,10 @@ export const WpsGovernancePlugin = async () => {
           proofreadIssueOriginals = [];
           replaceCountThisBatch = 0;
           pageInfoCalledThisBatch = false;
+          batchParaStyles = {};
+          for (const r of ranges) {
+            batchParaStyles[r.index] = r.style;
+          }
           templateFilling.paragraphsFetched = true;
           templateFilling.lastParagraphIndex = ranges[ranges.length - 1].index;
           return;
@@ -740,6 +745,20 @@ export const WpsGovernancePlugin = async () => {
                   `与 proofreadBasic 找到的任何 issue 原文都不匹配。\n` +
                   `已知问题原文：${shown.join('、')}${more}\n` +
                   `AI 不应修复基础校对未发现的问题。如需强制修复请传 _force_ai_fix: true。`
+                );
+              }
+            }
+          }
+          // P18：目录段落禁止修改（目录自动从正文生成，修改正文后会自动同步）
+          if (toolName === "replaceInParagraph") {
+            const paraIdx = innerArgs.paragraphIndex;
+            if (paraIdx !== undefined) {
+              const style = batchParaStyles[paraIdx];
+              if (style && /目录/.test(style)) {
+                throw new Error(
+                  `【执行治理】【P18】段落 ${paraIdx} 样式为"${style}"（目录段落）。\n` +
+                  `目录是自动生成的，修改正文后目录会自动更新。\n` +
+                  `请去正文对应位置修改，不要修改目录条目。`
                 );
               }
             }
