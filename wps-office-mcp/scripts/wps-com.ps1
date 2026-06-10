@@ -1,6 +1,6 @@
 ﻿# Input: Action 名称与 JSON 参数
 # Output: WPS COM 调用结果 JSON
-# Pos: Windows COM 桥接脚本。一旦我被修改，请更新我的头部注释（Updated: 2026-05-24 15:30:00 CST），以及所属文件夹的md。
+# Pos: Windows COM 桥接脚本。一旦我被修改，请更新我的头部注释（Updated: 2026-06-10 11:00:00 CST），以及所属文件夹的md。
 # WPS COM Bridge - PowerShell script for WPS COM operations
 # Full implementation for Excel, Word, PPT, and common conversions
 # Usage: powershell -File wps-com.ps1 -Action <action> -Params <json>
@@ -2160,6 +2160,26 @@ switch ($Action) {
             $paragraphs += @{ index = $i; text = $text; style = $styleName; start = $para.Range.Start; end = $para.Range.End }
         }
         Output-Json @{ success = $true; data = @{ paragraphs = $paragraphs; totalCount = $doc.Paragraphs.Count; returnedCount = $paragraphs.Count } }
+    }
+
+    "getParagraphPageInfo" {
+        $word_app = Get-WpsWord
+        if ($null -eq $word_app) { Output-Json @{ success = $false; error = "WPS Word not running" }; exit }
+        $doc = $word_app.ActiveDocument
+        if ($null -eq $doc) { Output-Json @{ success = $false; error = "No active document" }; exit }
+        $indices = if ($null -ne $p.paragraphIndices) { $p.paragraphIndices } else { @($p.paragraphIndex) }
+        $results = @()
+        foreach ($idx in $indices) {
+            try {
+                $para = $doc.Paragraphs.Item([int]$idx)
+                $pageNum = $para.Range.Information(3)
+                $lineNum = $para.Range.Information(10)
+                $results += @{ paragraphIndex = [int]$idx; pageNumber = [int]$pageNum; lineNumber = [int]$lineNum }
+            } catch {
+                $results += @{ paragraphIndex = [int]$idx; pageNumber = $null; lineNumber = $null; error = $_.Exception.Message }
+            }
+        }
+        Output-Json @{ success = $true; data = @{ locations = $results } }
     }
 
     "findInDocument" {

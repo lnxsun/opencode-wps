@@ -1,6 +1,6 @@
 /**
  * WPS Office COM Actions 索引
- * 共 238 个 COM Actions（afterColon/afterLabel 已移除，改用 smartFillField fillMode）
+ * 共 246 个 COM Actions（afterColon/afterLabel 已移除，改用 smartFillField fillMode）
  *
  * 工具名称映射说明：
  * - Gateway 使用短名称（如 setFont、addSlide）进行索引和搜索
@@ -156,7 +156,7 @@ const VERIFIED_TOOLS = new Set([
   'setFont', 'setParagraph', 'applyStyle', 'generateTOC',
   'insertBookmark', 'getBookmarks', 'replaceBookmarkContent',
   'findInDocument', 'findReplace',
-  'getDocumentParagraphs', 'getDocumentStats',
+  'getDocumentParagraphs', 'getParagraphPageInfo', 'getDocumentStats',
   'insertTable', 'insertImage', 'setPageSetup', 'insertHeader', 'insertFooter',
   'insertHyperlink', 'insertPageBreak', 'setHyperlink',
   'smartFillField', 'addComment', 'getComments', 'insertText',
@@ -241,6 +241,7 @@ const COM_ACTIONS: ToolIndexItem[] = [
   { name: 'findInDocument', description: '在文档中查找文本', keywords: ['查找'], category: 'word', appType: WpsAppType.WRITER, paramsSchema: { text: { type: 'string', description: '查找文本', required: true }, matchCase: { type: 'boolean', description: '区分大小写，默认false', required: false }, matchWholeWord: { type: 'boolean', description: '全词匹配，默认false', required: false }, maxResults: { type: 'number', description: '最大返回结果数，默认10', required: false } } },
   { name: 'findReplace', description: '查找替换', keywords: ['替换'], category: 'word', appType: WpsAppType.WRITER, paramsSchema: { find: { type: 'string', description: '查找内容', required: true }, replace: { type: 'string', description: '替换为', required: true } } },
   { name: 'getDocumentParagraphs', description: '获取文档段落列表', keywords: ['段落'], category: 'word', appType: WpsAppType.WRITER, paramsSchema: { startParagraph: { type: 'number', description: '起始段落索引（从1开始），默认1', required: false }, endParagraph: { type: 'number', description: '结束段落索引，默认起始+49', required: false } } },
+  { name: 'getParagraphPageInfo', description: '获取段落对应的页码和行号（用于将段落索引转为页面位置）', keywords: ['段落', '页码', '行号', '位置'], category: 'word', appType: WpsAppType.WRITER, paramsSchema: { paragraphIndices: { type: 'array', description: '段落索引数组（从1开始），如 [3,5,8]', required: true } } },
   { name: 'getDocumentStats', description: '获取文档统计信息', keywords: ['统计'], category: 'word', appType: WpsAppType.WRITER, paramsSchema: {} },
   { name: 'insertTable', description: '插入表格', keywords: ['表格'], category: 'word', appType: WpsAppType.WRITER, paramsSchema: { rows: { type: 'number', description: '行数', required: true }, cols: { type: 'number', description: '列数', required: true } } },
   { name: 'insertImage', description: '插入图片', keywords: ['图片'], category: 'word', appType: WpsAppType.WRITER, paramsSchema: { imagePath: { type: 'string', description: '图片文件路径', required: true }, width: { type: 'number', description: '图片宽度（磅），可选', required: false }, height: { type: 'number', description: '图片高度（磅），可选', required: false } } },
