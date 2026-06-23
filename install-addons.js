@@ -23,25 +23,6 @@ function handleError(stepName, error) {
     console.error('  ✗ ' + stepName + ': ' + errMsg);
 }
 
-function rollback() {
-    if (installState.stepsCompleted.length === 0) return;
-    console.log('\n⚠️ 开始回滚安装...');
-    console.log('已完成的步骤: ' + installState.stepsCompleted.join(', '));
-    // 回滚逻辑
-    // 1. 清理已安装的插件
-    const jsaddonsDir = path.join(process.env.APPDATA, 'kingsoft', 'wps', 'jsaddons');
-    try {
-        const addon = addons?.[0];
-        if (!addon) { console.log('  无插件定义可回滚'); return; }
-        const destDir = path.join(jsaddonsDir, addon.name + '_');
-        if (fsEx.existsSync(destDir)) {
-            fsEx.removeSync(destDir);
-            console.log('  已回滚: 删除插件目录');
-        }
-    } catch (e) { console.error('  回滚失败: ' + e.message); }
-    console.log('回滚完成，请重新运行安装脚本');
-}
-
 // ===== 1. WPS 插件定义 =====
 const addons = [
     {

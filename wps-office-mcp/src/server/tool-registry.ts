@@ -306,6 +306,7 @@ function validateType(value: unknown, expectedType: string): boolean {
   switch (expectedType) {
     case 'string': return typeof value === 'string';
     case 'number': return typeof value === 'number';
+    case 'integer': return typeof value === 'number' && Number.isInteger(value);
     case 'boolean': return typeof value === 'boolean';
     case 'object': return typeof value === 'object' && value !== null && !Array.isArray(value);
     case 'array': return Array.isArray(value);

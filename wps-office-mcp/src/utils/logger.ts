@@ -75,6 +75,7 @@ const createLogger = (name: string): winston.Logger => {
   var resolvedLevel = process.env.LOG_LEVEL || 'info';
   if (process.env.NODE_ENV === 'production' && resolvedLevel === 'debug') {
     resolvedLevel = 'warn';
+    // eslint-disable-next-line no-console
     console.warn('[logger] LOG_LEVEL=debug ignored in production, using "warn"');
   }
 
