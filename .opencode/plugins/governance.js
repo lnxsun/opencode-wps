@@ -133,6 +133,8 @@ let batchCount = 0;
 let trackChangesOn = false;
 let aiProofreadDoneThisBatch = false;
 let lastRevisionCount = 0;
+let totalParagraphs = 0;  // 文档总段落数
+let allBatchesComplete = false;  // 所有批次是否已完成
 
 let batchStartOffset = null;
 let batchEndOffset = null;
@@ -281,9 +283,20 @@ export const WpsGovernancePlugin = async () => {
           if (!outText) return;
           docInfoFetched = true;
           appReadState.word.activeDocRead = true;
+          // 解析文档总段落数
+          const paraMatch = outText.match(/总段数[：:]\s*(\d+)/i)
+            || outText.match(/[Pp]aragraphs?[:\s]+(\d+)/i);
+          if (paraMatch) {
+            totalParagraphs = parseInt(paraMatch[1], 10);
+          } else {
+            totalParagraphs = 0;
+          }
           // 重置模板填写状态（新文档）
           templateFilling.active = false;
           templateFilling.docFetched = true;
+          allBatchesComplete = false;
+          batchCount = 0;
+          lastBatchParaIndex = 0;
           templateFilling.paragraphsFetched = false;
           templateFilling.trackChangesEnabled = false;
           templateFilling.userConfirmed = false;
@@ -326,6 +339,10 @@ export const WpsGovernancePlugin = async () => {
           replaceCountThisBatch = 0;
           templateFilling.paragraphsFetched = true;
           templateFilling.lastParagraphIndex = ranges[ranges.length - 1].index;
+          // 检测所有批次是否完成
+          if (totalParagraphs > 0 && lastBatchParaIndex >= totalParagraphs) {
+            allBatchesComplete = true;
+          }
           return;
         }
 
@@ -482,6 +499,13 @@ export const WpsGovernancePlugin = async () => {
 
       // ── 规则 P1 + P2：getDocumentParagraphs ──
       if (toolName === "getDocumentParagraphs") {
+        // 所有批次已完成，禁止再获取段落，应生成报告
+        if (allBatchesComplete) {
+          throw new Error(
+            `【执行治理】所有 ${batchCount} 批已全部完成（段落 1-${lastBatchParaIndex}/${totalParagraphs}）。\n` +
+            `请直接生成校对报告（.校对报告.md），不要再调用 getDocumentParagraphs。`
+          );
+        }
         // P12：严格的逐批处理 — 当前批校对周期未完成前，禁止获取下一批
         if (batchStarted && !proofreadCalledThisBatch) {
           throw new Error(
@@ -510,7 +534,7 @@ export const WpsGovernancePlugin = async () => {
           );
         }
         const start = innerArgs.start_paragraph ?? 1;
-        const end = innerArgs.end_paragraph ?? (start + 49);
+        const end = innerArgs.end_paragraph ?? (start + 199);  // 默认200段/批
         const count = end - start + 1;
         if (start < 1) {
           throw new Error(`【执行治理】start_paragraph 必须 ≥ 1（当前值: ${start}）。`);

@@ -12,9 +12,12 @@
  * - wps_common_get_app_info: 获取WPS应用信息
  * - wps_common_get_selected_text: 获取选中文本
  * - wps_common_set_selected_text: 替换选中文本
+ * - wps_common_write_file: 写入文件内容
  */
 
 import { v4 as uuidv4 } from 'uuid';
+import * as fs from 'fs';
+import * as path from 'path';
 import {
   ToolDefinition,
   ToolHandler,
@@ -529,6 +532,121 @@ export const setSelectedTextHandler: ToolHandler = async (
 };
 
 // ============================================================
+// 8. wps_common_write_file - 写入文件内容
+// ============================================================
+
+export const writeFileDefinition: ToolDefinition = {
+  name: 'wps_common_write_file',
+  description: `写入文件内容（支持文本和二进制）。
+
+使用场景：
+- "把报告写入文件"
+- "保存校对报告到磁盘"
+- "写入临时文件"
+
+特点：
+- 使用 Node.js fs 模块直接写入文件
+- 支持文本内容（自动 UTF-8 编码）
+- 支持二进制内容（base64 编码后解码写入）
+- 自动创建不存在的父目录
+- 覆盖已存在的文件`,
+  category: ToolCategory.COMMON,
+  inputSchema: {
+    type: 'object',
+    properties: {
+      filePath: {
+        type: 'string',
+        description: '要写入的文件完整路径（绝对路径）',
+      },
+      content: {
+        type: 'string',
+        description: '要写入的文本内容',
+      },
+      encoding: {
+        type: 'string',
+        enum: ['utf8', 'base64'],
+        description: '内容编码方式，默认 utf8',
+        default: 'utf8',
+      },
+    },
+    required: ['filePath', 'content'],
+  },
+};
+
+export const writeFileHandler: ToolHandler = async (
+  args: Record<string, unknown>
+): Promise<ToolCallResult> => {
+  try {
+    const filePath = args.filePath as string;
+    const content = args.content as string;
+    const encoding = (args.encoding as string) || 'utf8';
+
+    if (!filePath) {
+      return {
+        id: uuidv4(),
+        success: false,
+        content: [{ type: 'text', text: 'filePath 参数不能为空' }],
+        error: 'filePath 参数不能为空',
+      };
+    }
+
+    if (content === undefined || content === null) {
+      return {
+        id: uuidv4(),
+        success: false,
+        content: [{ type: 'text', text: 'content 参数不能为空' }],
+        error: 'content 参数不能为空',
+      };
+    }
+
+    // 安全检查：防止路径穿越（支持 / 和 \ 两种分隔符，不误伤 test..v2 等合法文件名）
+    if (/[/\\]\.\.[/\\]|^\.\.[/\\]|[/\\]\.\.$/.test(filePath)) {
+      return {
+        id: uuidv4(),
+        success: false,
+        content: [{ type: 'text', text: '文件路径不能包含 .. 穿越符号' }],
+        error: '文件路径不能包含 .. 穿越符号',
+      };
+    }
+
+    // 确保父目录存在
+    const dir = path.dirname(filePath);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+
+    // 写入文件
+    if (encoding === 'base64') {
+      const buffer = Buffer.from(content, 'base64');
+      fs.writeFileSync(filePath, buffer);
+    } else {
+      fs.writeFileSync(filePath, content, 'utf8');
+    }
+
+    const stats = fs.statSync(filePath);
+
+    return {
+      id: uuidv4(),
+      success: true,
+      content: [
+        {
+          type: 'text',
+          text: `文件写入成功！\n路径: ${filePath}\n大小: ${stats.size} 字节`,
+        },
+      ],
+    };
+  } catch (error) {
+    const errMsg = error instanceof Error ? error.message : String(error);
+    return {
+      id: uuidv4(),
+      success: false,
+      content: [{ type: 'text', text: `写入文件失败: ${errMsg}` }],
+      error: errMsg,
+    };
+  }
+};
+
+// ============================================================
 // 导出所有通用操作Tools
 // ============================================================
 
@@ -540,6 +658,7 @@ export const generalTools: RegisteredTool[] = [
   { definition: getAppInfoDefinition, handler: getAppInfoHandler },
   { definition: getSelectedTextDefinition, handler: getSelectedTextHandler },
   { definition: setSelectedTextDefinition, handler: setSelectedTextHandler },
+  { definition: writeFileDefinition, handler: writeFileHandler },
 ];
 
 export default generalTools;

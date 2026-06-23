@@ -372,7 +372,7 @@ documentOffset = paragraphStartOffset + offsetInParagraph
 
 **注意**：插件不再要求 `text.length` 精确等于 `[end]-[start]`。因为 WPS COM 的 `Range.Text` 在含 `\f`(分页符)、`\a`(表格分隔符)等控制字符的文档中，返回长度可能与段落偏移计算值不一致。proofreadBasic 内部会自动剥离控制字符并校正偏移量。
 
-**如果文本含控制字符导致 JSON 序列化失败**（错误：`JSON Parse error: Unterminated string`），请先用 `bash` 写入临时文件再传 `file_path`：
+**如果文本含控制字符导致 JSON 序列化失败**（错误：`JSON Parse error: Unterminated string`），请先用 `wps_common_write_file` 写入临时文件再传 `file_path`：
 ```javascript
 // 写法 1：直接传 text（文本不含 \f 等控制字符时）
 wps_office_execute({
@@ -381,7 +381,11 @@ wps_office_execute({
 })
 
 // 写法 2：通过文件传 text（文本含 \f 等控制字符时）
-// 先用 bash 写入文件，再传 file_path
+// 先用 writeFile 写入文件，再传 file_path
+wps_office_execute({
+  tool_name: "writeFile",
+  arguments: { filePath: "C:\\Users\\...\\batch.txt", content: batchText }
+})
 wps_office_execute({
   tool_name: "proofreadBasic",
   arguments: { file_path: "C:\\Users\\...\\batch.txt", startOffset: batchStartOffset }
@@ -480,13 +484,30 @@ wps_office_execute({
 
 ### Step 3: 生成校对报告
 
-报告写入文档同目录的 `{文档名}.校对报告.md`。
+报告写入文档同目录的 `{文档名}.校对报告.md`。**必须使用 `wps_common_write_file`（短名 `writeFile`）工具写入文件**。
 
-```markdown
-# 校对报告
+调用方式（在 `wps_office_search` 找到后或直接用短名）：
 
-- **文档**：XXX.docx
-- **校对时间**：2026-05-28 15:30
+```javascript
+// 1. 先搜索找到工具
+const searchResult = await wps_office_execute({
+  tool_name: "wps_office_search",
+  arguments: { query: "writeFile" }
+});
+// → 返回 name: "writeFile"
+
+// 2. 获取文档路径
+const docInfo = await wps_office_execute({
+  tool_name: "getActiveDocument",
+  arguments: {}
+});
+// 解析出文档路径，如 "C:\\Users\\...\\文档.docx"
+
+// 3. 构造报告内容
+const reportContent = `# 校对报告
+
+- **文档**：文档.docx
+- **校对时间**：2026-06-23 15:30
 - **总字数**：12,345
 - **修订总数**：28
 
@@ -505,6 +526,16 @@ wps_office_execute({
 | AI 智能校对 | 10 处 |
 | **合计** | **28 处** |
 | 全部已修复 | ✅ |
+`;
+
+// 4. 写入报告文件（直接用短名）
+await wps_office_execute({
+  tool_name: "writeFile",
+  arguments: {
+    filePath: "C:\\Users\\...\\文档.校对报告.md",
+    content: reportContent
+  }
+});
 ```
 
 ### Step 4: 收尾
