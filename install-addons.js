@@ -102,6 +102,7 @@ console.log('  不再自动注册开机自启任务\n');
 // ============================================================
 console.log('【第 1 步】安装 WPS 插件');
 console.log('目标目录: ' + jsaddonsDir + '\n');
+recordStep('install_wps_plugin');
 
 fsEx.ensureDirSync(jsaddonsDir);
 
@@ -271,6 +272,7 @@ if (fsEx.existsSync(authaddinJsonPath)) {
 // 第 2 步: 编译 MCP 服务器
 // ============================================================
 console.log('\n【第 2 步】编译 MCP 服务器');
+recordStep('build_mcp_server');
 
 if (fsEx.existsSync(mcpServer.src)) {
     console.log('  源目录: ' + mcpServer.src);
@@ -302,6 +304,7 @@ if (fsEx.existsSync(mcpServer.src)) {
 // 第 3 步: 配置 OpenCode MCP 服务器
 // ============================================================
 console.log('\n【第 3 步】配置 OpenCode MCP 服务器');
+recordStep('configure_opencode_mcp');
 
 const mcpEntryPath = path.resolve(mcpServer.src, mcpServer.entryPoint);
 const mcpEntryForward = mcpEntryPath.replace(/\\/g, '/');  // opencode.json 用正斜杠
@@ -343,7 +346,7 @@ if (fsEx.existsSync(mcpEntryPath)) {
                 for (var key in source) {
                     if (source.hasOwnProperty(key)) {
                         if (Array.isArray(source[key])) {
-                            target[key] = source[key].slice();
+                            target[key] = source[key].slice(); // 数组合并：保留用户新增项
                         } else if (typeof source[key] === 'object' && source[key] !== null && !Array.isArray(source[key])) {
                             if (!target[key] || typeof target[key] !== 'object' || Array.isArray(target[key])) {
                                 target[key] = {};
@@ -405,6 +408,7 @@ if (fsEx.existsSync(mcpEntryPath)) {
 // 第 4 步: 安装 Skills 到 OpenCode
 // ============================================================
 console.log('\n【第 4 步】安装 OpenCode Skills');
+recordStep('install_skills');
 
 if (fsEx.existsSync(skillsSrcDir)) {
     const skills = fs.readdirSync(skillsSrcDir).filter(name => {
@@ -433,6 +437,7 @@ if (fsEx.existsSync(skillsSrcDir)) {
 // 第 5 步: 安装 Agents 到 OpenCode
 // ============================================================
 console.log('\n【第 5 步】安装 OpenCode Agents');
+recordStep('install_agents');
 
 if (fsEx.existsSync(agentsSrcDir)) {
     const agentFiles = fs.readdirSync(agentsSrcDir).filter(name => name.endsWith('.md'));
@@ -467,6 +472,7 @@ if (fsEx.existsSync(agentsSrcDir)) {
 // 第 6 步: 安装 OpenCode 插件到用户目录
 // ============================================================
 console.log('\n【第 6 步】安装 OpenCode 插件');
+recordStep('install_opencode_plugins');
 
 const pluginSrcDir = path.resolve(rootDir, '.opencode', 'plugins');
 const pluginDstDir = path.join(opencodeConfigDir, 'plugins');
@@ -505,6 +511,7 @@ try {
 // 第 7 步: 清理废弃配置
 // ============================================================
 console.log('\n【第 7 步】清理废弃配置');
+recordStep('cleanup_legacy_config');
 
 staleClaudeDirs.forEach(dir => {
     try {
@@ -535,6 +542,7 @@ stalePluginDirs.forEach(dir => {
 // 第 8 步: 注册 launcher 开机自启 + 立即启动
 // ============================================================
 console.log('\n【第 8 步】注册 launcher 开机自启');
+recordStep('register_launcher_autostart');
 
 const launcherPath = path.join(jsaddonsDir, 'opencode-wps_', 'launcher.js');
 

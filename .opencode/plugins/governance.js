@@ -196,7 +196,10 @@ function getOutputText(output) {
 
 function getAppType(toolName) {
   if (toolName.startsWith('getActivePresentation') || toolName.startsWith('wps_ppt_') || toolName.startsWith('wpp_')) return 'ppt';
-  if (toolName.startsWith('getActiveWorkbook') || toolName.startsWith('wps_excel_') || toolName.startsWith('et_') || toolName.startsWith('getCell') || toolName.startsWith('setCell') || toolName.startsWith('getRange') || toolName.startsWith('setRange') || toolName.startsWith('getSheet') || toolName.startsWith('createSheet') || toolName.startsWith('deleteSheet') || toolName.startsWith('renameSheet') || toolName.startsWith('copySheet') || toolName.startsWith('switchSheet') || toolName.startsWith('moveSheet')) return 'excel';
+  if (toolName.startsWith('getActiveWorkbook') || toolName.startsWith('wps_excel_') || toolName.startsWith('et_')) return 'excel';
+  if (toolName.startsWith('getCell') || toolName.startsWith('setCell') || toolName.startsWith('getRange') || toolName.startsWith('setRange')) return 'excel';
+  if (toolName.startsWith('getSheet') || toolName.startsWith('createSheet') || toolName.startsWith('deleteSheet')) return 'excel';
+  if (toolName.startsWith('renameSheet') || toolName.startsWith('copySheet') || toolName.startsWith('switchSheet') || toolName.startsWith('moveSheet')) return 'excel';
   return 'word';
 }
 

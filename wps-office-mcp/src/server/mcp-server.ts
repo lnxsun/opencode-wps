@@ -432,7 +432,10 @@ export class WpsMcpServer {
     this.registry.register(
       {
         name: 'wps_execute_method',
-        description: '执行自定义WPS API方法',
+        description: `执行自定义WPS API方法。
+
+**安全警告**：此工具允许执行任意WPS COM方法，绕过了治理插件的精确控制。
+仅当标准工具无法满足需求时使用。安全性由 governance.js 插件钩子（G1-G7）保障。`,
         inputSchema: {
           type: 'object',
           properties: {
@@ -458,6 +461,14 @@ export class WpsMcpServer {
         const method = args.method as string;
         const params = args.params as Record<string, unknown> | undefined;
         const appType = args.appType as string | undefined;
+
+        // 禁止执行高危方法
+        const blockedPrefixes = ['CreateObject', 'Shell', 'Exec', 'Run', 'WScript', 'ScriptControl', 'Eval', 'Execute'];
+        for (var i = 0; i < blockedPrefixes.length; i++) {
+          if (method.indexOf(blockedPrefixes[i]) === 0) {
+            return { id: '', success: false, content: [{ type: 'text', text: 'Error: method "' + method + '" is blocked for security reasons' }] };
+          }
+        }
 
         const response = await wpsClient.executeMethod(
           method,
@@ -785,6 +796,13 @@ export class WpsMcpServer {
       async (args) => {
         const tool_name = args.tool_name as string;
         const arguments_ = args.arguments as Record<string, unknown>;
+
+        if (!tool_name || typeof tool_name !== 'string') {
+          return { id: '', success: false, content: [{ type: 'text', text: 'Error: tool_name must be a non-empty string' }] };
+        }
+        if (!arguments_ || typeof arguments_ !== 'object' || Array.isArray(arguments_)) {
+          return { id: '', success: false, content: [{ type: 'text', text: 'Error: arguments must be a non-null object' }] };
+        }
 
         const result = await executeTool({ tool_name, arguments: arguments_ });
 

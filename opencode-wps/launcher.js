@@ -47,7 +47,7 @@ function parseBody(req, callback) {
 function sendJSON(res, statusCode, data) {
     res.writeHead(statusCode, {
         'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Origin': 'http://127.0.0.1:14096',
         'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
         'Access-Control-Allow-Headers': 'Content-Type'
     });
@@ -75,9 +75,6 @@ function startOpenCode(cwd, port) {
     var opencodeBin = findOpenCodeBin();
     console.log('[launcher] Starting with: ' + opencodeBin);
 
-    var opencodeCmd = opencodeBin.endsWith('.ps1') 
-        ? ['-ExecutionPolicy', 'Bypass', '-File', opencodeBin]
-        : [opencodeBin];
     var opencodeArgs = opencodeBin.endsWith('.ps1')
         ? ['serve', '--port', String(port || 14096), '--hostname', '127.0.0.1', '--cors', 'file://']
         : ['serve', '--port', String(port || 14096), '--hostname', '127.0.0.1', '--cors', 'file://'];
@@ -391,7 +388,9 @@ var server = http.createServer(function(req, res) {
 
     if (req.method === 'POST' && url === '/dock') {
         parseBody(req, function(body) {
-            fs.writeFileSync(path.join(__dirname, 'dock-debug.log'), JSON.stringify(body), 'utf8')
+            if (process.env.NODE_ENV !== 'production') {
+                fs.writeFileSync(path.join(__dirname, 'dock-debug.log'), JSON.stringify(body), 'utf8')
+            }
             dockWindow(function(result) {
                 sendJSON(res, result.success ? 200 : 400, result);
             }, body);

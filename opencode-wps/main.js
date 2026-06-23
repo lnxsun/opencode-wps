@@ -144,8 +144,13 @@ function OnAddinLoad(ribbonUI) {
     return true
 }
 
+function getControlId(control) {
+    // WPS 不同版本/回调中 Id 属性大小写不一致（control.Id vs control.id）
+    return control.Id || control.id;
+}
+
 function OnAction(control) {
-    var eleId = control.Id
+    var eleId = getControlId(control)
     switch (eleId) {
         case "btnShowTaskPane":
             var tsId = window.Application.PluginStorage.getItem("taskpane_id")
@@ -230,14 +235,19 @@ function dockOpenCodeWindow() {
     xhr.send(JSON.stringify({ cwd: normalized, session: sessionId }))
 }
 
+var isProcessingCommand = false;
+
 setInterval(function () {
+    if (isProcessingCommand) return;
     try {
         var cmd = window.Application.PluginStorage.getItem('opencode_command')
         if (cmd) {
+            isProcessingCommand = true;
             window.Application.PluginStorage.setItem('opencode_command', '')
-            if (cmd === 'connect') connectOpenCode()
-            else if (cmd.indexOf('start:') === 0) startOpenCodeServer(cmd.substring(6))
-            else if (cmd === 'stop') stopOpenCodeServer()
+            if (cmd === 'connect') { connectOpenCode(); isProcessingCommand = false; }
+            else if (cmd.indexOf('start:') === 0) { startOpenCodeServer(cmd.substring(6)); isProcessingCommand = false; }
+            else if (cmd === 'stop') { stopOpenCodeServer(); isProcessingCommand = false; }
+            else { isProcessingCommand = false; }
         }
-    } catch (e) {}
+    } catch (e) { isProcessingCommand = false; }
 }, 500)

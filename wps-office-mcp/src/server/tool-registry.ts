@@ -213,7 +213,9 @@ export class ToolRegistry {
   ): void {
     const { inputSchema } = definition;
     const required = inputSchema.required || [];
+    const properties = inputSchema.properties || {};
 
+    // 检查必填参数
     for (const param of required) {
       if (!(param in args) || args[param] === undefined || args[param] === null) {
         throw new InvalidParamsError(`Missing required parameter: ${param}`, {
@@ -223,7 +225,20 @@ export class ToolRegistry {
       }
     }
 
-    // TODO: 可以加更详细的类型验证，但现在先这样，够用
+    // 参数类型校验
+    for (const key of Object.keys(args)) {
+      const prop = properties[key];
+      if (!prop || !prop.type) continue;
+      const value = args[key];
+      if (value === undefined || value === null) continue;
+      const valid = validateType(value, prop.type as string);
+      if (!valid) {
+        throw new InvalidParamsError(
+          `Parameter '${key}' expected type '${prop.type}', got '${typeof value}'`,
+          { toolName: definition.name, param: key, expected: prop.type }
+        );
+      }
+    }
   }
 
   /**
@@ -285,5 +300,16 @@ export const registerTool = (
 ): void => {
   toolRegistry.register(definition, handler);
 };
+
+function validateType(value: unknown, expectedType: string): boolean {
+  switch (expectedType) {
+    case 'string': return typeof value === 'string';
+    case 'number': return typeof value === 'number';
+    case 'boolean': return typeof value === 'boolean';
+    case 'object': return typeof value === 'object' && value !== null && !Array.isArray(value);
+    case 'array': return Array.isArray(value);
+    default: return true;
+  }
+}
 
 export default ToolRegistry;
