@@ -435,7 +435,7 @@ export const WpsGovernancePlugin = async () => {
 
       // ==================== 规则 G2：wps_execute_method 白名单 ====================
       if (outerTool === "wps-office_wps_execute_method" || outerTool === "wps_execute_method") {
-        const args = output.args || {};
+        const args = input.args || {};
         const method = args.method || '';
         const allowed = Array.from(EXECUTE_METHOD_WHITELIST).some(a => method.startsWith(a));
         if (!allowed) {
@@ -451,7 +451,7 @@ export const WpsGovernancePlugin = async () => {
       // 以下规则仅针对 wps_office_execute 网关调用
       if (outerTool !== "wps-office_wps_office_execute" && outerTool !== "wps_office_execute") return;
 
-      const toolArgs = output.args || {};
+      const toolArgs = input.args || {};
       const toolName = toolArgs.tool_name;
       const innerArgs = toolArgs.arguments || {};
 

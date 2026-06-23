@@ -541,7 +541,7 @@ function renderCwdHistory() {
     for (var i = 0; i < CWD_HISTORY.length; i++) {
         var c = CWD_HISTORY[i]
         var sel = (c === PROJECT_DIR)
-        html += '<div class="cwd-history-item' + (sel ? ' active' : '') + '" onclick="selectCwdHistory(\'' + c.replace(/\\/g, '\\\\') + '\')">' + c + '</div>'
+        html += '<div class="cwd-history-item' + (sel ? ' active' : '') + '" onclick="selectCwdHistory(\'' + c.replace(/\\/g, '\\\\').replace(/'/g, "\\'") + '\')">' + escapeHtml(c) + '</div>'
     }
     container.innerHTML = html
 }
@@ -554,7 +554,7 @@ function closeCwdModal() {
 }
 
 function confirmCwdChange() {
-    var newCwd = document.getElementById('cwd-input').value.replace(/\\/g, '\\\\').trim()
+    var newCwd = document.getElementById('cwd-input').value.trim()
     if (!newCwd) { alert('请输入工作目录'); return }
     
     // 保存到历史
@@ -567,20 +567,18 @@ function confirmCwdChange() {
         stopOpenCode()
     }
 
-    // 设置新的 CWD 并启动
+    // 设置新的 CWD 并启动（PERSIST.cwd setter 自动调用 setPS）
     PROJECT_DIR = newCwd
-    setPS('opencode_cwd', newCwd)
     PERSIST.cwd = newCwd
-    setPS('opencode_start_cwd', newCwd)
-    $topbarCwd.textContent = newCwd.replace(/\\\\/g, '\\')
-    $topbarCwd.title = newCwd.replace(/\\\\/g, '\\')
-    $setupCwd.value = newCwd.replace(/\\\\/g, '\\')
+    $topbarCwd.textContent = newCwd
+    $topbarCwd.title = newCwd
+    $setupCwd.value = newCwd
 
     // 直接启动服务
     $btnStart.disabled = true
     $btnStart.innerHTML = '<span class="spinner"></span> 正在启动...'
     $setupStatus.textContent = '正在启动 OpenCode 服务...'
-    setPS('opencode_command', 'start:' + newCwd.replace(/\\\\/g, '\\'))
+    setPS('opencode_command', 'start:' + newCwd)
 
     // 轮询等待服务就绪
     var retries = 0
@@ -606,24 +604,23 @@ function confirmCwdChange() {
 // --- Server start / stop ---
 function startOpenCode() {
     // 如果用户输入了目录就用用户输入的，否则用用户目录
-    var userInput = $setupCwd.value.replace(/\\/g, '\\\\').trim()
+    var userInput = $setupCwd.value.trim()
     var cwd = userInput || CONFIG.plugin.userHome
 
     // 保存 CWD 到历史
     addCwdHistory(cwd)
 
     // 保存 CWD 到 PluginStorage
-    setPS('opencode_cwd', cwd)
-    setPS('opencode_start_cwd', cwd)
+    PERSIST.cwd = cwd
     PROJECT_DIR = cwd
-    $topbarCwd.textContent = cwd.replace(/\\\\/g, '\\')
-    $topbarCwd.title = cwd.replace(/\\\\/g, '\\')
+    $topbarCwd.textContent = cwd
+    $topbarCwd.title = cwd
 
     $btnStart.disabled = true
     $btnStart.innerHTML = '<span class="spinner"></span> 正在启动...'
     $setupStatus.textContent = '正在启动 OpenCode 服务...'
 
-    setPS('opencode_command', 'start:' + cwd.replace(/\\\\/g, '\\'))
+    setPS('opencode_command', 'start:' + cwd)
 
     var launcherUrl = 'http://127.0.0.1:14097'
     var launcherOk = false
