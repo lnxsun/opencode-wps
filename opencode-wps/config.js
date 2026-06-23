@@ -37,7 +37,12 @@ var CONFIG = {
         // 插件版本
         version: '1.1.0',
         // 用户主目录（安装时注入，见 install-addons.js）
-        userHome: '___WPS_USER_HOME___' || (typeof process !== 'undefined' && process.env && (process.env.USERPROFILE || process.env.HOME)) || 'C:\\Users\\Default'
+        userHome: (function() {
+            var v = '___WPS_USER_HOME___';
+            if (v !== '___WPS_USER_HOME___') return v;
+            if (typeof process !== 'undefined' && process.env) return process.env.USERPROFILE || process.env.HOME || 'C:\\Users\\Default';
+            return 'C:\\Users\\Default';
+        })(),
     },
 
     // 会话配置

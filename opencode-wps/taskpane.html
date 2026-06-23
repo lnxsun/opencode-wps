@@ -127,7 +127,7 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:-apple-system,Blink
 .input-area{padding:12px 16px 10px 16px;flex-shrink:0;background:#fff;border-top:1px solid #f0f0f0}
 .input-wrapper{border:1px solid #e5e5e5;border-radius:16px;padding:0;overflow:hidden;transition:border-color 0.15s,box-shadow 0.15s;background:#fafafa}
 .input-wrapper:focus-within{border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,0.1);background:#fff}
-.input-box{width:100%;border:none;outline:none;padding:12px 16px 6px 16px;font-family:inherit;font-size:14px;line-height:1.5;resize:none;min-height:44px;max-height:200px;color:#1a1a1a;background:transparent}
+.input-box{width:100%;border:none;outline:none;padding:12px 16px 6px 16px;font-family:inherit;font-size:14px;line-height:1.5;resize:none;min-height:44px;max-height:200px;color:#1a1a1a;background:transparent} /* 同步 MAX_INPUT_HEIGHT */
 .input-box::placeholder{color:#bbb}
 .input-toolbar{display:flex;align-items:center;justify-content:space-between;padding:2px 8px 6px 8px}
 .input-toolbar-left{display:flex;align-items:center;gap:4px}
@@ -1295,6 +1295,7 @@ function gatherWpsContext() {
 function abortMessage() { if (!SESSION_ID) return; fetchJSON('POST', '/session/' + SESSION_ID + '/abort', null, function() { addSystemMessage('Aborted'); finalizeStreaming() }) }
 
 // --- Input ---
+var MAX_INPUT_HEIGHT = 200;
 function onInputKey(e) {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage() }
     else if (e.key === 'ArrowUp') {
@@ -1322,7 +1323,7 @@ function onInputKey(e) {
     }
     updateSendButton()
 }
-function autoGrow(el) { el.style.height = 'auto'; el.style.height = Math.min(el.scrollHeight, 200) + 'px'; updateSendButton() }
+function autoGrow(el) { el.style.height = 'auto'; el.style.height = Math.min(el.scrollHeight, MAX_INPUT_HEIGHT) + 'px'; updateSendButton() }
 function updateSendButton() { $sendBtn.className = 'send-btn ' + ($input.value.trim().length > 0 && !IS_BUSY ? 'ready' : 'disabled') }
 function updateInputState() {
     $input.disabled = IS_BUSY
@@ -1379,8 +1380,8 @@ function renderMarkdown(text) {
 }
 function safeHref(url) {
     if (!url) return '#'
-    try { var u = new URL(url); if (u.protocol === 'http:' || u.protocol === 'https:' || u.protocol === 'mailto:') return url } catch(e) {}
     var low = url.replace(/^\s+|\s+$/g, '').toLowerCase()
+    if (low.indexOf('http:') === 0 || low.indexOf('https:') === 0 || low.indexOf('mailto:') === 0) return url
     if (low.indexOf('javascript:') === 0 || low.indexOf('data:') === 0 || low.indexOf('vbscript:') === 0) return '#'
     return url
 }

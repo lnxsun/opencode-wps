@@ -40,6 +40,7 @@
 ```
 docs/
 ├── DEVELOPMENT_GUIDE.md    # 开发指南（贡献指南）
+├── CODE_REVIEW_GUIDE.md    # 代码审查规范与流程
 ├── TROUBLESHOOTING.md      # 问题排查与避坑指南
 ├── SECURITY.md            # 安全模型与注意事项
 ├── OPENCODE_API.md         # OpenCode API

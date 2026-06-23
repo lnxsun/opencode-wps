@@ -72,8 +72,14 @@ const createLogger = (name: string): winston.Logger => {
     );
   }
 
+  var resolvedLevel = process.env.LOG_LEVEL || 'info';
+  if (process.env.NODE_ENV === 'production' && resolvedLevel === 'debug') {
+    resolvedLevel = 'warn';
+    console.warn('[logger] LOG_LEVEL=debug ignored in production, using "warn"');
+  }
+
   return winston.createLogger({
-    level: process.env.NODE_ENV === 'production' && process.env.LOG_LEVEL === 'debug' ? 'warn' : (process.env.LOG_LEVEL || 'info'),
+    level: resolvedLevel,
     format: winston.format.combine(
       winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
       winston.format.errors({ stack: true }),

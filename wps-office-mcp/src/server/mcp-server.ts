@@ -462,10 +462,22 @@ export class WpsMcpServer {
         const params = args.params as Record<string, unknown> | undefined;
         const appType = args.appType as string | undefined;
 
-        // 禁止执行高危方法
+        // 禁止执行高危方法 — 子串黑名单，防止绕过白名单执行危险 COM API
+        // 设计依据：
+        //   CreateObject — 可创建任意 COM 对象，包括 WScript.Shell、ADODB.Stream 等
+        //   Shell        — Shell.Application，可执行系统命令
+        //   Exec / Run   — WScript.Shell.Exec / Shell.Run，命令执行
+        //   WScript      — WScript 对象是完整的脚本宿主
+        //   ScriptControl — 可动态执行任意脚本代码
+        //   Eval / Execute — 动态代码执行
+        // 使用 indexOf !== -1（而非 starts-with）防止绕过，如：
+        //   "Application.ActiveDocument.Application.CreateObject"
+        //   虽以 Application.ActiveDocument 开头（通过 G2 白名单），
+        //   但黑名单仍能拦截其中的 CreateObject。
+        // 如需放行，需确认该方法不可能被用于危险操作。
         const blockedPrefixes = ['CreateObject', 'Shell', 'Exec', 'Run', 'WScript', 'ScriptControl', 'Eval', 'Execute'];
         for (var i = 0; i < blockedPrefixes.length; i++) {
-          if (method.indexOf(blockedPrefixes[i]) === 0) {
+          if (method.indexOf(blockedPrefixes[i]) !== -1) {
             return { id: '', success: false, content: [{ type: 'text', text: 'Error: method "' + method + '" is blocked for security reasons' }] };
           }
         }

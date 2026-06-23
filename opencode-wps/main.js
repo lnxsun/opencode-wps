@@ -60,7 +60,14 @@ function checkWpsReady() {
 
 function checkDocument() {
     try {
-        var doc = window.WPS && window.WPS.Application && window.WPS.Application.ActiveDocument;
+        var app = window.WPS && window.WPS.Application;
+        if (!app) {
+            // 某些 WPS 版本中窗口回调只能通过 window.Application 访问
+            app = window.Application;
+            if (!app) return null;
+        }
+        // WPS 文字 / 表格 / 演示使用不同的 Active 属性
+        var doc = app.ActiveDocument || app.ActiveWorkbook || app.ActivePresentation;
         if (!doc) {
             console.warn('[WPS] 请先打开文档');
             return null;
@@ -173,16 +180,20 @@ function OnAction(control) {
 }
 
 function GetImage(control) {
-    if (!control || !control.id) return ''
-    if (control.id === 'btnShowTaskPane') return 'btn-panel.png'
-    if (control.id === 'btnDockWindow') return 'btn-dock.png'
-    if (control.id === 'btnCheckStatus') return 'btn-status.png'
+    if (!control) return ''
+    var id = getControlId(control);
+    if (!id) return '';
+    if (id === 'btnShowTaskPane') return 'btn-panel.png'
+    if (id === 'btnDockWindow') return 'btn-dock.png'
+    if (id === 'btnCheckStatus') return 'btn-status.png'
     return ''
 }
 
 function GetImageSize(control) {
-    if (!control || !control.id) return 16
-    if (control.id === 'btnShowTaskPane') return 32
+    if (!control) return 16
+    var id = getControlId(control);
+    if (!id) return 16;
+    if (id === 'btnShowTaskPane') return 32
     return 16
 }
 
