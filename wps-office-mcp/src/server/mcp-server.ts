@@ -478,6 +478,9 @@ export class WpsMcpServer {
         //   但黑名单仍能拦截其中的 CreateObject 段。
         // 如需放行，需确认该方法不可能被用于危险操作。
         const blockedPrefixes = ['CreateObject', 'Shell', 'Exec', 'Run', 'WScript', 'ScriptControl', 'Eval', 'Execute'];
+        if (!method) {
+          return { id: '', success: false, content: [{ type: 'text', text: 'Error: method is required' }] };
+        }
         const segments = method.split('.');
         for (let i = 0; i < blockedPrefixes.length; i++) {
           for (let j = 0; j < segments.length; j++) {

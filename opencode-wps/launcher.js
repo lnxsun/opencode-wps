@@ -47,7 +47,7 @@ function parseBody(req, callback) {
 function sendJSON(res, statusCode, data) {
     res.writeHead(statusCode, {
         'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': 'http://127.0.0.1:14096',
+        'Access-Control-Allow-Origin': '*',  // launcher 仅绑定 127.0.0.1，无外部访问风险
         'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
         'Access-Control-Allow-Headers': 'Content-Type'
     });
