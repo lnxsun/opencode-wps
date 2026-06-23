@@ -404,14 +404,18 @@ async function fetchJSON() { }
 1. **使用 `var`** 而非 `let/const`
 2. **使用 `function`** 而非箭头函数
 3. **使用回调** 而非 async/await
-4. **使用 `XMLHttpRequest`** 而非 `fetch`（更稳定）
-5. **避免模板字符串** - 使用字符串拼接
+4. **必须使用 `XMLHttpRequest`，禁止使用 `fetch`**（WPS Chromium 104 的 fetch Promise 永远 pending）
+5. **禁止使用 `ReadableStream`/`TextDecoderStream`**（WPS 104 不完整支持）
+6. **避免模板字符串** - 使用字符串拼接
 
 ### 原因说明
 
-- WPS 内置浏览器内核较旧，新语法可能导致解析错误
+- WPS 内置浏览器内核较旧（Chrome 103/104），新语法可能导致解析错误
 - callback 模式比 async/await 在旧浏览器中更可靠
 - XMLHttpRequest 在 WPS 环境中经过验证，兼容性更好
+- `fetch()` 在 WPS 104 中的 Promise 会永远 pending（不 resolve 也不 reject），不能使用
+- 关闭"安全沙箱保护"后问题依旧，说明是内核实现缺陷而非安全策略限制
+- `ReadableStream`/`TextDecoderStream` 在 WPS 104 中实现不完整，不能使用
 
 ### 未来考虑
 
@@ -421,3 +425,15 @@ async function fetchJSON() { }
 - 使用 async/await
 - 升级后需在真机上测试
 - Launcher 开机自启注册
+
+### 已知不兼容库（2026-06 验证）
+
+以下库/协议在 WPS Chromium 103/104 环境中已验证不可用：
+
+| 库/协议 | 失败原因 | 现象 |
+|---------|---------|------|
+| `@opencode-ai/sdk` | 内部使用 `fetch()` + `ReadableStream` + `TextDecoderStream` | Promise 永远 pending，前端卡死 |
+| ACP (claudian) 子进程模式 | 需要 `child_process.spawn()`，浏览器无此 API | 不适用 |
+| ACP JSON-RPC over stdio | 需要 stdin/stdout 管道，浏览器无此能力 | 不适用 |
+
+**教训**：引入外部库前必须先检查是否依赖 `fetch()`、`ReadableStream`、`child_process` 等 WPS 不支持的 API。详见 `docs/TROUBLESHOOTING.md` 第十一节。

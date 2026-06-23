@@ -149,7 +149,7 @@ const VERIFIED_TOOLS = new Set([
   // === Common ===
   'ping', 'wireCheck', 'getAppInfo', 'getContext', 'getOpenDocuments', 'getOpenPresentations',
   'switchDocument', 'switchPresentation', 'switchWorkbook', 'convertToPDF', 'convertFormat',
-  'trim', 'underline', 'placeholder',
+  'trim', 'underline', 'placeholder', 'writeFile',
   // === Word ===
   'getActiveDocument', 'getDocumentText', 'getDocumentTextByRange', 'getSelectedText', 'setSelectedText', 'save',
   'saveAs', 'openFile', 'openDocument', 'createDocument', 'closeDocument',
@@ -467,6 +467,7 @@ const COM_ACTIONS: ToolIndexItem[] = [
   { name: 'placeholder', description: '占位符', keywords: ['占位符'], category: 'common', appType: WpsAppType.WRITER, paramsSchema: {} },
   { name: 'trim', description: '去除前后空格', keywords: ['空格'], category: 'common', appType: WpsAppType.WRITER, paramsSchema: {} },
   { name: 'underline', description: '添加下划线', keywords: ['下划线'], category: 'common', appType: WpsAppType.WRITER, paramsSchema: {} },
+  { name: 'writeFile', description: '写入文件内容（支持文本和二进制）', keywords: ['写入', '文件', '保存', '报告'], category: 'common', appType: WpsAppType.WRITER, paramsSchema: { filePath: { type: 'string', description: '要写入的文件完整路径（绝对路径）', required: true }, content: { type: 'string', description: '要写入的文本内容', required: true }, encoding: { type: 'string', description: '内容编码方式，默认 utf8', required: false } } },
   { name: 'remove_duplicates', description: '删除重复行（cleanData 子命令）', keywords: ['去重', '重复行'], category: 'excel', appType: WpsAppType.SPREADSHEET, paramsSchema: { range: { type: 'string', description: '区域', required: true } } },
   { name: 'unify_date', description: '统一日期格式（cleanData 子命令）', keywords: ['日期', '统一'], category: 'excel', appType: WpsAppType.SPREADSHEET, paramsSchema: { range: { type: 'string', description: '区域', required: true } } },
   { name: 'closeWorkbook', description: '关闭工作簿（可选择是否保存）', keywords: ['工作簿', '关闭', '保存'], category: 'excel', appType: WpsAppType.SPREADSHEET, paramsSchema: { save: { type: 'boolean', description: '保存后再关闭', required: false } } },

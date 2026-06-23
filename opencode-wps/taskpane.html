@@ -900,39 +900,27 @@ function fetchAvailableModels(cb) {
 }
 
 function fetchAvailableAgents(cb) {
-    var xhr = new XMLHttpRequest()
-    xhr.timeout = NETWORK_TIMEOUT
-    xhr.onreadystatechange = function() {
-        if (xhr.readyState === 4) {
-            if (xhr.status >= 200 && xhr.status < 300) {
-                try {
-                    var agents = JSON.parse(xhr.responseText)
-                    if (agents && agents.data) {
-                        AVAILABLE_AGENTS = agents.data
-                        console.log('[Agent] Loaded:', AVAILABLE_AGENTS.length, 'agents')
-                        if (AVAILABLE_AGENTS.length > 0 && !CURRENT_AGENT) {
-                            for (var i = 0; i < AVAILABLE_AGENTS.length; i++) {
-                                if (AVAILABLE_AGENTS[i].name === DEFAULT_AGENT) {
-                                    CURRENT_AGENT = DEFAULT_AGENT
-                                    break
-                                }
-                            }
-                            if (!CURRENT_AGENT) CURRENT_AGENT = AVAILABLE_AGENTS[0].name
-                        }
+    fetchJSON('GET', '/agent', null, function(agents) {
+        if (agents && agents.data) {
+            AVAILABLE_AGENTS = agents.data
+            console.log('[Agent] Loaded:', AVAILABLE_AGENTS.length, 'agents')
+            if (AVAILABLE_AGENTS.length > 0 && !CURRENT_AGENT) {
+                for (var i = 0; i < AVAILABLE_AGENTS.length; i++) {
+                    if (AVAILABLE_AGENTS[i].name === DEFAULT_AGENT) {
+                        CURRENT_AGENT = DEFAULT_AGENT
+                        break
                     }
-                } catch(e) {
-                    console.log('[Agent] Parse error:', e)
                 }
-            } else {
-                console.log('[Agent] HTTP error:', xhr.status)
+                if (!CURRENT_AGENT) CURRENT_AGENT = AVAILABLE_AGENTS[0].name
             }
-            if (cb) cb()
+        } else {
+            console.log('[Agent] No data')
         }
-    }
-    xhr.onerror = function() { console.log('[Agent] Network error'); if (cb) cb() }
-    xhr.ontimeout = function() { console.log('[Agent] Timeout'); if (cb) cb() }
-    xhr.open('GET', API_BASE + '/agent', true)
-    xhr.send()
+        if (cb) cb()
+    }, function(s, t) {
+        console.log('[Agent] Error:', s, t)
+        if (cb) cb()
+    })
 }
 
 function toggleAgentDropdown(e) {
@@ -940,46 +928,29 @@ function toggleAgentDropdown(e) {
     var btn = document.getElementById('bb-agent')
     createDropdown(btn, '<div class="dd-header">加载中...</div>', 'bottom-up')
     
-    var xhr = new XMLHttpRequest()
-    xhr.timeout = NETWORK_TIMEOUT
-    xhr.onreadystatechange = function() {
-        if (xhr.readyState === 4 && xhr.status === 200) {
-            try {
-                var resp = JSON.parse(xhr.responseText)
-                var agents = resp.data || resp || []
-                closeAllDropdowns()
-                
-                var html = '<div class="dd-header">选择智能体</div>'
-                if (agents.length === 0) {
-                    html += '<div class="dd-item"><span style="color:#999">未找到智能体</span></div>'
-                } else {
-                    for (var i = 0; i < agents.length; i++) {
-                        var a = agents[i]
-                        var name = a.name || a.id || 'unknown'
-                        var sel = (name === CURRENT_AGENT)
-                        html += '<div class="dd-item' + (sel ? ' selected' : '') + '" onclick="selectAgent(\'' + escapeAttr(name) + '\')">'
-                        html += '<span>' + escapeHtml(name) + '</span>'
-                        if (sel) html += '<span class="dd-check">&#10003;</span>'
-                        html += '</div>'
-                    }
-                }
-                createDropdown(btn, html, 'bottom-up')
-            } catch(e) {
-                closeAllDropdowns()
-                createDropdown(btn, '<div class="dd-header">错误：解析失败</div>', 'bottom-up')
-            }
-        } else if (xhr.readyState === 4) {
-            closeAllDropdowns()
-            var errMsg = xhr.status === 0 ? '网络错误' : 'HTTP ' + xhr.status
-            createDropdown(btn, '<div class="dd-header">' + errMsg + '</div>', 'bottom-up')
-        }
-    }
-    xhr.onerror = function() {
+    fetchJSON('GET', '/agent', null, function(resp) {
+        var agents = resp && resp.data ? resp.data : (Array.isArray(resp) ? resp : [])
         closeAllDropdowns()
-        createDropdown(btn, '<div class="dd-header">网络错误</div>', 'bottom-up')
-    }
-    xhr.open('GET', API_BASE + '/agent', true)
-    xhr.send()
+        var html = '<div class="dd-header">选择智能体</div>'
+        if (agents.length === 0) {
+            html += '<div class="dd-item"><span style="color:#999">未找到智能体</span></div>'
+        } else {
+            for (var i = 0; i < agents.length; i++) {
+                var a = agents[i]
+                var name = a.name || a.id || 'unknown'
+                var sel = (name === CURRENT_AGENT)
+                html += '<div class="dd-item' + (sel ? ' selected' : '') + '" onclick="selectAgent(\'' + escapeAttr(name) + '\')">'
+                html += '<span>' + escapeHtml(name) + '</span>'
+                if (sel) html += '<span class="dd-check">&#10003;</span>'
+                html += '</div>'
+            }
+        }
+        createDropdown(btn, html, 'bottom-up')
+    }, function(s, t) {
+        closeAllDropdowns()
+        var errMsg = s === 0 ? (t || '网络错误') : 'HTTP ' + s
+        createDropdown(btn, '<div class="dd-header">' + escapeHtml(errMsg) + '</div>', 'bottom-up')
+    })
 }
 function selectAgent(id) { CURRENT_AGENT = id; PERSIST.agent = id; $agentName.textContent = id; closeAllDropdowns() }
 
@@ -1056,12 +1027,11 @@ function switchSession(id) { closeSidebar(); SESSION_ID = id; setPS('opencode_se
 // --- Status ---
 function setStatus(s) { IS_BUSY = (s === 'busy'); $statusDot.className = 'dot ' + (IS_BUSY ? 'busy' : 'idle'); updateInputState() }
 
-// --- Fetch ---
+// --- Fetch (with retry) ---
 function fetchWithRetry(method, path, body, onSuccess, onError, timeout, maxRetries) {
     maxRetries = maxRetries || CONSTANTS.MAX_RETRIES || 3;
     var attempts = 0;
     var xhr;
-    var timeoutId;
 
     function doRequest() {
         attempts++;
@@ -1071,7 +1041,6 @@ function fetchWithRetry(method, path, body, onSuccess, onError, timeout, maxRetr
 
         xhr.onreadystatechange = function() {
             if (xhr.readyState === 4) {
-                clearTimeout(timeoutId);
                 if (xhr.status >= 200 && xhr.status < 300) {
                     try { onSuccess(JSON.parse(xhr.responseText)) } catch(e) { onSuccess(null) }
                 } else if (xhr.status > 0) {
@@ -1086,30 +1055,26 @@ function fetchWithRetry(method, path, body, onSuccess, onError, timeout, maxRetr
         };
 
         xhr.onerror = function() {
-            clearTimeout(timeoutId);
             if (attempts < maxRetries) {
                 console.log('[fetch] Network error, retry ' + attempts + '/' + maxRetries);
                 setTimeout(doRequest, 1000 * attempts);
             } else if (onError) {
-                onError(0, 'Network error');
+                onError(0, '网络错误');
             }
         };
 
         xhr.ontimeout = function() {
-            clearTimeout(timeoutId);
             if (attempts < maxRetries) {
                 console.log('[fetch] Timeout, retry ' + attempts + '/' + maxRetries);
                 setTimeout(doRequest, 1000 * attempts);
             } else if (onError) {
-                onError(0, 'Timeout');
+                onError(0, '请求超时');
             }
         };
 
         xhr.open(method, API_BASE + path, true);
         xhr.setRequestHeader('Content-Type', 'application/json');
         if (body) xhr.send(JSON.stringify(body)); else xhr.send();
-
-        timeoutId = setTimeout(function() { xhr.abort(); }, timeout || 15000);
     }
 
     doRequest();
@@ -1118,8 +1083,9 @@ function fetchWithRetry(method, path, body, onSuccess, onError, timeout, maxRetr
 function fetchJSON(method, path, body, onSuccess, onError, timeout) {
     fetchWithRetry(method, path, body, onSuccess, onError, timeout, CONSTANTS.MAX_RETRIES);
 }
-function postMessage(path, body, onError) {
-    var xhr = new XMLHttpRequest(); xhr.timeout = UPLOAD_TIMEOUT
+
+function postMessage(path, body, onError, timeout) {
+    var xhr = new XMLHttpRequest(); xhr.timeout = timeout || UPLOAD_TIMEOUT
     xhr.onreadystatechange = function() { if (xhr.readyState === 4 && xhr.status >= 400 && onError) onError(xhr.status, xhr.responseText) }
     xhr.onerror = function() { if (onError) onError(0, 'Network error') }
     xhr.ontimeout = function() { console.log('[Chat] POST timeout (SSE still active)') }
@@ -1301,11 +1267,7 @@ function handleFileUpload(e) {
     reader.onload = function(evt) {
         var base64 = evt.target.result.split(',')[1];
         var msg = '<file-upload>\nfilename: ' + file.name + '\ntype: ' + file.type + '\ndata: ' + base64 + '\n</file-upload>';
-        var xhr = new XMLHttpRequest();
-        xhr.timeout = NETWORK_TIMEOUT;
-        xhr.open('POST', API_BASE + '/session/' + SESSION_ID + '/message', true);
-        xhr.setRequestHeader('Content-Type', 'application/json');
-        xhr.send(JSON.stringify({ parts: [{ type: 'text', text: msg }] }));
+        postMessage('/session/' + SESSION_ID + '/message', { parts: [{ type: 'text', text: msg }] });
     };
     reader.readAsDataURL(file);
     e.target.value = ''
@@ -1314,10 +1276,7 @@ function forceInjectContext() {
     if (!SESSION_ID || IS_BUSY) return; LAST_INJECTED_CONTEXT = ''
     var ctx = gatherWpsContext(); if (!ctx) { addSystemMessage('No document context available'); return }
     LAST_INJECTED_CONTEXT = ctx; addSystemMessage('Document context injected')
-    var xhr = new XMLHttpRequest(); xhr.timeout = NETWORK_TIMEOUT
-    xhr.open('POST', API_BASE + '/session/' + SESSION_ID + '/message', true)
-    xhr.setRequestHeader('Content-Type', 'application/json')
-    xhr.send(JSON.stringify({ noReply: true, parts: [{ type: 'text', text: ctx }] }))
+    postMessage('/session/' + SESSION_ID + '/message', { noReply: true, parts: [{ type: 'text', text: ctx }] }, null, NETWORK_TIMEOUT)
 }
 function gatherWpsContext() {
     var lines = []

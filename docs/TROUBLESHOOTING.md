@@ -307,3 +307,92 @@ if (result === -1) {
 - `result === 0` - 用户取消选择
 - `fd.SelectedItems.Item(1)` - 获取用户选中的文件夹路径
 - 取消选择时清空输入框，避免用户体验困惑
+
+---
+
+## 十一、ACP / SDK 等现代库兼容性踩坑（2026-06）
+
+### 背景
+
+项目曾尝试两条路径来支持多模型可选：
+1. **`@opencode-ai/sdk`** — 集成 OpenCode 官方 SDK，用 `SDK.listSessions()` 等替代原生 XHR
+2. **借鉴 claudian 的 ACP 架构** — 用 Provider Registry + ChatRuntime 接口实现多 Provider Runtime
+
+两条路径都因 WPS 内置 Chromium 103/104 的浏览器环境限制而失败。
+
+---
+
+### 1. `@opencode-ai/sdk` 不可用
+
+**尝试**：安装 `@opencode-ai/sdk`，用 esbuild 打包为浏览器 bundle，在 `taskpane.html` 中用 SDK 替代原生 XHR/EventSource。
+
+**失败根因**：
+
+| 问题 | 详细 | 现象 |
+|------|------|------|
+| SDK 内部使用 `fetch()` | WPS Chromium 104 的 `fetch()` **Promise 永远 pending**（不 resolve 也不 reject） | `sdk.listSessions()` → 挂死 → 前端卡"加载中" |
+| `TextDecoderStream` | SDK 的 SSE 使用 `response.body.pipeThrough(new TextDecoderStream()).getReader()` — Chrome 104 **不支持** `TextDecoderStream` | SSE 流式响应挂死，无流式回复 |
+| `ReadableStream` pipeThrough | 同上，WPS 104 的 `ReadableStream` 实现不完整 | SDK 内部报错，静默失败 |
+| `fetch()` 超时机制 | SDK 设置 `req.timeout = false`，依赖 `fetch()` 内部超时 | `fetch()` 永远挂死，无法超时 |
+
+**关键日志**（WPS Console）：
+```
+[fetch] SDK error: {TypeError: Failed to fetch}
+[fetch] SDK error: undefined
+[SSE] Error: ...
+```
+
+**结论**：**WPS Chromium 104 的 `fetch()` 不可信任**，所有 HTTP 请求必须用原生 `XMLHttpRequest`，所有 SSE 必须用原生 `EventSource`。
+
+**安全沙箱测试**：关闭 WPS 的"安全沙箱保护"后重新测试 `@opencode-ai/sdk`，`fetch()` **依然挂死**。说明问题不是安全策略导致的，而是 Chromium 104 内核本身的 `fetch()` 实现缺陷。
+
+**替代方案**（未实施）：创建一个 XHR-based `fetch()` polyfill 注入 SDK — 但工作量等同于重写浏览器的 fetch API，不值得。
+
+---
+
+### 2. ACP (Agent Client Protocol) 不可用
+
+**尝试**：借鉴 [claudian](https://github.com/YishenTu/claudian) 的多模型架构，用 Provider Registry + ChatRuntime 接口实现多 Provider Runtime（OpenCode、OpenAI、Anthropic 等）。
+
+**失败根因**：
+
+| ACP 组件 | WPS JS 环境 | 原因 |
+|---------|------------|------|
+| `child_process.spawn()` | ❌ 不可用 | WPS JS 运行在浏览器沙箱，无 Node.js API |
+| stdin/stdout 管道 | ❌ 不可用 | 浏览器无 stdio 访问能力 |
+| JSON-RPC 2.0 over stdio | ❌ 不可用 | 依赖子进程 + 管道通信 |
+| Provider CLI 解析（`which claude`等） | ❌ 不可用 | 浏览器无 shell 访问 |
+| `AsyncGenerator<StreamChunk>` | ⚠️ 需适配 | Chrome 104 支持，但现有代码用回调模式 |
+
+**可行部分**：
+
+| 组件 | 可行性 | 说明 |
+|------|:------:|------|
+| Provider Registry 模式 | ✅ | 纯设计模式，无环境依赖 |
+| ChatRuntime 接口抽象 | ✅ | 可映射到回调/事件模式 |
+| Provider 配置存储 | ✅ | 用 PluginStorage 或 localStorage |
+| HTTP streaming 解析 | ✅ | 用 XHR + 逐行解析 SSE |
+
+**结论**：ACP 的**传输层**（子进程 + stdio）完全不兼容 WPS JS。但上层的 **Provider Registry + ChatRuntime 抽象模式** 是纯设计模式，可以用 HTTP 方式重写（见 `ACP化改造` 分支评估）。
+
+---
+
+### 3. 通用教训：引入外部库的前置检查清单
+
+在 WPS JS 环境中引入任何外部库之前，必须检查：
+
+| 检查项 | 问题 | 处理 |
+|--------|------|------|
+| 是否依赖 `fetch()`？ | WPS 104 的 fetch 可能挂死 | 需确认是否能用 XHR 替代，或直接不可用 |
+| 是否使用 `ReadableStream`/`TextDecoderStream`？ | Chrome 104 不完整支持 | 不可用 |
+| 是否依赖 Node.js API（`fs`, `child_process`, `path`）？ | 浏览器沙箱无 Node.js | 不可用 |
+| 是否使用 ES2018+ 特性（`AsyncGenerator`, `for-await-of`）？ | Chrome 104 部分支持 | 需验证或 Babel 转译 |
+| 是否使用 `URL.canParse()`、`Array.at()` 等新版 API？ | Chrome 104 不支持 | 需 polyfill 或改用 ES5 |
+| 是否依赖 WebSocket？ | WPS 环境可能受限 | 需实测 |
+| 是否需要跨域请求？ | CORS 策略更严格 | 需后端支持或代理 |
+
+**验证步骤**：
+1. 在 WPS 中按 F12 打开 Console（或 ALT+F12）
+2. 执行 `console.log(typeof fetch)` 确认 API 存在性
+3. 测试核心路径（如 `fetch('http://127.0.0.1:14096/global/health')`）是否返回 Promise 并 resolve
+4. 测试完成后，**再决定是否集成**该库

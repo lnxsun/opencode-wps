@@ -1,133 +1,100 @@
 # AGENTS.md
 
-## 项目概述
-OpenCode WPS — OpenCode AI 的 WPS Office 插件，在 WPS 中嵌入 AI 对话侧边栏。
+## Project
 
-## 项目架构（重要！）
+OpenCode WPS — WPS Office plugin embedding an AI chat sidebar (OpenCode AI) into WPS Writer, Spreadsheet, and Presentation.
+
+## Architecture (critical)
+
+Source files (git-tracked) are installed to user directories (not git-tracked):
 
 ```
-源文件（git 跟踪）              安装后（不被 git 跟踪）
-─────────────────            ─────────────────────
-opencode-wps/    ──安装──▶  %APPDATA%\kingsoft\wps\jsaddons\opencode-wps_\
-wps-office-mcp/  ──安装──▶  ~/.config/opencode/opencode.json (MCP 配置)
-skills/          ──安装──▶  ~/.opencode/skills/
-agents/          ──安装──▶  ~/.config/opencode/agents/ + ~/.opencode/agents/
+opencode-wps/          → %APPDATA%\kingsoft\wps\jsaddons\opencode-wps_\
+wps-office-mcp/        → ~/.config/opencode/opencode.json (MCP config entry)
+skills/                → ~/.opencode/skills/
+agents/                → ~/.config/opencode/agents/ + ~/.opencode/agents/
+.opencode/plugins/     → ~/.config/opencode/plugins/
 ```
 
-**规则：**
-- ✅ 修改源文件，然后运行 `node install-addons.js` 同步
-- ❌ 不要直接修改安装目录中的文件
-- ❌ 不要让安装目录的文件"漂移"（和源文件不同步）
+**Rules:**
+- Edit source files only, then run `node install-addons.js` to sync
+- Never edit files in `~/.opencode/skills/`, `%APPDATA%\kingsoft\wps\jsaddons\`, `~/.config/opencode/opencode.json`, or `~/.config/opencode/agents/` — these are install artifacts
+- Verify with `git status` after every change to avoid editing the wrong directory
 
-## 关键命令
+## Key Commands
+
 ```bash
-node install-addons.js   # 一键安装全部组件（修改 skills/agents 后必须运行）
-npm run build            # 编译 MCP 服务器 (cd wps-office-mcp && npm run build)
-npm run mcp:install      # 安装 MCP 依赖
+node install-addons.js          # One-shot install: WPS plugin + MCP build + skills/agents/plugins sync
+npm run build                   # Build MCP server (cd wps-office-mcp && npm run build, or root shortcut)
+npm run mcp:install             # Install MCP dependencies
+npm run mcp:test                # Run MCP tests (cd wps-office-mcp && npm test)
+npm run format                  # Format with Prettier
+npm run format:check            # Check formatting
 ```
 
-## 项目结构
+**Order matters**: Edit source → `node install-addons.js` → restart WPS / OpenCode service.
+
+## Project Structure
+
 ```
-opencode-wps/
-├── opencode-wps/         # WPS JS 加载项 (main.js, taskpane.html, ribbon.xml)
-├── wps-office-mcp/       # MCP 服务器 (TypeScript, 240 个 COM Actions + 12 内置工具)
-├── skills/               # 5 个 OpenCode Skills (wps-excel/word/ppt/office/proofread)
-│   └── README.md        # ⚠️ 必须先读：skills 修改流程
-├── agents/               # 自定义 Agents (wps-expert + 3 个子 agents)
-├── .opencode/
-│   ├── plugins/
-│   │   └── governance.js # ⚙️ 执行治理插件（G1-G7 + P1-P16 + T1-T11，代码层强制执行）
-│   └── package.json
-└── install-addons.js     # 一键安装脚本 (7 步)
+opencode-wps/              # WPS JS add-in (main.js, taskpane.html, ribbon.xml, config.js, launcher.js)
+wps-office-mcp/            # MCP server (TypeScript, 240 COM Actions + 12 built-in tools)
+  src/                     # Server, client, tools, types, utils
+skills/                    # 5 OpenCode Skills (wps-excel/word/ppt/office/proofread)
+  README.md                # MUST READ before modifying skills
+agents/                    # 4 agent definitions (wps-expert, wps-word, wps-excel, wps-ppt)
+.opencode/
+  plugins/governance.js    # Execution governance plugin (G1-G7 + P1-P16 + T1-T11 rules)
+  opencode.jsonc           # OpenCode config template (merged into ~/.config/opencode/opencode.json)
+install-addons.js          # One-shot install script (7 steps)
 ```
 
-## WPS Agents 功能
+## MCP Server
 
-### Agents 定义位置
-- 全局 agents：`~/.config/opencode/agents/` (不被 git 跟踪)
-- 项目 agents：`.opencode/agents/` (如需要)
+`wps-office-mcp/` is a TypeScript MCP server. Key commands:
+```bash
+cd wps-office-mcp && npm install && npm run build   # Must build before MCP works
+cd wps-office-mcp && npm test                        # Jest tests
+cd wps-office-mcp && npm run test:unit               # Unit tests only
+cd wps-office-mcp && npm run dev                     # Dev mode (ts-node)
+```
 
-### 现有 Agents
-| Agent | 角色 | 说明 |
-|-------|------|------|
-| wps | primary | WPS Office 综合助手（OpenCode 默认 agent） |
-| wps-expert | subagent | WPS Office 智能助手，综合处理 Word/Excel/PPT |
-| wps-word | subagent | Word 文档处理专家 |
-| wps-excel | subagent | Excel 数据处理专家 |
-| wps-ppt | subagent | PPT 演示文稿专家 |
+Three-tier tool system:
+- **12 built-in tools** (`wps_xxx`) — always registered via MCP
+- **238 registered tools** (`wps_xxx_xxx`) — TypeScript handlers, routed via Gateway
+- **240 COM Actions** — discovered on-demand via `wps_office_search`/`wps_office_execute` Gateway tools
 
-### 使用方式
-1. 在消息中使用 `@wps-expert`、`@wps-word`、`@wps-excel`、`@wps-ppt` 调用子 agents
-2. 消息中自动传递 `agent` 参数到 OpenCode API
-3. 默认使用 wps 主 agent（无需 @ 前缀）
+WPS must be running for any MCP operation.
 
-### 修改 Agents
-1. 修改 `~/.config/opencode/agents/` 下的 `.md` 文件
-2. 重启 OpenCode 服务使配置生效
-3. （可选）复制到 `.opencode/agents/` 实现项目级配置
+## WPS Plugin
 
-## AI 编程助手注意事项
+`opencode-wps/` contains the JS add-in. Key files:
+- `config.js` — global config hub (`CONFIG` object: OpenCode port 14096, Launcher port 14097, user home)
+- `main.js` — ribbon callbacks, state management, OpenCode connection
+- `taskpane.html` — chat UI (SSE streaming, Markdown rendering, session/agent management)
+- `launcher.js` — background process managing OpenCode service lifecycle
 
-如果你是一个 AI 助手，正在修改本项目：
-1. **修改 skills** → 改 `skills/` → 运行 `node install-addons.js` → git commit
-2. **修改 MCP** → 改 `wps-office-mcp/src/` → `npm run build` → git commit
-3. **修改 Agents** → 改 `~/.config/opencode/agents/` → 重启服务 → git commit
-4. **重要：永远不要修改以下目录**（它们是安装产物，不是源文件）：
-   - ❌ `~/.opencode/skills/` 或 `%USERPROFILE%\.opencode\skills\`
-   - ❌ `%APPDATA%\kingsoft\wps\jsaddons\`
-   - ❌ `~/.config/opencode/opencode.json`
-5. **每次修改后**检查：`git status` 确保修改已提交
+All file paths in WPS operations must be absolute.
 
-## Launcher 服务管理
+## Governance Plugin
 
-OpenCode 通过 Launcher 进程管理自动启动：
-- Launcher 监听：`http://127.0.0.1:14097`
-- API 端点：
-  - `GET /status` - 查看状态
-  - `POST /start` - 启动服务 (body: `{"cwd": "目录"}`)
-  - `POST /stop` - 停止服务
+`.opencode/plugins/governance.js` intercepts all MCP tool calls at runtime via OpenCode Plugin Hooks (`tool.execute.before`/`after`):
+- **G1-G7**: Gateway enforcement, destructive confirmation, path safety, password protection, parameter validation
+- **P1-P16**: Proofreading rules (batch ≤200, strict sequential proofread→confirm→fix)
+- **T1-T11**: Template filling rules (evaluate doc, batch ≤200, track revisions, no fabricated fields)
 
-## 如何避免"改错目录"的问题
+Modify in `.opencode/plugins/governance.js`, then `node install-addons.js` to sync.
 
-当 AI 要修改文件时，先问自己：
-1. 这个文件在 `D:\code\opencode-wps\` 下吗？→ 是，继续
-2. 这个文件是被 git 跟踪的吗？→ 用 `git ls-files <path>` 检查
-3. 如果不在代码库但在用户目录 → 停止！这是安装产物，不是源文件
+## Agents
 
-## 常见问题
-1. MCP 连不上 → `cd wps-office-mcp && npm install && npm run build`
-2. WPS 插件不显示 → 检查 `%APPDATA%\kingsoft\wps\jsaddons\opencode-wps_` 目录
-3. OpenCode 服务未启动 → `schtasks /Run /TN "OpenCodeLauncher"` 或通过 Launcher API 启动
-4. 文件路径 → 始终用绝对路径
-5. WPS 必须运行才能进行 MCP 操作
-6. Skills 不生效 → 检查是否运行了 `node install-addons.js` 同步
-7. Agents 不显示 → 重启 OpenCode 服务让新 agents 生效
+Defined in `agents/` (installed to `~/.config/opencode/agents/`). Invoke via `@wps-expert`, `@wps-word`, `@wps-excel`, `@wps-ppt` in messages.
 
-## 执行治理插件
+## Gotchas
 
-`.opencode/plugins/governance.js` 是项目的执行治理核心，使用 OpenCode Plugin Hooks 在运行时拦截所有 MCP 工具调用：
-
-### 通用规则（G1-G7，始终生效）
-- **G1 网关强制**：6 个双路径工具必须走 `wps_office_execute` 网关
-- **G2 wps_execute_method 白名单**：仅允许白名单 API 通过
-- **G3 读前必写**：写操作前必须先读取文档状态
-- **G4 破坏性确认**：删除/清除操作需显式传 `confirm: true`
-- **G5 文件路径安全**：禁止 `..` 路径穿越
-- **G6 密码保护**：保护/取消保护密码脱敏
-- **G7 参数范围校验**：行号/索引自动 ≥ 1
-
-### 校对规则（P1-P16，分批校对时生效）
-- **P1-P11**：批次大小 ≤200、连续性、startOffset 匹配、修订模式、proofreadBasic 必调、P14(P13) 确认前必须 proofread、P15 无 issue 限制 AI 修复、P16 替换内容与已知 issue 交叉校验
-
-### 模板填写规则（T1-T11，模板填写时生效）
-- 填写前评估文档、分批 ≤200 段、开启修订模式、禁止编造字段、跳过签字字段、所有填值加下划线
-
-### 修改治理插件
-1. 修改 `.opencode/plugins/governance.js`
-2. 运行 `node install-addons.js` 同步到 `~/.config/opencode/plugins/`
-3. 重启 OpenCode 服务
-
-## 参考文档
-- README.md — 完整项目文档
-- skills/README.md — Skills 修改流程（必读！）
-- wps-office-mcp/ — MCP 服务器源码和说明
+1. **Platform**: Windows only (WPS COM, `%APPDATA%`, `schtasks`)
+2. **WPS Chromium**: Bundled Chromium 103 — no modern web features
+3. **Launcher**: Runs at `http://127.0.0.1:14097`, manages `opencode serve` on port 14096
+4. **MCP won't connect** → `cd wps-office-mcp && npm install && npm run build`
+5. **Plugin not visible** → Check `%APPDATA%\kingsoft\wps\jsaddons\opencode-wps_` exists
+6. **Skills/agents not loaded** → Re-run `node install-addons.js` + restart OpenCode
+7. **Always use absolute file paths** — WPS COM requires them

@@ -131,7 +131,8 @@ git push origin feat/your-feature
   - 使用 `var` 而非 `let/const`
   - 使用 `function` 而非箭头函数
   - 使用回调而非 async/await
-  - 使用 `XMLHttpRequest` 而非 `fetch`
+  - **必须使用 `XMLHttpRequest`，禁止使用 `fetch`**（WPS Chromium 104 的 fetch Promise 永远 pending）
+  - **禁止使用 `ReadableStream`/`TextDecoderStream`**（WPS 104 不完整支持）
 - **TypeScript**: 启用 strict 模式
 - **命名**: 使用小驼峰命名
 - **注释**: 使用 JSDoc 风格
