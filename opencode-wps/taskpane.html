@@ -1133,6 +1133,10 @@ function renderHistoryMessage(msg) {
 
 // --- SSE ---
 var sseReconnectTimer = null;
+function updateConnectionStatus() {
+    // SSE 连接状态变化时更新 UI（目前由健康检查自动处理）
+    // 状态变量 CONNECTED 已同步，无需额外 UI 操作
+}
 function connectSSE() {
     if (SSE) { SSE.close(); SSE = null }
     try {
@@ -1273,6 +1277,8 @@ function handleFileUpload(e) {
     var reader = new FileReader();
     reader.onload = function(evt) {
         var base64 = evt.target.result.split(',')[1];
+        // 文件内容以 base64 发送到服务端，可能在服务端日志/消息历史中留存
+        // 含敏感信息的文件建议使用完毕后清理服务器端会话历史
         var msg = '<file-upload>\nfilename: ' + file.name + '\ntype: ' + file.type + '\ndata: ' + base64 + '\n</file-upload>';
         postMessage('/session/' + SESSION_ID + '/message', { parts: [{ type: 'text', text: msg }] });
     };
