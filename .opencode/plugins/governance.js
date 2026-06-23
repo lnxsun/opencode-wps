@@ -124,6 +124,7 @@ const EXECUTE_METHOD_WHITELIST = new Set([
 ]);
 
 // ==================== 状态变量 ====================
+// TODO: 多会话并发时会相互覆盖，需改为 Map<sessionId, State> 隔离
 
 let lastBatchParaIndex = 0;
 let batchStartParaIndex = 0;

@@ -570,7 +570,12 @@ export class WpsMcpServer {
       },
       async (args) => {
         const key = args.key as string;
-        const cached = WpsMcpServer.dataCache.get(key);
+        let cached = WpsMcpServer.dataCache.get(key);
+
+        if (cached && Date.now() - cached.timestamp > WpsMcpServer.MAX_CACHE_AGE) {
+          WpsMcpServer.dataCache.delete(key);
+          cached = undefined;
+        }
 
         if (!cached) {
           return {
