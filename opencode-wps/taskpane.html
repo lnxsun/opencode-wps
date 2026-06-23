@@ -1113,7 +1113,7 @@ function renderHistoryMessage(msg) {
     var parts = msg.parts || []
     if (msg.info.role === 'user') {
         var texts = []
-        for (var i = 0; i < parts.length; i++) { if (parts[i].type === 'text' && !parts[i].ignored && !(parts[i].text && parts[i].text.indexOf('<wps-context>') === 0)) texts.push(parts[i].text) } // indexOf 替代 startsWith（ES5 兼容）
+        for (var i = 0; i < parts.length; i++) { if (parts[i].type === 'text' && !parts[i].ignored && !(parts[i].text && parts[i].text.indexOf('<wps-context>') === 0)) texts.push(parts[i].text) } // indexOf 替代 startsWith（ES5 coding convention）
         if (texts.length > 0) addUserMessage(texts.join('\n'))
     } else if (msg.info.role === 'assistant') {
         var reasoning = '', text = ''
