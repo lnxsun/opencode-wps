@@ -271,6 +271,7 @@ export const WpsGovernancePlugin = async () => {
   return {
 
     // ── 执行后钩子：输出成功后才提交可变状态 ──
+    // 回调签名: (input: { tool: string, sessionID: string, callID: string, args: object }, output: { content: array, isError?: boolean }) => Promise<void>
     "tool.execute.after": async (input, output) => {
       const outerTool = input.tool;
 
@@ -425,6 +426,8 @@ export const WpsGovernancePlugin = async () => {
     },
 
     // ── 执行前钩子：所有规则校验 ──
+    // 回调签名: (input: { tool: string, sessionID: string, callID: string, args: object }, output: never) => Promise<void>
+    // rules: G1-G7 通用规则, P1-P16 校对规则, T1-T11 模板填写规则
     "tool.execute.before": async (input, output) => {
       const outerTool = input.tool;
 

@@ -259,6 +259,7 @@ export class ToolRegistry {
 
   /**
    * 创建Tool调用请求 - 辅助方法
+   * 注：uuid 包仅在此处使用，如需减少依赖可替换为 crypto.randomUUID()
    */
   static createRequest(
     name: string,

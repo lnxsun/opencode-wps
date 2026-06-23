@@ -18,9 +18,9 @@ export { WpsMcpServer, createMcpServer } from './server/mcp-server';
 export { ToolRegistry, toolRegistry, registerTool } from './server/tool-registry';
 export { WpsClient, wpsClient } from './client/wps-client';
 export { log, logger, createChildLogger } from './utils/logger';
-export * from './utils/error';
-export * from './types/tools';
-export * from './types/wps';
+export { ErrorCode, McpError, WpsConnectionError, WpsApiError, ToolNotFoundError, ToolExecutionError, InvalidParamsError, TimeoutError, errorUtils } from './utils/error';
+export { ToolParameterSchema, ToolInputSchema, ToolDefinition, ToolCategory, ToolCallRequest, ToolCallResult, ToolContent, ToolHandler, RegisteredTool, ListToolsResponse, CallToolResponse } from './types/tools';
+export { WpsAppType, WpsEndpointConfig, WpsApiRequest, WpsApiResponse, DocumentInfo, WorkbookInfo, SheetInfo, CellRange, CellData, PresentationInfo, SlideInfo, TextOperationParams, FormatParams, WpsClientStatus } from './types/wps';
 
 /**
  * 主函数 - 程序入口

@@ -9,6 +9,7 @@
 | 文档 | 说明 |
 |------|------|
 | [DEVELOPMENT_GUIDE.md](./DEVELOPMENT_GUIDE.md) | 开发指南、代码规范、提交规范、FAQ |
+| [CODE_REVIEW_GUIDE.md](./CODE_REVIEW_GUIDE.md) | 代码审查规范与流程（分级标准/审查流程/场景策略/度量指标） |
 | [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) | 问题排查与避坑指南 |
 | [SECURITY.md](./SECURITY.md) | 安全模型与注意事项 |
 

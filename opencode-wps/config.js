@@ -37,7 +37,7 @@ var CONFIG = {
         // 插件版本
         version: '1.1.0',
         // 用户主目录（安装时注入，见 install-addons.js）
-        userHome: '___WPS_USER_HOME___'
+        userHome: '___WPS_USER_HOME___' || (typeof process !== 'undefined' && process.env && (process.env.USERPROFILE || process.env.HOME)) || 'C:\\Users\\Default'
     },
 
     // 会话配置

@@ -560,7 +560,7 @@ if (fsEx.existsSync(launcherPath)) {
     try { execSync('schtasks /Delete /TN "' + taskName + '" /F', { stdio: 'pipe' }); } catch(e) {}
 
     const xmlContent = [
-        '<?xml version="1.0" encoding="UTF-16"?>',
+        '<?xml version="1.0" encoding="UTF-8"?>',
         '<Task version="1.2" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">',
         '  <RegistrationInfo><Description>OpenCode Launcher</Description></RegistrationInfo>',
         '  <Triggers><LogonTrigger><Enabled>true</Enabled></LogonTrigger></Triggers>',

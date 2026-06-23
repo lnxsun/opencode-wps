@@ -179,7 +179,7 @@ export const errorUtils = {
    */
   logAndThrow(error: unknown, context?: string): never {
     const mcpError = errorUtils.wrap(error);
-    log.error(context ? `${context}: ${mcpError.message}` : mcpError.message, mcpError);
+    log.error(context ? `${context}: ${mcpError.message}` : mcpError.message, { ...mcpError.details, code: mcpError.code, stack: mcpError.stack });
     throw mcpError;
   },
 

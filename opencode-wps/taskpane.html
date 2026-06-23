@@ -2,6 +2,7 @@
 <html>
 <head>
 <meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' http://127.0.0.1:*; img-src 'self' data: http: https:">
 <title>OpenCode</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
@@ -365,6 +366,7 @@ function setLS(key, val) { try { localStorage.setItem(key, val) } catch(e) {} }
 // cookie 备用（WPS 内嵌浏览器普遍支持）
 function getCK(key) { try { var m = document.cookie.match(new RegExp('(^| )' + key + '=([^;]+)')); return m ? decodeURIComponent(m[2]) : '' } catch(e) { return '' } }
 function setCK(key, val) { try { document.cookie = key + '=' + encodeURIComponent(val) + ';path=/;max-age=31536000' } catch(e) {} }
+function clearCK(key) { try { document.cookie = key + '=;path=/;max-age=0' } catch(e) {} }
 
 // --- 安全函数 ---
 function safeInput(str) {
@@ -734,7 +736,13 @@ function createDropdown(anchorEl, html, direction) {
     anchorEl.appendChild(dd)
     if (anchorEl.classList) anchorEl.classList.add('active')
 }
-function escapeHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;') }
+function escapeHtml(s) {
+    if (typeof s !== 'string') return '';
+    return s.replace(/[<>&"]/g, function(c) {
+        var map = { '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' };
+        return map[c];
+    });
+}
 function escapeAttr(s) { return s.replace(/'/g, "\\'").replace(/"/g, '&quot;') }
 
 // Mode dropdown
@@ -1312,7 +1320,7 @@ function onInputKey(e) {
             autoGrow($input)
         }
     }
-    setTimeout(updateSendButton, 0)
+    updateSendButton()
 }
 function autoGrow(el) { el.style.height = 'auto'; el.style.height = Math.min(el.scrollHeight, 200) + 'px'; updateSendButton() }
 function updateSendButton() { $sendBtn.className = 'send-btn ' + ($input.value.trim().length > 0 && !IS_BUSY ? 'ready' : 'disabled') }

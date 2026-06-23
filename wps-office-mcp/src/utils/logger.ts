@@ -9,6 +9,7 @@
 import winston from 'winston';
 import path from 'path';
 import fs from 'fs';
+import os from 'os';
 
 /**
  * 日志级别枚举
@@ -40,7 +41,7 @@ const isEnvTrue = (value?: string): boolean => {
  * 创建Logger实例
  */
 const createLogger = (name: string): winston.Logger => {
-  const homeDir = process.env.HOME || process.env.USERPROFILE || require('os').homedir();
+  const homeDir = process.env.HOME || process.env.USERPROFILE || os.homedir();
   const logDir = path.join(homeDir, '.wps-office-mcp', 'logs');
   if (!fs.existsSync(logDir)) {
     fs.mkdirSync(logDir, { recursive: true });

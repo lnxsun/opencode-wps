@@ -20,7 +20,8 @@ import { pptTools } from './ppt';
 import { commonTools } from './common';
 
 /**
- * 所有MCP Tools集合（共238个直接注册工具，另有12个内置工具 + 240个Gateway COM Actions）
+ * 所有MCP Tools集合（共238个注册工具，另有12个内置工具 + 240个 Gateway COM Actions）
+ * 注意：实际注册工具数 = excelTools + wordTools + pptTools + commonTools，新增子模块工具时需同步更新此注释
  *
  * 三层工具体系：
  *   1. 内置工具（12个，在 mcp-server.ts 中注册）：wps_check_connection, wps_get_cell_value 等

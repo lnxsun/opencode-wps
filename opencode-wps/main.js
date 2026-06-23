@@ -186,7 +186,12 @@ function GetImageSize(control) {
     return 16
 }
 
-function OnGetEnabled(control) { return true }
+function OnGetEnabled(control) {
+    // 任务窗格按钮始终可用，其余按钮在文档打开时可用
+    var id = getControlId(control);
+    if (id === 'btnShowTaskPane') return true;
+    return checkDocument() !== null;
+}
 function OnGetVisible(control) { return true }
 function OnGetLabel(control) { return "" }
 
