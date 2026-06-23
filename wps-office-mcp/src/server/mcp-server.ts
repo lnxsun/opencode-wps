@@ -57,6 +57,24 @@ export class WpsMcpServer {
 
   // 跨应用数据缓存 - 解决macOS WPS无法跨应用操作的P0问题
   private static dataCache: Map<string, { data: unknown; timestamp: number; appType: string }> = new Map();
+  private static readonly MAX_CACHE_AGE = 30 * 60 * 1000; // 30 分钟 TTL
+  private static readonly MAX_CACHE_SIZE = 100;
+
+  // 淘汰过期缓存条目
+  private static evictStaleCache(): void {
+    const now = Date.now();
+    for (const [key, { timestamp }] of WpsMcpServer.dataCache) {
+      if (now - timestamp > WpsMcpServer.MAX_CACHE_AGE) {
+        WpsMcpServer.dataCache.delete(key);
+      }
+    }
+    // 超出容量时淘汰最旧条目
+    if (WpsMcpServer.dataCache.size > WpsMcpServer.MAX_CACHE_SIZE) {
+      const entries = [...WpsMcpServer.dataCache.entries()].sort((a, b) => a[1].timestamp - b[1].timestamp);
+      const toDelete = entries.slice(0, entries.length - WpsMcpServer.MAX_CACHE_SIZE);
+      for (const [key] of toDelete) WpsMcpServer.dataCache.delete(key);
+    }
+  }
 
   constructor(config?: Partial<McpServerConfig>) {
     this.config = { ...DEFAULT_CONFIG, ...config };
@@ -495,6 +513,7 @@ export class WpsMcpServer {
         const data = args.data;
         const appType = (args.appType as string) || 'unknown';
 
+        WpsMcpServer.evictStaleCache();
         WpsMcpServer.dataCache.set(key, {
           data,
           timestamp: Date.now(),

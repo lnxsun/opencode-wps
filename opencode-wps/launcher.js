@@ -62,7 +62,12 @@ function startOpenCode(cwd, port) {
     if (!cwd) {
         return { success: false, error: 'cwd is undefined' };
     }
-    // 确保目录存在
+    // 验证工作目录安全性
+    var validation = validateCwd(cwd);
+    if (!validation.valid) {
+        return { success: false, error: validation.error };
+    }
+    cwd = validation.resolved;
     if (!fs.existsSync(cwd)) {
         try { fs.mkdirSync(cwd, { recursive: true }); } catch(e) {}
     }
@@ -151,6 +156,15 @@ function stopOpenCodeByPort(port) {
                     var pid = parseInt(parts[parts.length - 1], 10);
                     if (pid > 0) {
                         console.log('[launcher] Found process占用端口 ' + port + ', PID: ' + pid);
+                        // 验证进程名，避免误杀
+                        try {
+                            var nameOut = execSync('wmic process where ProcessId=' + pid + ' get Name /format:csv', { encoding: 'utf8', timeout: 3000, shell: 'cmd.exe' });
+                            var procName = (nameOut.split('\n')[1] || '').trim().toLowerCase();
+                            if (procName !== 'node.exe' && procName !== 'opencode.exe' && procName !== '') {
+                                console.log('[launcher] 跳过非 OpenCode 进程: ' + procName);
+                                continue;
+                            }
+                        } catch(e) { /* wmic 可能失败，继续尝试 kill */ }
                         try {
                             execSync('taskkill /PID ' + pid + ' /F', { 
                                 shell: 'cmd.exe',
@@ -309,7 +323,13 @@ function dockWindow(callback, data) {
     console.log('[launcher] Final URL: ' + edgeUrl)
     var script = [
         '# Open OpenCode Web',
-        ' & "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe" --app=' + edgeUrl
+        '$edge = @(',
+        '    "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe",',
+        '    "C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe",',
+        '    (Get-ItemProperty -Path "HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\App Paths\\msedge.exe" -ErrorAction SilentlyContinue)."(default)"',
+        ') | Where-Object { Test-Path $_ } | Select-Object -First 1',
+        'if (-not $edge) { $edge = "msedge.exe" }',
+        '& "$edge" --app=' + edgeUrl
     ].join('\n');
     fs.writeFileSync(scriptPath, script, 'utf8');
     exec('powershell -ExecutionPolicy Bypass -WindowStyle Hidden -File "' + scriptPath + '"', { timeout: 5000 }, function(err, stdout, stderr) {

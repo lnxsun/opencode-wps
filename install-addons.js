@@ -31,7 +31,8 @@ function rollback() {
     // 1. 清理已安装的插件
     const jsaddonsDir = path.join(process.env.APPDATA, 'kingsoft', 'wps', 'jsaddons');
     try {
-        const addon = addons[0];
+        const addon = addons?.[0];
+        if (!addon) { console.log('  无插件定义可回滚'); return; }
         const destDir = path.join(jsaddonsDir, addon.name + '_');
         if (fsEx.existsSync(destDir)) {
             fsEx.removeSync(destDir);
