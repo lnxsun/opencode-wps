@@ -738,8 +738,8 @@ function createDropdown(anchorEl, html, direction) {
 }
 function escapeHtml(s) {
     if (typeof s !== 'string') return '';
-    return s.replace(/[<>&"]/g, function(c) {
-        var map = { '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' };
+    return s.replace(/[<>&"']/g, function(c) {
+        var map = { '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;', "'": '&#39;' };
         return map[c];
     });
 }
