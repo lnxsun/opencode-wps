@@ -238,6 +238,15 @@ export class ToolRegistry {
           { toolName: definition.name, param: key, expected: prop.type }
         );
       }
+      // 枚举值校验
+      if (Array.isArray(prop.enum) && prop.enum.length > 0) {
+        if ((prop.enum as unknown[]).indexOf(value) === -1) {
+          throw new InvalidParamsError(
+            `Parameter '${key}' must be one of [${(prop.enum as unknown[]).join(', ')}], got '${JSON.stringify(value)}'`,
+            { toolName: definition.name, param: key }
+          );
+        }
+      }
     }
   }
 

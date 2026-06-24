@@ -111,6 +111,7 @@ function startOpenCodeServer(cwd) {
         }
     }
     xhr.onerror = function() { console.log('[OpenCode] Cannot reach launcher'); isProcessingCommand = false; }
+    xhr.ontimeout = function() { console.log('[OpenCode] Launcher timeout'); isProcessingCommand = false; }
     try { xhr.send(data) } catch (e) { console.log('[OpenCode] Send error: ' + e.message); isProcessingCommand = false; }
 }
 
@@ -122,6 +123,7 @@ function stopOpenCodeServer() {
         if (xhr.readyState === 4) { console.log('[OpenCode] Stop: ' + xhr.status); isProcessingCommand = false; }
     }
     xhr.onerror = function() { isProcessingCommand = false; }
+    xhr.ontimeout = function() { isProcessingCommand = false; }
     try { xhr.send() } catch (e) { isProcessingCommand = false; }
     setOpenCodeState('stopped')
 }
@@ -203,7 +205,8 @@ function OnGetEnabled(control) {
     // 任务窗格和Web面板按钮始终可用；连接状态按钮需文档已打开
     var id = getControlId(control);
     if (id === 'btnShowTaskPane' || id === 'btnDockWindow') return true;
-    return checkDocument() !== null;
+    if (id === 'btnCheckStatus') return checkDocument() !== null;
+    return true; // 未知按钮默认启用
 }
 function OnGetVisible(control) { return true }
 function OnGetLabel(control) { return "" }
