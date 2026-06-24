@@ -1386,9 +1386,12 @@ function renderMarkdown(text) {
 }
 function safeHref(url) {
     if (!url) return '#'
-    var low = url.replace(/^\s+|\s+$/g, '').toLowerCase()
+    var trimmed = url.replace(/^\s+|\s+$/g, '')
+    var low = trimmed.toLowerCase()
     if (low.indexOf('http:') === 0 || low.indexOf('https:') === 0 || low.indexOf('mailto:') === 0) return url
     if (low.indexOf('javascript:') === 0 || low.indexOf('data:') === 0 || low.indexOf('vbscript:') === 0) return '#'
+    // 协议相对 URL（//evil.com）在 file:// 环境下解析为 UNC 路径，非预期行为
+    if (trimmed.indexOf('//') === 0) return '#'
     return url
 }
 function inlineFmt(s) {

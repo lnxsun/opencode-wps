@@ -208,6 +208,7 @@ function OnGetEnabled(control) {
     var id = getControlId(control);
     if (id === 'btnShowTaskPane' || id === 'btnDockWindow') return true;
     if (id === 'btnCheckStatus') return checkDocument() !== null;
+    console.warn('[WPS] Unknown ribbon button: ' + (id || '(no id)') + ', disabled by default');
     return false; // 未知按钮默认禁用（新增按钮需显式添加 case）
 }
 

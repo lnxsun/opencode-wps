@@ -6,14 +6,12 @@ const { execSync } = require('child_process');
 const rootDir = __dirname;
 const homeDir = process.env.USERPROFILE || process.env.HOME;
 
-// ===== 回滚机制 =====
+// ===== 安装状态追踪 =====
 const installState = {
-    stepsCompleted: [],
     errors: []
 };
 
 function recordStep(stepName) {
-    installState.stepsCompleted.push(stepName);
     console.log('  ✓ ' + stepName);
 }
 
