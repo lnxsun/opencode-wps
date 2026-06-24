@@ -68,13 +68,16 @@
 
 ```
 opencode-wps/
-├── opencode-wps/      # WPS JS 插件
-├── wps-office-mcp/   # MCP 服务器 (TypeScript)
-├── skills/           # OpenCode Skills
-├── agents/           # OpenCode Agents
-├── tests/            # 测试文件
-├── docs/             # 文档
-└── install-addons.js # 安装脚本
+├── .opencode/          # 治理插件 + OpenCode 配置模板
+│   ├── plugins/governance.js
+│   └── opencode.jsonc
+├── opencode-wps/       # WPS JS 插件
+├── wps-office-mcp/     # MCP 服务器 (TypeScript)
+├── skills/             # OpenCode Skills
+├── agents/             # OpenCode Agents
+├── tests/              # 测试文件
+├── docs/               # 文档
+└── install-addons.js   # 安装脚本
 ```
 
 ---
@@ -136,6 +139,7 @@ git push origin feat/your-feature
 - **TypeScript**: 启用 strict 模式
 - **命名**: 使用小驼峰命名
 - **注释**: 使用 JSDoc 风格
+- **路径安全**: 所有接受文件路径的 handler 必须使用 `validateFilePath()`（来自 `utils/path-safety.ts`），且必须在 `try` 块内调用
 - **代码格式**: 使用 Prettier（`npm run format`）
 
 ---
@@ -199,6 +203,9 @@ git commit -m "feat(mcp): 添加 Excel 图表创建工具"
 node tests/security.test.js
 node tests/utils.test.js
 node tests/launcher.test.js
+
+# 运行路径安全测试
+cd wps-office-mcp && npx jest src/tests/unit/path-safety.test.ts
 
 # 运行 MCP 测试
 npm run mcp:test
