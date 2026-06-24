@@ -38,8 +38,10 @@ npm run format:check            # Check formatting
 
 ```
 opencode-wps/              # WPS JS add-in (main.js, taskpane.html, ribbon.xml, config.js, launcher.js)
-wps-office-mcp/            # MCP server (TypeScript, 240 COM Actions + 12 built-in tools)
+  opencode-proxy.js        # CORS proxy (port 14098, strips CSP headers)
+wps-office-mcp/            # MCP server (TypeScript, ~240 COM Actions + 12 built-in tools)
   src/                     # Server, client, tools, types, utils
+    utils/path-safety.ts   # Path validation (validateFilePath/validateImagePath/isAllowedUrl)
 skills/                    # 5 OpenCode Skills (wps-excel/word/ppt/office/proofread)
   README.md                # MUST READ before modifying skills
 agents/                    # 4 agent definitions (wps-expert, wps-word, wps-excel, wps-ppt)
@@ -61,7 +63,7 @@ cd wps-office-mcp && npm run dev                     # Dev mode (ts-node)
 
 Three-tier tool system:
 - **12 built-in tools** (`wps_xxx`) — always registered via MCP
-- **238 registered tools** (`wps_xxx_xxx`) — TypeScript handlers, routed via Gateway
+- **~238 registered tools** (`wps_xxx_xxx`) — TypeScript handlers, routed via Gateway (5 deprecated, prefer modern alternatives)
 - **240 COM Actions** — discovered on-demand via `wps_office_search`/`wps_office_execute` Gateway tools
 
 WPS must be running for any MCP operation.
@@ -73,6 +75,7 @@ WPS must be running for any MCP operation.
 - `main.js` — ribbon callbacks, state management, OpenCode connection
 - `taskpane.html` — chat UI (SSE streaming, Markdown rendering, session/agent management)
 - `launcher.js` — background process managing OpenCode service lifecycle
+- `opencode-proxy.js` — CORS proxy (port 14098, strips CSP headers for WPS Chromium)
 
 All file paths in WPS operations must be absolute.
 
@@ -94,7 +97,9 @@ Defined in `agents/` (installed to `~/.config/opencode/agents/`). Invoke via `@w
 1. **Platform**: Windows only (WPS COM, `%APPDATA%`, `schtasks`)
 2. **WPS Chromium**: Bundled Chromium 103 — no modern web features
 3. **Launcher**: Runs at `http://127.0.0.1:14097`, manages `opencode serve` on port 14096
-4. **MCP won't connect** → `cd wps-office-mcp && npm install && npm run build`
-5. **Plugin not visible** → Check `%APPDATA%\kingsoft\wps\jsaddons\opencode-wps_` exists
-6. **Skills/agents not loaded** → Re-run `node install-addons.js` + restart OpenCode
-7. **Always use absolute file paths** — WPS COM requires them
+4. **CORS Proxy**: Runs at `http://127.0.0.1:14098` (strips CSP headers, used by WPS Chromium)
+5. **MCP won't connect** → `cd wps-office-mcp && npm install && npm run build`
+6. **Plugin not visible** → Check `%APPDATA%\kingsoft\wps\jsaddons\opencode-wps_` exists
+7. **Skills/agents not loaded** → Re-run `node install-addons.js` + restart OpenCode
+8. **Always use absolute file paths** — WPS COM requires them
+9. **All file path handlers must use `validateFilePath()`** from `utils/path-safety.ts`

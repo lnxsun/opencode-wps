@@ -146,6 +146,7 @@ Get-Content "$env:APPDATA\kingsoft\wps\jsaddons\authaddin.json"
 | jsplugins.xml | `%APPDATA%\kingsoft\wps\jsaddons\jsplugins.xml` |
 | 插件目录 | `%APPDATA%\kingsoft\wps\jsaddons\opencode-wps_` |
 | launcher | `opencode-wps\launcher.js` (端口 14097) |
+| proxy | `opencode-wps\opencode-proxy.js` (端口 14098) |
 | 服务 | opencode serve (端口 14096) |
 
 ---
@@ -158,6 +159,7 @@ Get-Content "$env:APPDATA\kingsoft\wps\jsaddons\authaddin.json"
 | 侧边栏空白 | main.js 的 GetUrlPath 是否用绝对路径 | 硬编码插件目录路径 |
 | Start Server 失败 | launcher.js 是否支持 .ps1 | 添加 powershell 检测逻辑 |
 | 服务启动了但连不上 | 检查 14096 端口是否正常 | 手动测试 /global/health |
+| Proxy 连接失败 | opencode-proxy.js 端口 14098 是否启动 | 检查 14098 端口 |
 
 ---
 
@@ -248,16 +250,23 @@ User-Agent: Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like
    - 使用 `taskkill /IM opencode.exe /F /T`
    - 问题：会终止系统上所有名为 `opencode.exe` 的进程
 
-### 最终方案（2026-05-05 更新）
+### 最终方案（2026-06 更新）
 
-删除全杀命令，改为 `stopOpenCodeByPort(14096)` 按端口精确停止。
+按端口精确停止，kill 前通过 wmic 确认进程名，防止误杀。
 
-**代码**：
+**代码**（launcher.js）：
 ```javascript
 stopOpenCodeByPort(14096);  // 复用 stopOpenCodeByPort 函数
 ```
 
-**优点**：只终止占用 14096 端口的进程，不影响其他 opencode.exe 进程。
+内部实现：
+```javascript
+execSync('wmic process where "ProcessId=' + pid + '" get Name /format:csv', ...);
+// 确认进程名为 node.exe 或 opencode.exe 后再执行：
+execSync('taskkill /F /PID ' + pid + ' 2>nul', ...);
+```
+
+**优点**：只终止占用 14096 端口的进程，且通过 wmic 双重验证进程身份。
 
 ---
 
