@@ -9,6 +9,7 @@ var LAUNCHER_API = 'http://' + OPENCODE_HOST + ':14097'
 
 var OPENCODE_STATE = 'stopped'
 var OPENCODE_ERROR = ''
+var isProcessingCommand = false;
 
 var WPS_Enum = {
     msoCTPDockPositionLeft: 0,
@@ -207,8 +208,9 @@ function OnGetEnabled(control) {
     var id = getControlId(control);
     if (id === 'btnShowTaskPane' || id === 'btnDockWindow') return true;
     if (id === 'btnCheckStatus') return checkDocument() !== null;
-    return true; // 未知按钮默认启用
+    return false; // 未知按钮默认禁用（新增按钮需显式添加 case）
 }
+
 function OnGetVisible(control) { return true }
 function OnGetLabel(control) { return "" }
 
@@ -256,8 +258,6 @@ function dockOpenCodeWindow() {
     xhr.onerror = function() { console.log('[OpenCode] Dock error') }
     xhr.send(JSON.stringify({ cwd: normalized, session: sessionId }))
 }
-
-var isProcessingCommand = false;
 
 setInterval(function () {
     if (isProcessingCommand) return;

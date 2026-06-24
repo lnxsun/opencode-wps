@@ -484,7 +484,7 @@ export class WpsMcpServer {
         const segments = method.split('.');
         for (let i = 0; i < blockedPrefixes.length; i++) {
           for (let j = 0; j < segments.length; j++) {
-            if (segments[j].indexOf(blockedPrefixes[i]) === 0) {
+            if (segments[j].toLowerCase().indexOf(blockedPrefixes[i].toLowerCase()) === 0) {
               return { id: '', success: false, content: [{ type: 'text', text: 'Error: method "' + method + '" is blocked for security reasons' }] };
             }
           }
