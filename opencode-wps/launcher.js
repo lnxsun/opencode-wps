@@ -32,6 +32,11 @@ function cleanupOrphanedMcp() {
 }
 cleanupOrphanedMcp();
 
+/**
+ * 解析 HTTP 请求体为 JSON
+ * @param {object} req - HTTP Request 对象
+ * @param {function} callback - 回调函数，接收解析后的对象
+ */
 function parseBody(req, callback) {
     var body = '';
     req.on('data', function(chunk) { body += chunk; });
@@ -45,6 +50,12 @@ function parseBody(req, callback) {
     });
 }
 
+/**
+ * 发送 JSON 格式的 HTTP 响应
+ * @param {object} res - HTTP Response 对象
+ * @param {number} statusCode - HTTP 状态码
+ * @param {object} data - 响应数据
+ */
 function sendJSON(res, statusCode, data) {
     res.writeHead(statusCode, {
         'Content-Type': 'application/json',
@@ -242,6 +253,10 @@ function loadOpenCodeConfig() {
     return defaultConfig;
 }
 
+/**
+ * 查找可用的 opencode CLI 可执行文件
+ * @returns {string|null} 找到的路径，未找到返回 null
+ */
 function findOpenCodeBin() {
     // 1. 从配置读取（有防御性检查）
     var config = loadOpenCodeConfig();
@@ -272,6 +287,13 @@ function findOpenCodeBin() {
     return 'opencode';
 }
 
+/**
+ * 校验工作目录路径合法性
+ * 拒绝 UNC 路径、DOS 设备路径、路径穿越
+ * @param {string} cwd - 待校验的目录路径
+ * @returns {string} 校验通过后的绝对路径
+ * @throws {Error} 路径不合法时抛出
+ */
 function validateCwd(cwd) {
     if (typeof cwd !== 'string') throw new Error('cwd must be a string');
     // 拒绝 UNC 路径和 DOS 设备路径
@@ -294,6 +316,11 @@ function validateCwd(cwd) {
     return { valid: true, resolved: resolved };
 }
 
+/**
+ * 校验 URL 合法性（仅允许 localhost HTTP/HTTPS）
+ * @param {string} url - 待校验的 URL
+ * @returns {boolean} URL 合法返回 true
+ */
 function isValidUrl(url) {
     if (typeof url !== 'string') return false;
     try {
@@ -303,6 +330,10 @@ function isValidUrl(url) {
     } catch (e) { return false; }
 }
 
+/**
+ * 打开 Edge 停靠窗口
+ * @param {string} url - 停靠目标 URL
+ */
 function dockWindow(callback, data) {
     var cwd = data && data.cwd ? data.cwd : ''
     var sessionId = data && data.session ? data.session : ''

@@ -24,6 +24,7 @@ import {
 } from '../../types/tools';
 import { wpsClient } from '../../client/wps-client';
 import { WpsAppType } from '../../types/wps';
+import { validateFilePath, validateImagePath } from '../../utils/path-safety';
 
 /**
  * 新建空白演示文稿
@@ -123,7 +124,17 @@ export const openPresentationHandler: ToolHandler = async (
     filePath: string;
   };
 
+  if (!filePath) {
+    return {
+      id: uuidv4(),
+      success: false,
+      content: [{ type: 'text', text: '文件路径不能为空' }],
+      error: '文件路径为空',
+    };
+  }
+
   try {
+    const safePath = validateFilePath(filePath, []);
     // 跨平台参数对齐：macOS/Windows 底层均读取 params.path，需同时发送 path 别名
     const response = await wpsClient.executeMethod<{
       success: boolean;
@@ -132,7 +143,7 @@ export const openPresentationHandler: ToolHandler = async (
       filePath: string;
     }>(
       'openPresentation',
-      { filePath, path: filePath },
+      { filePath: safePath, path: safePath },
       WpsAppType.PRESENTATION
     );
 
@@ -590,14 +601,24 @@ export const insertSlideImageHandler: ToolHandler = async (
     top?: number;
   };
 
+  if (!imagePath) {
+    return {
+      id: uuidv4(),
+      success: false,
+      content: [{ type: 'text', text: '图片路径不能为空' }],
+      error: '图片路径为空',
+    };
+  }
+
   try {
+    const safeImagePath = validateImagePath(imagePath);
     // 跨平台参数对齐：底层 insertImage handler 读取 path/filePath，需同时发送别名
     const response = await wpsClient.executeMethod<{
       success: boolean;
       message: string;
     }>(
       'insertImage',
-      { slideIndex, imagePath, path: imagePath, filePath: imagePath, left, top },
+      { slideIndex, imagePath: safeImagePath, path: safeImagePath, filePath: safeImagePath, left, top },
       WpsAppType.PRESENTATION
     );
 

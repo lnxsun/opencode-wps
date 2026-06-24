@@ -736,6 +736,11 @@ function createDropdown(anchorEl, html, direction) {
     anchorEl.appendChild(dd)
     if (anchorEl.classList) anchorEl.classList.add('active')
 }
+/**
+ * HTML 转义，防止 XSS
+ * @param {string} s - 待转义字符串
+ * @returns {string} 转义后的字符串
+ */
 function escapeHtml(s) {
     if (typeof s !== 'string') return '';
     return s.replace(/[<>&"']/g, function(c) {
@@ -927,6 +932,10 @@ function fetchAvailableAgents(cb) {
     })
 }
 
+/**
+ * 切换智能体选择下拉菜单
+ * @param {Event} e - 点击事件
+ */
 function toggleAgentDropdown(e) {
     e.stopPropagation()
     var btn = document.getElementById('bb-agent')
@@ -1032,6 +1041,16 @@ function switchSession(id) { closeSidebar(); SESSION_ID = id; setPS('opencode_se
 function setStatus(s) { IS_BUSY = (s === 'busy'); $statusDot.className = 'dot ' + (IS_BUSY ? 'busy' : 'idle'); updateInputState() }
 
 // --- Fetch (with retry) ---
+/**
+ * 带重试机制的 HTTP 请求
+ * @param {string} method - HTTP 方法
+ * @param {string} path - 请求路径
+ * @param {object|null} body - 请求体
+ * @param {function} onSuccess - 成功回调
+ * @param {function} [onError] - 失败回调
+ * @param {number} [timeout] - 超时时间(ms)
+ * @param {number} [maxRetries] - 最大重试次数
+ */
 function fetchWithRetry(method, path, body, onSuccess, onError, timeout, maxRetries) {
     maxRetries = maxRetries || CONSTANTS.MAX_RETRIES || 3;
     var attempts = 0;
@@ -1107,6 +1126,10 @@ function createNewSession(cb) {
     }, function(s, t) { addSystemMessage('会话错误: ' + (t || s)) })
 }
 function newSession() { if (IS_BUSY) return; createNewSession(function() { if (!SSE) connectSSE() }) }
+/**
+ * 加载指定会话的消息历史
+ * @param {string} sid - 会话 ID
+ */
 function loadSessionMessages(sid) {
     fetchJSON('GET', '/session/' + sid + '/message', null, function(msgs) {
         $messages.innerHTML = ''; if (!msgs) return
@@ -1134,10 +1157,16 @@ function renderHistoryMessage(msg) {
 // --- SSE ---
 var sseReconnectTimer = null;
 var sseReconnectDelay = 1000;
+/**
+ * 更新 SSE 连接状态 UI
+ */
 function updateConnectionStatus() {
     // SSE 连接状态变化时更新 UI（目前由健康检查自动处理）
     // 状态变量 CONNECTED 已同步，无需额外 UI 操作
 }
+/**
+ * 连接 SSE 事件流接收服务端推送
+ */
 function connectSSE() {
     if (SSE) { SSE.close(); SSE = null }
     try {
@@ -1242,6 +1271,9 @@ function addAssistantMessage(text, reasoning) {
 function addSystemMessage(text) { var el = document.createElement('div'); el.className = 'msg-system'; el.textContent = text; $messages.appendChild(el); scrollToBottom() }
 
 // --- Send ---
+/**
+ * 发送聊天消息
+ */
 function sendMessage() {
     var text = $input.value.trim(); if (!text || IS_BUSY || !SESSION_ID) return
     addUserMessage(text)
@@ -1331,6 +1363,10 @@ function onInputKey(e) {
     }
     updateSendButton()
 }
+/**
+ * 自动调整文本框高度
+ * @param {HTMLElement} el - 文本框元素
+ */
 function autoGrow(el) { el.style.height = 'auto'; el.style.height = Math.min(el.scrollHeight, MAX_INPUT_HEIGHT) + 'px'; updateSendButton() }
 function updateSendButton() { $sendBtn.className = 'send-btn ' + ($input.value.trim().length > 0 && !IS_BUSY ? 'ready' : 'disabled') }
 function updateInputState() {
@@ -1386,6 +1422,11 @@ function renderMarkdown(text) {
     closeList(); closePara(); closeTable()
     return out
 }
+/**
+ * 安全处理 URL 链接，防止 XSS
+ * @param {string} url - 待处理的 URL
+ * @returns {string} 安全的 URL 或 "#"
+ */
 function safeHref(url) {
     if (!url) return '#'
     var trimmed = url.replace(/^\s+|\s+$/g, '')

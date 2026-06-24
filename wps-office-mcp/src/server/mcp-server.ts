@@ -23,6 +23,7 @@ import { createChildLogger } from '../utils/logger';
 import { McpError } from '../utils/error';
 import { fetchDocInfoFromLauncher } from '../utils/launcher';
 import { searchTools, executeTool } from '../tools/gateway';
+import { WpsAppType } from '../types/wps';
 
 const logger = createChildLogger('McpServer');
 
@@ -509,7 +510,7 @@ export class WpsMcpServer {
         const response = await wpsClient.executeMethod(
           method,
           params,
-          appType as any
+          appType as WpsAppType
         );
 
         return {

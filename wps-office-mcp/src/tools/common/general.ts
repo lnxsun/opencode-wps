@@ -26,6 +26,7 @@ import {
   RegisteredTool,
 } from '../../types/tools';
 import { wpsClient } from '../../client/wps-client';
+import { validateFilePath } from '../../utils/path-safety';
 
 // ============================================================
 // 1. wps_common_save - 保存当前文档
@@ -137,11 +138,12 @@ export const saveAsHandler: ToolHandler = async (
     };
   }
 
+  const safePath = validateFilePath(filePath, []);
   try {
     const params: Record<string, unknown> = {
-      filePath,
-      path: filePath,
-      outputPath: filePath,
+      filePath: safePath,
+      path: safePath,
+      outputPath: safePath,
     };
     if (format) {
       params.format = format.toLowerCase().replace(/^\./, '');
@@ -599,18 +601,10 @@ export const writeFileHandler: ToolHandler = async (
       };
     }
 
-    // 安全检查：防止路径穿越（支持 / 和 \ 两种分隔符，不误伤 test..v2 等合法文件名）
-    if (/[/\\]\.\.[/\\]|^\.\.[/\\]|[/\\]\.\.$/.test(filePath)) {
-      return {
-        id: uuidv4(),
-        success: false,
-        content: [{ type: 'text', text: '文件路径不能包含 .. 穿越符号' }],
-        error: '文件路径不能包含 .. 穿越符号',
-      };
-    }
+    const safePath = validateFilePath(filePath, []);
 
     // 确保父目录存在
-    const dir = path.dirname(filePath);
+    const dir = path.dirname(safePath);
     if (!fs.existsSync(dir)) {
       fs.mkdirSync(dir, { recursive: true });
     }
@@ -618,12 +612,12 @@ export const writeFileHandler: ToolHandler = async (
     // 写入文件
     if (encoding === 'base64') {
       const buffer = Buffer.from(content, 'base64');
-      fs.writeFileSync(filePath, buffer);
+      fs.writeFileSync(safePath, buffer);
     } else {
-      fs.writeFileSync(filePath, content, 'utf8');
+      fs.writeFileSync(safePath, content, 'utf8');
     }
 
-    const stats = fs.statSync(filePath);
+    const stats = fs.statSync(safePath);
 
     return {
       id: uuidv4(),
@@ -631,7 +625,7 @@ export const writeFileHandler: ToolHandler = async (
       content: [
         {
           type: 'text',
-          text: `文件写入成功！\n路径: ${filePath}\n大小: ${stats.size} 字节`,
+          text: `文件写入成功！\n路径: ${safePath}\n大小: ${stats.size} 字节`,
         },
       ],
     };

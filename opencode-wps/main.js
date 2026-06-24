@@ -19,6 +19,10 @@ var WPS_Enum = {
 }
 
 // --- WPS 就绪检查 ---
+/**
+ * 检查 WPS Application 是否就绪
+ * @returns {boolean} true 表示 WPS 可用
+ */
 function checkWpsReady() {
     try {
         if (!window.WPS || !window.WPS.Application) {
@@ -32,6 +36,10 @@ function checkWpsReady() {
     }
 }
 
+/**
+ * 获取当前活动文档（支持文字/表格/演示）
+ * @returns {object|null} 活动文档对象，无文档时返回 null
+ */
 function checkDocument() {
     try {
         var app = window.WPS && window.WPS.Application;
@@ -53,6 +61,10 @@ function checkDocument() {
     }
 }
 
+/**
+ * 获取插件安装路径
+ * @returns {string} 归一化的路径（正斜杠）
+ */
 function GetUrlPath() {
     var pluginPath = '___WPS_ADDON_PATH___';
     return pluginPath.replace(/\\/g, '/');
@@ -60,6 +72,10 @@ function GetUrlPath() {
 
 var lastDocInfo = '';
 
+/**
+ * 将当前文档信息推送到 launcher 缓存
+ * 每 500ms 轮询调用，文档未变化时自动跳过
+ */
 function sendDocInfo() {
     try {
         var app = window.WPS && window.WPS.Application;
@@ -99,6 +115,11 @@ function sendDocInfo() {
     }
 }
 
+/**
+ * 设置 OpenCode 运行状态
+ * @param {string} state - 状态值：stopped / running / error
+ * @param {string} [error] - 错误描述
+ */
 function setOpenCodeState(state, error) {
     OPENCODE_STATE = state
     OPENCODE_ERROR = error || ''
@@ -110,6 +131,10 @@ function setOpenCodeState(state, error) {
     console.log('[OpenCode] State: ' + state + (error ? ' Error: ' + error : ''))
 }
 
+/**
+ * 启动 OpenCode 服务进程
+ * @param {string} cwd - 工作目录
+ */
 function startOpenCodeServer(cwd) {
     if (!cwd) { isProcessingCommand = false; return; }
     try { window.Application.PluginStorage.setItem('opencode_cwd', cwd) } catch (e) {}
@@ -130,6 +155,9 @@ function startOpenCodeServer(cwd) {
     try { xhr.send(data) } catch (e) { console.log('[OpenCode] Send error: ' + e.message); isProcessingCommand = false; }
 }
 
+/**
+ * 停止 OpenCode 服务进程
+ */
 function stopOpenCodeServer() {
     var xhr = new XMLHttpRequest()
     xhr.timeout = 5000
@@ -143,6 +171,9 @@ function stopOpenCodeServer() {
     setOpenCodeState('stopped')
 }
 
+/**
+ * 检查 OpenCode 服务健康状况
+ */
 function checkServerHealth(callback) {
     var xhr = new XMLHttpRequest()
     xhr.timeout = 3000
@@ -154,6 +185,11 @@ function checkServerHealth(callback) {
     try { xhr.open('GET', OPENCODE_API_BASE + '/global/health', true); xhr.send() } catch (e) { callback(false) }
 }
 
+/**
+ * 连接 OpenCode Chat API
+ * @param {string} cwd - 工作目录
+ * @param {string} sessionId - 会话标识
+ */
 function connectOpenCode() {
     if (OPENCODE_STATE === 'running') { isProcessingCommand = false; return; }
     setOpenCodeState('connecting')
@@ -251,6 +287,10 @@ function checkStatus() {
     alert(statusText)
 }
 
+/**
+ * 打开/停靠任务窗格
+ * @param {string} [sessionId] - 会话标识
+ */
 function dockOpenCodeWindow() {
     var cwd = ''
     var sessionId = ''

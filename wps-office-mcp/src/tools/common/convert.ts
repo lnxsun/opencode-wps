@@ -20,6 +20,7 @@ import {
 } from '../../types/tools';
 import { wpsClient } from '../../client/wps-client';
 import { WpsAppType } from '../../types/wps';
+import { validateFilePath } from '../../utils/path-safety';
 
 /**
  * 根据文件扩展名判断应该用哪个WPS应用类型
@@ -164,6 +165,11 @@ export const convertToPdfHandler: ToolHandler = async (
     openAfterExport?: boolean;
   };
 
+  let safeOutputPath: string | undefined;
+  if (outputPath) {
+    safeOutputPath = validateFilePath(outputPath, []);
+  }
+
   try {
     // 调用WPS加载项执行转换
     const response = await wpsClient.executeMethod<{
@@ -176,10 +182,10 @@ export const convertToPdfHandler: ToolHandler = async (
     }>(
       'convertToPDF',
       {
-        outputPath: outputPath || '',
+        outputPath: safeOutputPath || '',
         // 跨平台参数对齐：补齐 path/filePath 别名，避免底层只读取单一字段名导致路径丢失
-        path: outputPath || '',
-        filePath: outputPath || '',
+        path: safeOutputPath || '',
+        filePath: safeOutputPath || '',
         openAfterExport: openAfterExport || false,
       }
       // 不指定appType，让WPS加载项自动检测当前活动的应用
@@ -268,6 +274,11 @@ export const convertFormatHandler: ToolHandler = async (
     outputPath?: string;
   };
 
+  let safeOutputPath: string | undefined;
+  if (outputPath) {
+    safeOutputPath = validateFilePath(outputPath, []);
+  }
+
   if (!targetFormat || targetFormat.trim() === '') {
     return {
       id: uuidv4(),
@@ -291,10 +302,10 @@ export const convertFormatHandler: ToolHandler = async (
       'convertFormat',
       {
         targetFormat: targetFormat.toLowerCase().replace(/^\./, ''), // 去掉开头的点
-        outputPath: outputPath || '',
+        outputPath: safeOutputPath || '',
         // 跨平台参数对齐：补齐 path/filePath 别名，避免底层只读取单一字段名导致路径丢失
-        path: outputPath || '',
-        filePath: outputPath || '',
+        path: safeOutputPath || '',
+        filePath: safeOutputPath || '',
       }
       // 不指定appType，让WPS加载项自动检测
     );

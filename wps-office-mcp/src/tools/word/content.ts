@@ -33,6 +33,7 @@ import {
 import { wpsClient } from '../../client/wps-client';
 import { WpsAppType } from '../../types/wps';
 import { fetchDocInfoFromLauncher } from '../../utils/launcher';
+import { validateImagePath } from '../../utils/path-safety';
 
 /**
  * 插入文本到文档
@@ -492,6 +493,7 @@ export const insertImageHandler: ToolHandler = async (
     };
   }
 
+  const safeImagePath = validateImagePath(imagePath);
   try {
     // 跨平台参数对齐：macOS/Windows 底层均优先读取 params.path，同时保留 imagePath/filePath 别名
     const response = await wpsClient.executeMethod<{
@@ -499,7 +501,7 @@ export const insertImageHandler: ToolHandler = async (
       message: string;
     }>(
       'insertImage',
-      { imagePath, path: imagePath, filePath: imagePath, width, height },
+      { imagePath: safeImagePath, path: safeImagePath, filePath: safeImagePath, width, height },
       WpsAppType.WRITER
     );
 

@@ -28,6 +28,7 @@ import {
 } from '../../types/tools';
 import { wpsClient } from '../../client/wps-client';
 import { WpsAppType } from '../../types/wps';
+import { validateFilePath } from '../../utils/path-safety';
 
 /**
  * 获取所有已打开的文档列表
@@ -220,10 +221,11 @@ export const openDocumentHandler: ToolHandler = async (
     };
   }
 
+  const safePath = validateFilePath(filePath, []);
   try {
     const params = {
-      filePath,
-      path: filePath,
+      filePath: safePath,
+      path: safePath,
     };
 
     const response = await wpsClient.executeMethod<{
