@@ -565,7 +565,7 @@ if (fsEx.existsSync(launcherPath)) {
         '</Task>'
     ].join('\r\n');
 
-    const tmpXml = path.join(rootDir, '_launcher_task.xml');
+    const tmpXml = path.join(require('os').tmpdir(), '_opencode_launcher_task.xml');
     const bom = Buffer.from([0xFF, 0xFE]);
     const xmlBuf = Buffer.from(xmlContent, 'utf16le');
     fs.writeFileSync(tmpXml, Buffer.concat([bom, xmlBuf]));
