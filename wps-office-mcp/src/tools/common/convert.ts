@@ -20,11 +20,12 @@ import {
 } from '../../types/tools';
 import { wpsClient } from '../../client/wps-client';
 import { WpsAppType } from '../../types/wps';
+import { validateFilePath } from '../../utils/path-safety';
 
 /**
  * 根据文件扩展名判断应该用哪个WPS应用类型
  */
-const getAppTypeByExtension = (filePath: string): WpsAppType | null => {
+export const getAppTypeByExtension = (filePath: string): WpsAppType | null => {
   const ext = filePath.toLowerCase().split('.').pop();
 
   // Word文档
@@ -49,7 +50,7 @@ const getAppTypeByExtension = (filePath: string): WpsAppType | null => {
  * 根据输出格式获取对应的文件格式代码
  * WPS的格式代码和微软Office基本兼容，但也有自己的一套
  */
-const getFormatCode = (format: string, appType: WpsAppType): number => {
+export const getFormatCode = (format: string, appType: WpsAppType): number => {
   const formatLower = format.toLowerCase();
 
   switch (appType) {
@@ -164,6 +165,11 @@ export const convertToPdfHandler: ToolHandler = async (
     openAfterExport?: boolean;
   };
 
+  let safeOutputPath: string | undefined;
+  if (outputPath) {
+    safeOutputPath = validateFilePath(outputPath, []);
+  }
+
   try {
     // 调用WPS加载项执行转换
     const response = await wpsClient.executeMethod<{
@@ -176,10 +182,10 @@ export const convertToPdfHandler: ToolHandler = async (
     }>(
       'convertToPDF',
       {
-        outputPath: outputPath || '',
+        outputPath: safeOutputPath || '',
         // 跨平台参数对齐：补齐 path/filePath 别名，避免底层只读取单一字段名导致路径丢失
-        path: outputPath || '',
-        filePath: outputPath || '',
+        path: safeOutputPath || '',
+        filePath: safeOutputPath || '',
         openAfterExport: openAfterExport || false,
       }
       // 不指定appType，让WPS加载项自动检测当前活动的应用
@@ -268,6 +274,11 @@ export const convertFormatHandler: ToolHandler = async (
     outputPath?: string;
   };
 
+  let safeOutputPath: string | undefined;
+  if (outputPath) {
+    safeOutputPath = validateFilePath(outputPath, []);
+  }
+
   if (!targetFormat || targetFormat.trim() === '') {
     return {
       id: uuidv4(),
@@ -291,10 +302,10 @@ export const convertFormatHandler: ToolHandler = async (
       'convertFormat',
       {
         targetFormat: targetFormat.toLowerCase().replace(/^\./, ''), // 去掉开头的点
-        outputPath: outputPath || '',
+        outputPath: safeOutputPath || '',
         // 跨平台参数对齐：补齐 path/filePath 别名，避免底层只读取单一字段名导致路径丢失
-        path: outputPath || '',
-        filePath: outputPath || '',
+        path: safeOutputPath || '',
+        filePath: safeOutputPath || '',
       }
       // 不指定appType，让WPS加载项自动检测
     );
@@ -343,7 +354,6 @@ export const convertTools: RegisteredTool[] = [
   { definition: convertFormatDefinition, handler: convertFormatHandler },
 ];
 
-// 导出工具函数供其他模块复用
-export { getAppTypeByExtension, getFormatCode };
+// 内部工具函数（通过 re-export chain 暴露，当前无外部调用者）
 
 export default convertTools;

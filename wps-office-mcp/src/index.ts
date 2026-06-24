@@ -65,8 +65,12 @@ async function main(): Promise<void> {
   });
 
   process.on('unhandledRejection', (reason) => {
-    mainLogger.error('Unhandled rejection', reason);
-    process.exit(1);
+    mainLogger.error('[OpenCode] Unhandled Rejection:', reason);
+    // Graceful shutdown - the server will restart via launcher
+    server.stop()
+      .then(() => mainLogger.info('Server stopped after unhandled rejection'))
+      .catch((err) => mainLogger.error('Error during shutdown after unhandled rejection', err))
+      .finally(() => process.exit(1));
   });
 
   try {

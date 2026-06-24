@@ -102,8 +102,6 @@ export {
   convertToPdfHandler,
   convertFormatDefinition,
   convertFormatHandler,
-  getAppTypeByExtension,
-  getFormatCode,
 } from './common';
 
 /**

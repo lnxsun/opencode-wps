@@ -3,6 +3,7 @@
           xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
 
     <id>opencode-wps</id>
+    <Version>1.1.0</Version>
     <version>1.0.0</version>
     <name>OpenCode AI</name>
     <description>WPS AI Assistant powered by OpenCode</description>

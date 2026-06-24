@@ -22,6 +22,7 @@ import {
 } from '../../types/tools';
 import { wpsClient } from '../../client/wps-client';
 import { WpsAppType } from '../../types/wps';
+import { validateFilePath } from '../../utils/path-safety';
 
 // ==================== 1. 插入图片 ====================
 
@@ -81,7 +82,17 @@ export const insertPptImageHandler: ToolHandler = async (
     height?: number;
   };
 
+  if (!filePath) {
+    return {
+      id: uuidv4(),
+      success: false,
+      content: [{ type: 'text', text: '图片文件路径不能为空' }],
+      error: '图片文件路径为空',
+    };
+  }
+
   try {
+    const safePath = validateFilePath(filePath, []);
     // 跨平台参数对齐：macOS/Windows 底层均读取 params.path，需同时发送 path/imagePath 别名
     const response = await wpsClient.executeMethod<{
       success: boolean;
@@ -89,7 +100,7 @@ export const insertPptImageHandler: ToolHandler = async (
       imageIndex?: number;
     }>(
       'insertPptImage',
-      { slideIndex, filePath, path: filePath, imagePath: filePath, left, top, width, height },
+      { slideIndex, filePath: safePath, path: safePath, imagePath: safePath, left, top, width, height },
       WpsAppType.PRESENTATION
     );
 
@@ -379,13 +390,23 @@ export const exportSlideAsImageHandler: ToolHandler = async (
     height?: number;
   };
 
-  // 归一化 format：JPEG 在 WPS COM 中实际对应 JPG 滤镜
-  const rawFormat = (format || 'PNG').toUpperCase();
-  const filterName = rawFormat === 'JPEG' ? 'JPG' : rawFormat;
-  const finalWidth = width || 1280;
-  const finalHeight = height || 720;
+  if (!outputPath) {
+    return {
+      id: uuidv4(),
+      success: false,
+      content: [{ type: 'text', text: '输出路径不能为空' }],
+      error: '输出路径为空',
+    };
+  }
 
   try {
+    const safeOutputPath = validateFilePath(outputPath, []);
+    // 归一化 format：JPEG 在 WPS COM 中实际对应 JPG 滤镜
+    const rawFormat = (format || 'PNG').toUpperCase();
+    const filterName = rawFormat === 'JPEG' ? 'JPG' : rawFormat;
+    const finalWidth = width || 1280;
+    const finalHeight = height || 720;
+
     const response = await wpsClient.executeMethod<{
       success: boolean;
       message?: string;
@@ -396,9 +417,9 @@ export const exportSlideAsImageHandler: ToolHandler = async (
       'exportSlideAsImage',
       {
         slideIndex,
-        outputPath,
+        outputPath: safeOutputPath,
         // 跨平台参数对齐：macOS/Windows 底层兼容 path/outputPath 双别名
-        path: outputPath,
+        path: safeOutputPath,
         format: filterName,
         width: finalWidth,
         height: finalHeight,
@@ -412,7 +433,7 @@ export const exportSlideAsImageHandler: ToolHandler = async (
         `幻灯片: 第 ${slideIndex} 页\n` +
         `格式: ${filterName}\n` +
         `尺寸: ${finalWidth} x ${finalHeight}\n` +
-        `输出路径: ${outputPath}`;
+        `输出路径: ${safeOutputPath}`;
 
       return {
         id: uuidv4(),

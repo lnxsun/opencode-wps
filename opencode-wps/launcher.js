@@ -9,6 +9,7 @@ var PORT = 14097;
 var opencodeProcess = null;
 var opencodeCwd = '';
 var dockedPid = 0;
+var stateLock = false;
 
 // ===== 启动时清理孤儿 MCP 进程 =====
 function cleanupOrphanedMcp() {
@@ -31,6 +32,11 @@ function cleanupOrphanedMcp() {
 }
 cleanupOrphanedMcp();
 
+/**
+ * 解析 HTTP 请求体为 JSON
+ * @param {object} req - HTTP Request 对象
+ * @param {function} callback - 回调函数，接收解析后的对象
+ */
 function parseBody(req, callback) {
     var body = '';
     req.on('data', function(chunk) { body += chunk; });
@@ -44,6 +50,12 @@ function parseBody(req, callback) {
     });
 }
 
+/**
+ * 发送 JSON 格式的 HTTP 响应
+ * @param {object} res - HTTP Response 对象
+ * @param {number} statusCode - HTTP 状态码
+ * @param {object} data - 响应数据
+ */
 function sendJSON(res, statusCode, data) {
     res.writeHead(statusCode, {
         'Content-Type': 'application/json',
@@ -163,7 +175,7 @@ function stopOpenCodeByPort(port) {
                             }
                         } catch(e) { /* wmic 可能失败，继续尝试 kill */ }
                         try {
-                            execSync('taskkill /PID ' + pid + ' /F', { 
+                            execSync('taskkill /F /PID ' + pid + ' 2>nul', { 
                                 shell: 'cmd.exe',
                                 stdio: 'ignore',
                                 timeout: 5000
@@ -241,6 +253,10 @@ function loadOpenCodeConfig() {
     return defaultConfig;
 }
 
+/**
+ * 查找可用的 opencode CLI 可执行文件
+ * @returns {string|null} 找到的路径，未找到返回 null
+ */
 function findOpenCodeBin() {
     // 1. 从配置读取（有防御性检查）
     var config = loadOpenCodeConfig();
@@ -271,8 +287,20 @@ function findOpenCodeBin() {
     return 'opencode';
 }
 
+/**
+ * 校验工作目录路径合法性
+ * 拒绝 UNC 路径、DOS 设备路径、路径穿越
+ * @param {string} cwd - 待校验的目录路径
+ * @returns {string} 校验通过后的绝对路径
+ * @throws {Error} 路径不合法时抛出
+ */
 function validateCwd(cwd) {
-    if (!cwd || typeof cwd !== 'string') {
+    if (typeof cwd !== 'string') throw new Error('cwd must be a string');
+    // 拒绝 UNC 路径和 DOS 设备路径
+    if (/^\\\\[?.]/.test(cwd) || /^\\\\/.test(cwd)) {
+        throw new Error('UNC and DOS device paths are not allowed');
+    }
+    if (!cwd) {
         return { valid: false, error: 'cwd 不能为空' };
     }
     // 防止路径遍历
@@ -288,6 +316,24 @@ function validateCwd(cwd) {
     return { valid: true, resolved: resolved };
 }
 
+/**
+ * 校验 URL 合法性（仅允许 localhost HTTP/HTTPS）
+ * @param {string} url - 待校验的 URL
+ * @returns {boolean} URL 合法返回 true
+ */
+function isValidUrl(url) {
+    if (typeof url !== 'string') return false;
+    try {
+        var parsed = new URL(url);
+        return (parsed.protocol === 'http:' || parsed.protocol === 'https:') &&
+               (parsed.hostname === '127.0.0.1' || parsed.hostname === 'localhost');
+    } catch (e) { return false; }
+}
+
+/**
+ * 打开 Edge 停靠窗口
+ * @param {string} url - 停靠目标 URL
+ */
 function dockWindow(callback, data) {
     var cwd = data && data.cwd ? data.cwd : ''
     var sessionId = data && data.session ? data.session : ''
@@ -317,6 +363,11 @@ function dockWindow(callback, data) {
         edgeUrl += '?cwd=' + encodeURIComponent(cwd)
     }
 
+    if (!isValidUrl(edgeUrl)) {
+        console.error('[launcher] Invalid URL rejected:', edgeUrl);
+        callback({ success: false, error: 'Invalid URL' });
+        return;
+    }
     console.log('[launcher] Final URL: ' + edgeUrl)
     var script = [
         '# Open OpenCode Web',
@@ -359,9 +410,21 @@ var server = http.createServer(function(req, res) {
     var url = req.url;
 
     if (req.method === 'POST' && url === '/start') {
+        if (stateLock) {
+            sendJSON(res, 409, { error: 'Another start request is in progress' });
+            return;
+        }
+        stateLock = true;
         parseBody(req, function(body) {
-            var result = startOpenCode(body.cwd, body.port);
-            sendJSON(res, result.success ? 200 : 400, result);
+            try {
+                var result = startOpenCode(body.cwd, body.port);
+                sendJSON(res, result.success ? 200 : 400, result);
+            } catch(e) {
+                console.error('[launcher] startOpenCode failed:', e);
+                sendJSON(res, 500, { error: 'Internal error: ' + e.message });
+            } finally {
+                stateLock = false;
+            }
         });
         return;
     }
@@ -388,9 +451,6 @@ var server = http.createServer(function(req, res) {
 
     if (req.method === 'POST' && url === '/dock') {
         parseBody(req, function(body) {
-            if (process.env.NODE_ENV !== 'production') {
-                fs.writeFileSync(path.join(__dirname, 'dock-debug.log'), JSON.stringify(body), 'utf8')
-            }
             dockWindow(function(result) {
                 sendJSON(res, result.success ? 200 : 400, result);
             }, body);

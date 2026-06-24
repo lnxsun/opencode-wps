@@ -24,6 +24,7 @@ import {
 } from '../../types/tools';
 import { wpsClient } from '../../client/wps-client';
 import { WpsAppType } from '../../types/wps';
+import { validateFilePath } from '../../utils/path-safety';
 
 /**
  * 支持的图表类型枚举
@@ -570,11 +571,21 @@ export const exportChartAsImageHandler: ToolHandler = async (
     sheet?: string;
   };
 
-  // 归一化 format：JPEG 在 WPS COM 滤镜表中按 JPG 处理（参考 PPT 同款工具）
-  const rawFormat = (format || 'PNG').toUpperCase();
-  const filterName = rawFormat === 'JPEG' ? 'JPG' : rawFormat;
+  if (!outputPath) {
+    return {
+      id: uuidv4(),
+      success: false,
+      content: [{ type: 'text', text: '输出路径不能为空' }],
+      error: '输出路径为空',
+    };
+  }
 
   try {
+    const safeOutputPath = validateFilePath(outputPath, []);
+    // 归一化 format：JPEG 在 WPS COM 滤镜表中按 JPG 处理（参考 PPT 同款工具）
+    const rawFormat = (format || 'PNG').toUpperCase();
+    const filterName = rawFormat === 'JPEG' ? 'JPG' : rawFormat;
+
     const response = await wpsClient.executeMethod<{
       success: boolean;
       message?: string;
@@ -585,9 +596,9 @@ export const exportChartAsImageHandler: ToolHandler = async (
       'exportChartAsImage',
       {
         chartName,
-        outputPath,
+        outputPath: safeOutputPath,
         // 跨平台参数对齐：macOS/Windows 底层兼容 path/outputPath 双别名
-        path: outputPath,
+        path: safeOutputPath,
         format: filterName,
         sheet,
       },
@@ -599,7 +610,7 @@ export const exportChartAsImageHandler: ToolHandler = async (
         `图表导出图片成功！\n` +
         `图表: ${chartName}\n` +
         `格式: ${filterName}\n` +
-        `输出路径: ${outputPath}` +
+        `输出路径: ${safeOutputPath}` +
         (sheet ? `\n工作表: ${sheet}` : '');
 
       return {
@@ -702,6 +713,15 @@ export const exportRangeAsImageHandler: ToolHandler = async (
     sheet?: string;
   };
 
+  if (!outputPath) {
+    return {
+      id: uuidv4(),
+      success: false,
+      content: [{ type: 'text', text: '输出路径不能为空' }],
+      error: '输出路径为空',
+    };
+  }
+
   // 校验 range 格式（与 createChart 保持一致）
   if (!range || !/^\$?[A-Z]+\$?\d+(:\$?[A-Z]+\$?\d+)?$/i.test(range)) {
     return {
@@ -717,11 +737,12 @@ export const exportRangeAsImageHandler: ToolHandler = async (
     };
   }
 
-  // 归一化 format：JPEG → JPG
-  const rawFormat = (format || 'PNG').toUpperCase();
-  const filterName = rawFormat === 'JPEG' ? 'JPG' : rawFormat;
-
   try {
+    const safeOutputPath = validateFilePath(outputPath, []);
+    // 归一化 format：JPEG → JPG
+    const rawFormat = (format || 'PNG').toUpperCase();
+    const filterName = rawFormat === 'JPEG' ? 'JPG' : rawFormat;
+
     const response = await wpsClient.executeMethod<{
       success: boolean;
       message?: string;
@@ -732,9 +753,9 @@ export const exportRangeAsImageHandler: ToolHandler = async (
       'exportRangeAsImage',
       {
         range,
-        outputPath,
+        outputPath: safeOutputPath,
         // 跨平台参数对齐：macOS/Windows 底层兼容 path/outputPath 双别名
-        path: outputPath,
+        path: safeOutputPath,
         format: filterName,
         sheet,
       },
@@ -746,7 +767,7 @@ export const exportRangeAsImageHandler: ToolHandler = async (
         `区域导出图片成功！\n` +
         `区域: ${range}\n` +
         `格式: ${filterName}\n` +
-        `输出路径: ${outputPath}` +
+        `输出路径: ${safeOutputPath}` +
         (sheet ? `\n工作表: ${sheet}` : '');
 
       return {

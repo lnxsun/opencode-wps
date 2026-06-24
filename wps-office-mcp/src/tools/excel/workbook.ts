@@ -14,6 +14,7 @@ import {
 } from '../../types/tools';
 import { wpsClient } from '../../client/wps-client';
 import { WpsAppType } from '../../types/wps';
+import { validateFilePath } from '../../utils/path-safety';
 
 /**
  * 打开指定路径的Excel工作簿
@@ -46,8 +47,9 @@ export const openWorkbookHandler: ToolHandler = async (
       error: '缺少文件路径',
     };
   }
+  const safePath = validateFilePath(filePath, []);
   try {
-    const params = { filePath, path: filePath };
+    const params = { filePath: safePath, path: safePath };
     const response = await wpsClient.executeMethod<{ message: string }>(
       'openWorkbook',
       params,

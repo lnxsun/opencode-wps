@@ -10,6 +10,7 @@
 |------|------|
 | [DEVELOPMENT_GUIDE.md](./DEVELOPMENT_GUIDE.md) | 开发指南、代码规范、提交规范、FAQ |
 | [CODE_REVIEW_GUIDE.md](./CODE_REVIEW_GUIDE.md) | 代码审查规范与流程（分级标准/审查流程/场景策略/度量指标） |
+| [CODE_REVIEW_REPORT.md](./CODE_REVIEW_REPORT.md) | 全量代码审查报告（按文件/模块/严重等级分类，附修复建议） |
 | [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) | 问题排查与避坑指南 |
 | [SECURITY.md](./SECURITY.md) | 安全模型与注意事项 |
 
@@ -41,6 +42,7 @@
 docs/
 ├── DEVELOPMENT_GUIDE.md    # 开发指南（贡献指南）
 ├── CODE_REVIEW_GUIDE.md    # 代码审查规范与流程
+├── CODE_REVIEW_REPORT.md   # 全量代码审查报告
 ├── TROUBLESHOOTING.md      # 问题排查与避坑指南
 ├── SECURITY.md            # 安全模型与注意事项
 ├── OPENCODE_API.md         # OpenCode API

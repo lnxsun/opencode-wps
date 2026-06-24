@@ -1095,6 +1095,9 @@ export const autoSumDefinition: ToolDefinition = {
 export const autoSumHandler: ToolHandler = async (
   args: Record<string, unknown>
 ): Promise<ToolCallResult> => {
+  if (process.platform === 'darwin') {
+    return { id: uuidv4(), success: false, content: [{ type: 'text', text: '此功能仅在 Windows 上支持' }], error: 'macOS not supported' };
+  }
   const { range, targetCell } = args as {
     range: string;
     targetCell: string;

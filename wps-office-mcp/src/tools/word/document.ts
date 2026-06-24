@@ -28,6 +28,7 @@ import {
 } from '../../types/tools';
 import { wpsClient } from '../../client/wps-client';
 import { WpsAppType } from '../../types/wps';
+import { validateFilePath } from '../../utils/path-safety';
 
 /**
  * 获取所有已打开的文档列表
@@ -220,10 +221,11 @@ export const openDocumentHandler: ToolHandler = async (
     };
   }
 
+  const safePath = validateFilePath(filePath, []);
   try {
     const params = {
-      filePath,
-      path: filePath,
+      filePath: safePath,
+      path: safePath,
     };
 
     const response = await wpsClient.executeMethod<{
@@ -680,6 +682,9 @@ export const insertSectionBreakDefinition: ToolDefinition = {
 export const insertSectionBreakHandler: ToolHandler = async (
   args: Record<string, unknown>
 ): Promise<ToolCallResult> => {
+  if (process.platform === 'darwin') {
+    return { id: uuidv4(), success: false, content: [{ type: 'text', text: '此功能仅在 Windows 上支持' }], error: 'macOS not supported' };
+  }
   const { breakType = 'nextPage' } = args as { breakType?: string };
 
   try {
@@ -748,6 +753,9 @@ export const setLineSpacingDefinition: ToolDefinition = {
 export const setLineSpacingHandler: ToolHandler = async (
   args: Record<string, unknown>
 ): Promise<ToolCallResult> => {
+  if (process.platform === 'darwin') {
+    return { id: uuidv4(), success: false, content: [{ type: 'text', text: '此功能仅在 Windows 上支持' }], error: 'macOS not supported' };
+  }
   const { lineSpacing, paragraphIndex } = args as { lineSpacing: number; paragraphIndex?: number };
 
   if (lineSpacing === undefined || lineSpacing <= 0) {

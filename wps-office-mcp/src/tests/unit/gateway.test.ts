@@ -4,6 +4,9 @@
  * @date 2026-05-18
  */
 
+// uuid v14 是 ESM-only，Jest CJS 无法解析，手动 mock
+jest.mock('uuid', () => ({ v4: () => '00000000-0000-0000-0000-000000000000' }));
+
 import { searchTools, executeTool, TOOLS_INDEX } from '../../tools/gateway';
 
 // Mock logger
@@ -26,8 +29,8 @@ import { wpsClient } from '../../client/wps-client';
 const mockedWpsClient = wpsClient as jest.Mocked<typeof wpsClient>;
 
 describe('TOOLS_INDEX 完整性验证', () => {
-    it('索引数量应为 238 个', () => {
-      expect(TOOLS_INDEX.length).toBe(238);
+    it('索引数量应为 246 个', () => {
+      expect(TOOLS_INDEX.length).toBe(246);
     });
 
   it('索引名称应该唯一（无重复）', () => {

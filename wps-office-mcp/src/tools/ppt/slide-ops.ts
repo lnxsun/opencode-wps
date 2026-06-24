@@ -40,6 +40,7 @@ import {
 } from '../../types/tools';
 import { wpsClient } from '../../client/wps-client';
 import { WpsAppType } from '../../types/wps';
+import { validateFilePath, validateImagePath } from '../../utils/path-safety';
 
 // ============================================================
 // 1. wps_ppt_delete_slide - 删除指定幻灯片
@@ -1178,7 +1179,7 @@ export const setSlideTitleHandler: ToolHandler = async (
 
 export const insertImageDefinition: ToolDefinition = {
   name: 'wps_ppt_insert_image',
-  description: `在幻灯片中插入图片。
+  description: `[DEPRECATED] Prefer wps_ppt_insert_ppt_image which supports cross-platform path aliases. 在幻灯片中插入图片。
 
 使用场景：
 - "在第1页插入一张图片"
@@ -1229,7 +1230,17 @@ export const insertImageHandler: ToolHandler = async (
     height?: number;
   };
 
+  if (!path) {
+    return {
+      id: uuidv4(),
+      success: false,
+      content: [{ type: 'text', text: '图片文件路径不能为空' }],
+      error: '图片文件路径为空',
+    };
+  }
+
   try {
+    const safePath = validateFilePath(path, []);
     const response = await wpsClient.executeMethod<{
       success: boolean;
       message: string;
@@ -1239,7 +1250,7 @@ export const insertImageHandler: ToolHandler = async (
       'insertPptImage',
       {
         slideIndex: slideIndex || 1,
-        path,
+        path: safePath,
         left: left || 100,
         top: top || 100,
         width: width || -1,
@@ -1352,7 +1363,7 @@ export const setShapeTextHandler: ToolHandler = async (
 
 export const setAnimationDefinition: ToolDefinition = {
   name: 'wps_ppt_set_animation',
-  description: `设置幻灯片中指定元素的动画效果。
+  description: `[DEPRECATED] Prefer wps_ppt_add_animation which supports trigger parameter (onClick/withPrevious/afterPrevious). 设置幻灯片中指定元素的动画效果。
 
 支持的动画类型：
 - fadeIn: 淡入
@@ -1449,7 +1460,7 @@ export const setAnimationHandler: ToolHandler = async (
 
 export const setBackgroundDefinition: ToolDefinition = {
   name: 'wps_ppt_set_background',
-  description: `设置幻灯片的背景颜色或背景图片。
+  description: `设置幻灯片的背景颜色或背景图片。支持纯色填充和图片填充两种模式。
 
 使用场景：
 - "把第1页背景改成蓝色"
@@ -1486,6 +1497,7 @@ export const setBackgroundHandler: ToolHandler = async (
   };
 
   try {
+    const safeImagePath = imagePath ? validateImagePath(imagePath) : undefined;
     // 跨平台参数对齐：Windows setSlideBackground 读取 $p.imagePath；同时发送 path/filePath 别名兜底跨实现差异
     const response = await wpsClient.executeMethod<{
       success: boolean;
@@ -1495,8 +1507,8 @@ export const setBackgroundHandler: ToolHandler = async (
       {
         slideIndex,
         color,
-        imagePath,
-        ...(imagePath ? { path: imagePath, filePath: imagePath } : {}),
+        imagePath: safeImagePath,
+        ...(safeImagePath ? { path: safeImagePath, filePath: safeImagePath } : {}),
       },
       WpsAppType.PRESENTATION
     );
@@ -1574,6 +1586,9 @@ export const setSlideSizeDefinition: ToolDefinition = {
 export const setSlideSizeHandler: ToolHandler = async (
   args: Record<string, unknown>
 ): Promise<ToolCallResult> => {
+  if (process.platform === 'darwin') {
+    return { id: uuidv4(), success: false, content: [{ type: 'text', text: '此功能仅在 Windows 上支持' }], error: 'macOS not supported' };
+  }
   const { width, height } = args as {
     width: number;
     height: number;
@@ -1625,7 +1640,7 @@ export const setSlideSizeHandler: ToolHandler = async (
 
 export const setTransitionDefinition: ToolDefinition = {
   name: 'wps_ppt_set_transition',
-  description: `设置幻灯片切换效果。
+  description: `[DEPRECATED] Prefer wps_ppt_set_slide_transition which supports duration and sound parameters. 设置幻灯片切换效果。
 
 支持的切换类型：
 - fade: 淡出
@@ -1717,7 +1732,7 @@ export const setTransitionHandler: ToolHandler = async (
 
 export const addChartDefinition: ToolDefinition = {
   name: 'wps_ppt_add_chart',
-  description: `在幻灯片中插入图表。
+  description: `[DEPRECATED] Prefer wps_ppt_insert_ppt_chart which supports categories/series data model and left/top positioning. 在幻灯片中插入图表。
 
 支持的图表类型：
 - bar: 柱形图
@@ -1820,7 +1835,7 @@ export const addChartHandler: ToolHandler = async (
 
 export const setShapeFillDefinition: ToolDefinition = {
   name: 'wps_ppt_set_shape_fill',
-  description: `设置幻灯片中指定形状的填充颜色。
+  description: `设置幻灯片中指定形状的填充颜色。仅支持纯色填充，如需渐变填充请使用 wps_ppt_set_shape_gradient。
 
 使用场景：
 - "把第1页的第2个形状填充为红色"
@@ -1841,6 +1856,9 @@ export const setShapeFillDefinition: ToolDefinition = {
 export const setShapeFillHandler: ToolHandler = async (
   args: Record<string, unknown>
 ): Promise<ToolCallResult> => {
+  if (process.platform === 'darwin') {
+    return { id: uuidv4(), success: false, content: [{ type: 'text', text: '此功能仅在 Windows 上支持' }], error: 'macOS not supported' };
+  }
   const { slideIndex, shapeIndex, color } = args as {
     slideIndex: number;
     shapeIndex: number;
@@ -1894,7 +1912,7 @@ export const setShapeFillHandler: ToolHandler = async (
 
 export const addSpeakerNotesDefinition: ToolDefinition = {
   name: 'wps_ppt_add_speaker_notes',
-  description: `添加或追加演讲者备注到指定幻灯片。
+  description: `[DEPRECATED] Use wps_ppt_set_slide_notes instead. 添加或追加演讲者备注到指定幻灯片。
 
 使用场景：
 - "给第1页添加演讲者备注"
@@ -1911,53 +1929,7 @@ export const addSpeakerNotesDefinition: ToolDefinition = {
   },
 };
 
-export const addSpeakerNotesHandler: ToolHandler = async (
-  args: Record<string, unknown>
-): Promise<ToolCallResult> => {
-  const { slideIndex, notes } = args as {
-    slideIndex: number;
-    notes: string;
-  };
-
-  try {
-    const response = await wpsClient.executeMethod<{
-      success: boolean;
-      message: string;
-    }>(
-      'setSlideNotes',
-      { slideIndex, notes },
-      WpsAppType.PRESENTATION
-    );
-
-    if (response.success) {
-      return {
-        id: uuidv4(),
-        success: true,
-        content: [
-          {
-            type: 'text',
-            text: `演讲者备注添加成功！\n幻灯片: 第 ${slideIndex} 页\n备注内容: "${notes.length > 50 ? notes.substring(0, 50) + '...' : notes}"`,
-          },
-        ],
-      };
-    } else {
-      return {
-        id: uuidv4(),
-        success: false,
-        content: [{ type: 'text', text: `添加演讲者备注失败: ${response.error}` }],
-        error: response.error,
-      };
-    }
-  } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
-    return {
-      id: uuidv4(),
-      success: false,
-      content: [{ type: 'text', text: `添加演讲者备注出错: ${errMsg}` }],
-      error: errMsg,
-    };
-  }
-};
+export const addSpeakerNotesHandler: ToolHandler = setSlideNotesHandler;
 
 // ============================================================
 // 导出所有幻灯片操作相关的Tools

@@ -23,6 +23,7 @@ import { createChildLogger } from '../utils/logger';
 import { McpError } from '../utils/error';
 import { fetchDocInfoFromLauncher } from '../utils/launcher';
 import { searchTools, executeTool } from '../tools/gateway';
+import { WpsAppType } from '../types/wps';
 
 const logger = createChildLogger('McpServer');
 
@@ -489,6 +490,9 @@ export class WpsMcpServer {
         //   虽以 Application.ActiveDocument 开头（通过 G2 白名单），
         //   但黑名单仍能拦截其中的 CreateObject 段。
         // 如需放行，需确认该方法不可能被用于危险操作。
+        // 第一层防御：Governance 插件 G2 白名单（governance.js）
+        // 第二层防御：MCP Server 端的黑名单前缀
+        // 两层必须同步更新
         const blockedPrefixes = ['CreateObject', 'Shell', 'Exec', 'Run', 'WScript', 'ScriptControl', 'Eval', 'Execute'];
         if (!method) {
           return { id: '', success: false, content: [{ type: 'text', text: 'Error: method is required' }] };
@@ -506,7 +510,7 @@ export class WpsMcpServer {
         const response = await wpsClient.executeMethod(
           method,
           params,
-          appType as any
+          appType as WpsAppType
         );
 
         return {
