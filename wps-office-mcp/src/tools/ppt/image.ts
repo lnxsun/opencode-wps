@@ -399,14 +399,14 @@ export const exportSlideAsImageHandler: ToolHandler = async (
     };
   }
 
-  const safeOutputPath = validateFilePath(outputPath, []);
-  // 归一化 format：JPEG 在 WPS COM 中实际对应 JPG 滤镜
-  const rawFormat = (format || 'PNG').toUpperCase();
-  const filterName = rawFormat === 'JPEG' ? 'JPG' : rawFormat;
-  const finalWidth = width || 1280;
-  const finalHeight = height || 720;
-
   try {
+    const safeOutputPath = validateFilePath(outputPath, []);
+    // 归一化 format：JPEG 在 WPS COM 中实际对应 JPG 滤镜
+    const rawFormat = (format || 'PNG').toUpperCase();
+    const filterName = rawFormat === 'JPEG' ? 'JPG' : rawFormat;
+    const finalWidth = width || 1280;
+    const finalHeight = height || 720;
+
     const response = await wpsClient.executeMethod<{
       success: boolean;
       message?: string;

@@ -580,12 +580,12 @@ export const exportChartAsImageHandler: ToolHandler = async (
     };
   }
 
-  const safeOutputPath = validateFilePath(outputPath, []);
-  // 归一化 format：JPEG 在 WPS COM 滤镜表中按 JPG 处理（参考 PPT 同款工具）
-  const rawFormat = (format || 'PNG').toUpperCase();
-  const filterName = rawFormat === 'JPEG' ? 'JPG' : rawFormat;
-
   try {
+    const safeOutputPath = validateFilePath(outputPath, []);
+    // 归一化 format：JPEG 在 WPS COM 滤镜表中按 JPG 处理（参考 PPT 同款工具）
+    const rawFormat = (format || 'PNG').toUpperCase();
+    const filterName = rawFormat === 'JPEG' ? 'JPG' : rawFormat;
+
     const response = await wpsClient.executeMethod<{
       success: boolean;
       message?: string;
@@ -722,7 +722,6 @@ export const exportRangeAsImageHandler: ToolHandler = async (
     };
   }
 
-  const safeOutputPath = validateFilePath(outputPath, []);
   // 校验 range 格式（与 createChart 保持一致）
   if (!range || !/^\$?[A-Z]+\$?\d+(:\$?[A-Z]+\$?\d+)?$/i.test(range)) {
     return {
@@ -738,11 +737,12 @@ export const exportRangeAsImageHandler: ToolHandler = async (
     };
   }
 
-  // 归一化 format：JPEG → JPG
-  const rawFormat = (format || 'PNG').toUpperCase();
-  const filterName = rawFormat === 'JPEG' ? 'JPG' : rawFormat;
-
   try {
+    const safeOutputPath = validateFilePath(outputPath, []);
+    // 归一化 format：JPEG → JPG
+    const rawFormat = (format || 'PNG').toUpperCase();
+    const filterName = rawFormat === 'JPEG' ? 'JPG' : rawFormat;
+
     const response = await wpsClient.executeMethod<{
       success: boolean;
       message?: string;

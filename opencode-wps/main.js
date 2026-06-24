@@ -328,7 +328,7 @@ setInterval(function () {
             if (raw.indexOf('{') === 0) {
                 try {
                     var parsed = JSON.parse(raw);
-                    if (parsed.ts) { ts = parsed.ts; cmd = parsed.cmd; }
+                    if (parsed.ts && parsed.cmd) { ts = parsed.ts; cmd = parsed.cmd; }
                 } catch(e) {}
             }
             if (ts && ts <= lastCmdTime) {

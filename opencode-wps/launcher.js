@@ -416,9 +416,15 @@ var server = http.createServer(function(req, res) {
         }
         stateLock = true;
         parseBody(req, function(body) {
-            var result = startOpenCode(body.cwd, body.port);
-            sendJSON(res, result.success ? 200 : 400, result);
-            stateLock = false;
+            try {
+                var result = startOpenCode(body.cwd, body.port);
+                sendJSON(res, result.success ? 200 : 400, result);
+            } catch(e) {
+                console.error('[launcher] startOpenCode failed:', e);
+                sendJSON(res, 500, { error: 'Internal error: ' + e.message });
+            } finally {
+                stateLock = false;
+            }
         });
         return;
     }
