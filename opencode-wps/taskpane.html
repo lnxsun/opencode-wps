@@ -579,7 +579,7 @@ function confirmCwdChange() {
     $btnStart.disabled = true
     $btnStart.innerHTML = '<span class="spinner"></span> 正在启动...'
     $setupStatus.textContent = '正在启动 OpenCode 服务...'
-    setPS('opencode_command', 'start:' + newCwd)
+    setPS('opencode_command', JSON.stringify({cmd: 'start:' + newCwd, ts: Date.now()}))
 
     // 轮询等待服务就绪
     var retries = 0
@@ -621,7 +621,7 @@ function startOpenCode() {
     $btnStart.innerHTML = '<span class="spinner"></span> 正在启动...'
     $setupStatus.textContent = '正在启动 OpenCode 服务...'
 
-    setPS('opencode_command', 'start:' + cwd)
+    setPS('opencode_command', JSON.stringify({cmd: 'start:' + cwd, ts: Date.now()}))
 
     var launcherUrl = 'http://127.0.0.1:14097'
     var launcherOk = false
@@ -658,7 +658,7 @@ function startOpenCode() {
 
 function stopOpenCode() {
     // 通过 main.js 命令通道停止
-    setPS('opencode_command', 'stop')
+    setPS('opencode_command', JSON.stringify({cmd: 'stop', ts: Date.now()}))
     SERVER_RUNNING = false
     CONNECTED = false
     if (SSE) { SSE.close(); SSE = null }
@@ -1133,6 +1133,7 @@ function renderHistoryMessage(msg) {
 
 // --- SSE ---
 var sseReconnectTimer = null;
+var sseReconnectDelay = 1000;
 function updateConnectionStatus() {
     // SSE 连接状态变化时更新 UI（目前由健康检查自动处理）
     // 状态变量 CONNECTED 已同步，无需额外 UI 操作
@@ -1145,6 +1146,7 @@ function connectSSE() {
         SSE.onopen = function() {
             console.log('[SSE] Connected');
             CONNECTED = true;
+            sseReconnectDelay = 1000;
             updateConnectionStatus();
             if (sseReconnectTimer) { clearTimeout(sseReconnectTimer); sseReconnectTimer = null; }
         };
@@ -1158,16 +1160,16 @@ function connectSSE() {
             CONNECTED = false;
             updateConnectionStatus();
             if (SSE) { SSE.close(); SSE = null; }
-            // 自动重连
+            // 自动重连（指数退避，最大30秒）
             if (!sseReconnectTimer) {
-                var delay = CONSTANTS.SSE_RECONNECT_DELAY || 3000;
                 sseReconnectTimer = setTimeout(function() {
                     sseReconnectTimer = null;
                     if (SESSION_ID) {
                         console.log('[SSE] Reconnecting...');
                         connectSSE();
                     }
-                }, delay);
+                }, sseReconnectDelay);
+                sseReconnectDelay = Math.min(sseReconnectDelay * 2, 30000);
             }
         };
     } catch(e) { logError('SSE init', e); }

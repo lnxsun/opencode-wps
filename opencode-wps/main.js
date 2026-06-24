@@ -275,12 +275,27 @@ function dockOpenCodeWindow() {
     sendDocInfo()
 }
 
+var lastCmdTime = 0;
+
 setInterval(function () {
     if (isProcessingCommand) return;
     sendDocInfo()
     try {
-        var cmd = window.Application.PluginStorage.getItem('opencode_command')
-        if (cmd) {
+        var raw = window.Application.PluginStorage.getItem('opencode_command')
+        if (raw) {
+            var cmd = raw, ts = 0;
+            // 尝试解析 JSON 格式 { cmd: string, ts: number }
+            if (raw.indexOf('{') === 0) {
+                try {
+                    var parsed = JSON.parse(raw);
+                    if (parsed.ts) { ts = parsed.ts; cmd = parsed.cmd; }
+                } catch(e) {}
+            }
+            if (ts && ts <= lastCmdTime) {
+                window.Application.PluginStorage.setItem('opencode_command', '')
+                return;
+            }
+            if (ts) lastCmdTime = ts;
             isProcessingCommand = true;
             window.Application.PluginStorage.setItem('opencode_command', '')
             if (cmd === 'connect') { connectOpenCode(); }

@@ -334,12 +334,26 @@ export const evaluateFormulaDefinition: ToolDefinition = {
   },
 };
 
-export const evaluateFormulaHandler = async (args: Record<string, unknown>) => {
-  const response = await wpsClient.executeMethod<{ success: boolean; result: unknown }>(
-    'evaluateFormula', args, WpsAppType.SPREADSHEET // NOTE: macOS未实现，仅Windows支持
-  );
+export const evaluateFormulaHandler: ToolHandler = async (
+  args: Record<string, unknown>
+): Promise<ToolCallResult> => {
+  if (process.platform === 'darwin') {
+    return { id: uuidv4(), success: false, content: [{ type: 'text', text: '此功能仅在 Windows 上支持' }], error: 'macOS not supported' };
+  }
+  try {
+    const response = await wpsClient.executeMethod<{ success: boolean; result: unknown }>(
+      'evaluateFormula', args, WpsAppType.SPREADSHEET // NOTE: macOS未实现，仅Windows支持
+    );
 
-  return { id: uuidv4(), success: response.success, content: [{ type: "text" as const, text: JSON.stringify(response.data) }] };
+    if (!response.success) {
+      return { id: uuidv4(), success: false, content: [{ type: 'text', text: `公式计算失败: ${response.error}` }], error: response.error };
+    }
+
+    return { id: uuidv4(), success: true, content: [{ type: 'text', text: JSON.stringify(response.data) }] };
+  } catch (error) {
+    const errMsg = error instanceof Error ? error.message : String(error);
+    return { id: uuidv4(), success: false, content: [{ type: 'text', text: `公式计算出错: ${errMsg}` }], error: errMsg };
+  }
 };
 
 export const setPrintAreaDefinition: ToolDefinition = {
@@ -353,12 +367,23 @@ export const setPrintAreaDefinition: ToolDefinition = {
   },
 };
 
-export const setPrintAreaHandler = async (args: Record<string, unknown>) => {
-  const response = await wpsClient.executeMethod<{ success: boolean }>(
-    'setPrintArea', args, WpsAppType.SPREADSHEET
-  );
+export const setPrintAreaHandler: ToolHandler = async (
+  args: Record<string, unknown>
+): Promise<ToolCallResult> => {
+  try {
+    const response = await wpsClient.executeMethod<{ success: boolean }>(
+      'setPrintArea', args, WpsAppType.SPREADSHEET
+    );
 
-  return { id: uuidv4(), success: response.success, content: [{ type: "text" as const, text: response.success ? "打印区域已设置" : "设置失败" }] };
+    if (!response.success) {
+      return { id: uuidv4(), success: false, content: [{ type: 'text', text: `设置打印区域失败: ${response.error}` }], error: response.error };
+    }
+
+    return { id: uuidv4(), success: true, content: [{ type: 'text', text: '打印区域已设置' }] };
+  } catch (error) {
+    const errMsg = error instanceof Error ? error.message : String(error);
+    return { id: uuidv4(), success: false, content: [{ type: 'text', text: `设置打印区域出错: ${errMsg}` }], error: errMsg };
+  }
 };
 
 export const zoomDefinition: ToolDefinition = {
@@ -372,12 +397,26 @@ export const zoomDefinition: ToolDefinition = {
   },
 };
 
-export const zoomHandler = async (args: Record<string, unknown>) => {
-  const response = await wpsClient.executeMethod<{ success: boolean }>(
-    'setZoom', args, WpsAppType.SPREADSHEET // NOTE: macOS未实现，仅Windows支持
-  );
+export const zoomHandler: ToolHandler = async (
+  args: Record<string, unknown>
+): Promise<ToolCallResult> => {
+  if (process.platform === 'darwin') {
+    return { id: uuidv4(), success: false, content: [{ type: 'text', text: '此功能仅在 Windows 上支持' }], error: 'macOS not supported' };
+  }
+  try {
+    const response = await wpsClient.executeMethod<{ success: boolean }>(
+      'setZoom', args, WpsAppType.SPREADSHEET // NOTE: macOS未实现，仅Windows支持
+    );
 
-  return { id: uuidv4(), success: response.success, content: [{ type: "text" as const, text: response.success ? "缩放已设置" : "设置失败" }] };
+    if (!response.success) {
+      return { id: uuidv4(), success: false, content: [{ type: 'text', text: `设置缩放失败: ${response.error}` }], error: response.error };
+    }
+
+    return { id: uuidv4(), success: true, content: [{ type: 'text', text: '缩放已设置' }] };
+  } catch (error) {
+    const errMsg = error instanceof Error ? error.message : String(error);
+    return { id: uuidv4(), success: false, content: [{ type: 'text', text: `设置缩放出错: ${errMsg}` }], error: errMsg };
+  }
 };
 
 export const formulaTools: RegisteredTool[] = [

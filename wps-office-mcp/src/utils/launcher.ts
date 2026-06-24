@@ -25,7 +25,10 @@ export function fetchDocInfoFromLauncher(): Promise<{
           } else {
             resolve(null);
           }
-        } catch(e) { resolve(null); }
+        } catch(e) {
+          console.warn('[launcher] fetchDocInfoFromLauncher failed:', e);
+          resolve(null);
+        }
       });
     });
     req.on('error', function() { resolve(null); });

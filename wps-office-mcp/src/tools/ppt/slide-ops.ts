@@ -1178,7 +1178,7 @@ export const setSlideTitleHandler: ToolHandler = async (
 
 export const insertImageDefinition: ToolDefinition = {
   name: 'wps_ppt_insert_image',
-  description: `在幻灯片中插入图片。
+  description: `[DEPRECATED] Use wps_ppt_insert_image instead. 在幻灯片中插入图片。
 
 使用场景：
 - "在第1页插入一张图片"
@@ -1352,7 +1352,7 @@ export const setShapeTextHandler: ToolHandler = async (
 
 export const setAnimationDefinition: ToolDefinition = {
   name: 'wps_ppt_set_animation',
-  description: `设置幻灯片中指定元素的动画效果。
+  description: `[DEPRECATED] Use wps_ppt_set_animation instead. 设置幻灯片中指定元素的动画效果。
 
 支持的动画类型：
 - fadeIn: 淡入
@@ -1449,7 +1449,7 @@ export const setAnimationHandler: ToolHandler = async (
 
 export const setBackgroundDefinition: ToolDefinition = {
   name: 'wps_ppt_set_background',
-  description: `设置幻灯片的背景颜色或背景图片。
+  description: `[DEPRECATED] Use wps_ppt_set_background instead. 设置幻灯片的背景颜色或背景图片。
 
 使用场景：
 - "把第1页背景改成蓝色"
@@ -1574,6 +1574,9 @@ export const setSlideSizeDefinition: ToolDefinition = {
 export const setSlideSizeHandler: ToolHandler = async (
   args: Record<string, unknown>
 ): Promise<ToolCallResult> => {
+  if (process.platform === 'darwin') {
+    return { id: uuidv4(), success: false, content: [{ type: 'text', text: '此功能仅在 Windows 上支持' }], error: 'macOS not supported' };
+  }
   const { width, height } = args as {
     width: number;
     height: number;
@@ -1841,6 +1844,9 @@ export const setShapeFillDefinition: ToolDefinition = {
 export const setShapeFillHandler: ToolHandler = async (
   args: Record<string, unknown>
 ): Promise<ToolCallResult> => {
+  if (process.platform === 'darwin') {
+    return { id: uuidv4(), success: false, content: [{ type: 'text', text: '此功能仅在 Windows 上支持' }], error: 'macOS not supported' };
+  }
   const { slideIndex, shapeIndex, color } = args as {
     slideIndex: number;
     shapeIndex: number;

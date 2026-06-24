@@ -5,7 +5,7 @@
 var http = require('http')
 var TARGET_HOST = '127.0.0.1'
 var TARGET_PORT = 14096
-var PROXY_PORT = 14097
+var PROXY_PORT = 14098
 
 var server = http.createServer(function (clientReq, clientRes) {
     var options = {
@@ -27,7 +27,7 @@ var server = http.createServer(function (clientReq, clientRes) {
             }
         }
         // 允许所有来源的 CORS
-        headers['access-control-allow-origin'] = '*'
+        headers['access-control-allow-origin'] = 'http://127.0.0.1:14096'
         headers['access-control-allow-methods'] = 'GET, POST, PUT, PATCH, DELETE, OPTIONS'
         headers['access-control-allow-headers'] = 'Content-Type, x-opencode-directory'
 
@@ -43,7 +43,7 @@ var server = http.createServer(function (clientReq, clientRes) {
     // CORS preflight
     if (clientReq.method === 'OPTIONS') {
         clientRes.writeHead(200, {
-            'access-control-allow-origin': '*',
+            'access-control-allow-origin': 'http://127.0.0.1:14096',
             'access-control-allow-methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
             'access-control-allow-headers': 'Content-Type, x-opencode-directory',
             'access-control-max-age': '86400'

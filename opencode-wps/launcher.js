@@ -9,6 +9,7 @@ var PORT = 14097;
 var opencodeProcess = null;
 var opencodeCwd = '';
 var dockedPid = 0;
+var stateLock = false;
 
 // ===== 启动时清理孤儿 MCP 进程 =====
 function cleanupOrphanedMcp() {
@@ -163,7 +164,7 @@ function stopOpenCodeByPort(port) {
                             }
                         } catch(e) { /* wmic 可能失败，继续尝试 kill */ }
                         try {
-                            execSync('taskkill /PID ' + pid + ' /F', { 
+                            execSync('taskkill /F /PID ' + pid + ' 2>nul', { 
                                 shell: 'cmd.exe',
                                 stdio: 'ignore',
                                 timeout: 5000
@@ -272,7 +273,12 @@ function findOpenCodeBin() {
 }
 
 function validateCwd(cwd) {
-    if (!cwd || typeof cwd !== 'string') {
+    if (typeof cwd !== 'string') throw new Error('cwd must be a string');
+    // 拒绝 UNC 路径和 DOS 设备路径
+    if (/^\\\\[?.]/.test(cwd) || /^\\\\/.test(cwd)) {
+        throw new Error('UNC and DOS device paths are not allowed');
+    }
+    if (!cwd) {
         return { valid: false, error: 'cwd 不能为空' };
     }
     // 防止路径遍历
@@ -286,6 +292,15 @@ function validateCwd(cwd) {
     // 规范化路径
     var resolved = path.resolve(cwd);
     return { valid: true, resolved: resolved };
+}
+
+function isValidUrl(url) {
+    if (typeof url !== 'string') return false;
+    try {
+        var parsed = new URL(url);
+        return (parsed.protocol === 'http:' || parsed.protocol === 'https:') &&
+               (parsed.hostname === '127.0.0.1' || parsed.hostname === 'localhost');
+    } catch (e) { return false; }
 }
 
 function dockWindow(callback, data) {
@@ -317,6 +332,11 @@ function dockWindow(callback, data) {
         edgeUrl += '?cwd=' + encodeURIComponent(cwd)
     }
 
+    if (!isValidUrl(edgeUrl)) {
+        console.error('[launcher] Invalid URL rejected:', edgeUrl);
+        callback({ success: false, error: 'Invalid URL' });
+        return;
+    }
     console.log('[launcher] Final URL: ' + edgeUrl)
     var script = [
         '# Open OpenCode Web',
@@ -359,9 +379,15 @@ var server = http.createServer(function(req, res) {
     var url = req.url;
 
     if (req.method === 'POST' && url === '/start') {
+        if (stateLock) {
+            sendJSON(res, 409, { error: 'Another start request is in progress' });
+            return;
+        }
+        stateLock = true;
         parseBody(req, function(body) {
             var result = startOpenCode(body.cwd, body.port);
             sendJSON(res, result.success ? 200 : 400, result);
+            stateLock = false;
         });
         return;
     }
@@ -388,9 +414,6 @@ var server = http.createServer(function(req, res) {
 
     if (req.method === 'POST' && url === '/dock') {
         parseBody(req, function(body) {
-            if (process.env.NODE_ENV !== 'production') {
-                fs.writeFileSync(path.join(__dirname, 'dock-debug.log'), JSON.stringify(body), 'utf8')
-            }
             dockWindow(function(result) {
                 sendJSON(res, result.success ? 200 : 400, result);
             }, body);

@@ -39,8 +39,6 @@ export {
   convertToPdfHandler,
   convertFormatDefinition,
   convertFormatHandler,
-  getAppTypeByExtension,
-  getFormatCode,
 } from './convert';
 
 // 导出通用操作工具的定义和处理器

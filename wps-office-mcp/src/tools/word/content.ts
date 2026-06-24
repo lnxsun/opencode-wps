@@ -555,13 +555,17 @@ export const insertPageBreakHandler: ToolHandler = async (
       {},
       WpsAppType.WRITER
     );
+    if (!response.success) {
+      return { id: uuidv4(), success: false, content: [{ type: 'text', text: `插入分页符失败: ${response.error}` }], error: response.error };
+    }
     return {
       id: uuidv4(),
-      success: response.success,
-      content: [{ type: 'text', text: response.success ? '分页符已插入' : (response.data as any)?.message || '插入失败' }],
+      success: true,
+      content: [{ type: 'text', text: '分页符已插入' }],
     };
-  } catch (e: any) {
-    return { id: uuidv4(), success: false, content: [{ type: 'text', text: `插入分页符出错: ${e.message}` }], error: e.message };
+  } catch (error) {
+    const errMsg = error instanceof Error ? error.message : String(error);
+    return { id: uuidv4(), success: false, content: [{ type: 'text', text: `插入分页符出错: ${errMsg}` }], error: errMsg };
   }
 };
 
@@ -590,13 +594,17 @@ export const setFontStyleHandler: ToolHandler = async (
       args,
       WpsAppType.WRITER
     );
+    if (!response.success) {
+      return { id: uuidv4(), success: false, content: [{ type: 'text', text: `设置字体失败: ${response.error}` }], error: response.error };
+    }
     return {
       id: uuidv4(),
-      success: response.success,
-      content: [{ type: 'text', text: response.success ? '字体已设置' : (response.data as any)?.message || '设置失败' }],
+      success: true,
+      content: [{ type: 'text', text: '字体已设置' }],
     };
-  } catch (e: any) {
-    return { id: uuidv4(), success: false, content: [{ type: 'text', text: `设置字体出错: ${e.message}` }], error: e.message };
+  } catch (error) {
+    const errMsg = error instanceof Error ? error.message : String(error);
+    return { id: uuidv4(), success: false, content: [{ type: 'text', text: `设置字体出错: ${errMsg}` }], error: errMsg };
   }
 };
 
@@ -629,13 +637,17 @@ export const insertCommentHandler: ToolHandler = async (
       { text },
       WpsAppType.WRITER
     );
+    if (!response.success) {
+      return { id: uuidv4(), success: false, content: [{ type: 'text', text: `插入批注失败: ${response.error}` }], error: response.error };
+    }
     return {
       id: uuidv4(),
-      success: response.success,
-      content: [{ type: 'text', text: response.success ? '批注已插入' : (response.data as any)?.message || '插入失败' }],
+      success: true,
+      content: [{ type: 'text', text: '批注已插入' }],
     };
-  } catch (e: any) {
-    return { id: uuidv4(), success: false, content: [{ type: 'text', text: `插入批注出错: ${e.message}` }], error: e.message };
+  } catch (error) {
+    const errMsg = error instanceof Error ? error.message : String(error);
+    return { id: uuidv4(), success: false, content: [{ type: 'text', text: `插入批注出错: ${errMsg}` }], error: errMsg };
   }
 };
 
@@ -658,6 +670,9 @@ export const setTextColorDefinition: ToolDefinition = {
 export const setTextColorHandler: ToolHandler = async (
   args: Record<string, unknown>
 ): Promise<ToolCallResult> => {
+  if (process.platform === 'darwin') {
+    return { id: uuidv4(), success: false, content: [{ type: 'text', text: '此功能仅在 Windows 上支持' }], error: 'macOS not supported' };
+  }
   const { color } = args as { color: string };
   if (!color || color.trim() === '') {
     return { id: uuidv4(), success: false, content: [{ type: 'text', text: '颜色值不能为空！' }], error: '颜色值为空' };
@@ -668,13 +683,17 @@ export const setTextColorHandler: ToolHandler = async (
       { color },
       WpsAppType.WRITER
     );
+    if (!response.success) {
+      return { id: uuidv4(), success: false, content: [{ type: 'text', text: `设置文字颜色失败: ${response.error}` }], error: response.error };
+    }
     return {
       id: uuidv4(),
-      success: response.success,
-      content: [{ type: 'text', text: response.success ? `文字颜色已设置为 ${color}` : (response.data as any)?.message || '设置失败' }],
+      success: true,
+      content: [{ type: 'text', text: `文字颜色已设置为 ${color}` }],
     };
-  } catch (e: any) {
-    return { id: uuidv4(), success: false, content: [{ type: 'text', text: `设置文字颜色出错: ${e.message}` }], error: e.message };
+  } catch (error) {
+    const errMsg = error instanceof Error ? error.message : String(error);
+    return { id: uuidv4(), success: false, content: [{ type: 'text', text: `设置文字颜色出错: ${errMsg}` }], error: errMsg };
   }
 };
 
@@ -847,9 +866,13 @@ export const findInDocumentHandler: ToolHandler = async (
 
     if (response.success && response.data) {
       const data = response.data;
-      const results = data.results;
+      let results = data.results;
       const count = data.count;
       const findText = data.findText;
+      const MAX_RESULTS = 100;
+      if (results && results.length > MAX_RESULTS) {
+        results = results.slice(0, MAX_RESULTS);
+      }
       if (count === 0) {
         return {
           id: uuidv4(),

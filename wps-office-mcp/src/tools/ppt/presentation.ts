@@ -427,6 +427,9 @@ export const setSlideThemeDefinition: ToolDefinition = {
 export const setSlideThemeHandler: ToolHandler = async (
   args: Record<string, unknown>
 ): Promise<ToolCallResult> => {
+  if (process.platform === 'darwin') {
+    return { id: uuidv4(), success: false, content: [{ type: 'text', text: '此功能仅在 Windows 上支持' }], error: 'macOS not supported' };
+  }
   const { theme } = args as { theme: string };
 
   try {

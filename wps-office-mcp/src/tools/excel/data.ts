@@ -67,6 +67,22 @@ export const readRangeHandler: ToolHandler = async (
     include_header?: boolean;
   };
 
+  const MAX_ROWS = 10000;
+  const MAX_COLS = 500;
+  const rangeMatch = range ? range.match(/^([A-Z]+)(\d+):([A-Z]+)(\d+)$/i) : null;
+  if (rangeMatch) {
+    const rowCount = Math.abs(parseInt(rangeMatch[4]) - parseInt(rangeMatch[2])) + 1;
+    const colCount = Math.abs(rangeMatch[3].length - rangeMatch[1].length) + 1;
+    if (rowCount * colCount > MAX_ROWS * MAX_COLS) {
+      return {
+        id: uuidv4(),
+        success: false,
+        content: [{ type: 'text', text: 'Range too large. Maximum is ' + MAX_ROWS + ' rows x ' + MAX_COLS + ' cols. Use smaller ranges.' }],
+        error: 'Range too large',
+      };
+    }
+  }
+
   try {
     const response = await wpsClient.getRangeData(sheet || 0, range);
 
@@ -708,6 +724,9 @@ export const setZoomDefinition: ToolDefinition = {
 export const setZoomHandler: ToolHandler = async (
   args: Record<string, unknown>
 ): Promise<ToolCallResult> => {
+  if (process.platform === 'darwin') {
+    return { id: uuidv4(), success: false, content: [{ type: 'text', text: '此功能仅在 Windows 上支持' }], error: 'macOS not supported' };
+  }
   const { percent } = args as { percent: number };
   if (percent < 10 || percent > 400) {
     return { id: uuidv4(), success: false, content: [{ type: 'text', text: '缩放比例必须在10-400之间' }], error: '缩放比例超出范围' };
