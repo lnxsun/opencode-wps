@@ -466,6 +466,7 @@ export const proofreadBasicDefinition: ToolDefinition = {
 - 中英文标点混用
 - 常见错误搭配
 - 数字前后异常空格
+- 连续空格 / 全角空格
 - 常见网络用语/拼写错误
 
 返回每个问题的位置、原文、建议修改和问题类型。
@@ -951,6 +952,18 @@ function runBasicProofreading(text: string, baseOffset: number = 0): ProofreadIs
       pattern: /软件评测/g,
       type: '常见错别字',
       getSuggestion: () => '软件测评',
+    },
+
+    // ===== 异常空格检测 =====
+    {
+      pattern: /  +/g,
+      type: '异常空格',
+      getSuggestion: () => ' ',
+    },
+    {
+      pattern: /\u3000+/g,
+      type: '异常空格',
+      getSuggestion: () => ' ',
     },
 
     // ===== 测试/占位文本检测 =====

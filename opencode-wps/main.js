@@ -9,6 +9,7 @@ var LAUNCHER_API = 'http://' + OPENCODE_HOST + ':14097'
 
 var OPENCODE_STATE = 'stopped'
 var OPENCODE_ERROR = ''
+var isProcessingCommand = false;
 
 var WPS_Enum = {
     msoCTPDockPositionLeft: 0,
@@ -16,33 +17,6 @@ var WPS_Enum = {
     msoFileDialogFolderPicker: 4,
     msoFileDialogOpen: 1
 }
-
-// --- 全局状态封装 ---
-var AppState = {
-    port: 14096,
-    host: '127.0.0.1',
-    apiBase: 'http://127.0.0.1:14096',
-    launcherApi: 'http://127.0.0.1:14097',
-    state: 'stopped',
-    error: '',
-
-    getApiBase: function() {
-        return 'http://' + this.host + ':' + this.port;
-    },
-
-    getLauncherApi: function() {
-        return this.launcherApi;
-    },
-
-    setState: function(state, error) {
-        this.state = state;
-        this.error = error || '';
-        // 同步到全局变量（兼容旧代码）
-        OPENCODE_STATE = state;
-        OPENCODE_ERROR = error || '';
-        OPENCODE_API_BASE = this.getApiBase();
-    }
-};
 
 // --- WPS 就绪检查 ---
 function checkWpsReady() {
@@ -60,7 +34,14 @@ function checkWpsReady() {
 
 function checkDocument() {
     try {
-        var doc = window.WPS && window.WPS.Application && window.WPS.Application.ActiveDocument;
+        var app = window.WPS && window.WPS.Application;
+        if (!app) {
+            // 某些 WPS 版本中窗口回调只能通过 window.Application 访问
+            app = window.Application;
+            if (!app) return null;
+        }
+        // WPS 文字 / 表格 / 演示使用不同的 Active 属性
+        var doc = app.ActiveDocument || app.ActiveWorkbook || app.ActivePresentation;
         if (!doc) {
             console.warn('[WPS] 请先打开文档');
             return null;
@@ -77,6 +58,47 @@ function GetUrlPath() {
     return pluginPath.replace(/\\/g, '/');
 }
 
+var lastDocInfo = '';
+
+function sendDocInfo() {
+    try {
+        var app = window.WPS && window.WPS.Application;
+        if (!app) app = window.Application;
+        if (!app) return;
+        var doc = app.ActiveDocument || app.ActiveWorkbook || app.ActivePresentation;
+        if (!doc) {
+            // 无文档打开时清除缓存，避免 MCP fallback 返回过期数据
+            if (lastDocInfo !== '') {
+                lastDocInfo = '';
+                var clearXhr = new XMLHttpRequest();
+                clearXhr.open('POST', LAUNCHER_API + '/docinfo', true);
+                clearXhr.setRequestHeader('Content-Type', 'application/json');
+                clearXhr.send(JSON.stringify({ closed: true }));
+            }
+            return;
+        }
+        var info = {
+            name: doc.Name,
+            path: doc.FullName,
+            type: app.ActiveDocument ? 'word' : app.ActiveWorkbook ? 'excel' : 'ppt'
+        };
+        if (app.ActiveDocument) {
+            try { info.paragraphCount = doc.Paragraphs.Count; } catch(e) {}
+            try { info.wordCount = doc.Words.Count; } catch(e) {}
+        }
+        var key = JSON.stringify(info);
+        if (key === lastDocInfo) return;
+        lastDocInfo = key;
+        var xhr = new XMLHttpRequest();
+        xhr.timeout = 3000;
+        xhr.open('POST', LAUNCHER_API + '/docinfo', true);
+        xhr.setRequestHeader('Content-Type', 'application/json');
+        xhr.send(key);
+    } catch(e) {
+        console.warn('[OpenCode] sendDocInfo failed: ' + e.message);
+    }
+}
+
 function setOpenCodeState(state, error) {
     OPENCODE_STATE = state
     OPENCODE_ERROR = error || ''
@@ -89,7 +111,7 @@ function setOpenCodeState(state, error) {
 }
 
 function startOpenCodeServer(cwd) {
-    if (!cwd) return
+    if (!cwd) { isProcessingCommand = false; return; }
     try { window.Application.PluginStorage.setItem('opencode_cwd', cwd) } catch (e) {}
     var data = JSON.stringify({ cwd: cwd })
     console.log('[OpenCode] Sending: ' + data)
@@ -100,10 +122,12 @@ function startOpenCodeServer(cwd) {
     xhr.onreadystatechange = function() {
         if (xhr.readyState === 4) {
             console.log('[OpenCode] Launcher response: ' + xhr.status + ' ' + xhr.responseText)
+            isProcessingCommand = false;
         }
     }
-    xhr.onerror = function() { console.log('[OpenCode] Cannot reach launcher') }
-    try { xhr.send(data) } catch (e) { console.log('[OpenCode] Send error: ' + e.message) }
+    xhr.onerror = function() { console.log('[OpenCode] Cannot reach launcher'); isProcessingCommand = false; }
+    xhr.ontimeout = function() { console.log('[OpenCode] Launcher timeout'); isProcessingCommand = false; }
+    try { xhr.send(data) } catch (e) { console.log('[OpenCode] Send error: ' + e.message); isProcessingCommand = false; }
 }
 
 function stopOpenCodeServer() {
@@ -111,10 +135,11 @@ function stopOpenCodeServer() {
     xhr.timeout = 5000
     xhr.open('POST', LAUNCHER_API + '/stop', true)
     xhr.onreadystatechange = function() {
-        if (xhr.readyState === 4) console.log('[OpenCode] Stop: ' + xhr.status)
+        if (xhr.readyState === 4) { console.log('[OpenCode] Stop: ' + xhr.status); isProcessingCommand = false; }
     }
-    xhr.onerror = function() {}
-    try { xhr.send() } catch (e) {}
+    xhr.onerror = function() { isProcessingCommand = false; }
+    xhr.ontimeout = function() { isProcessingCommand = false; }
+    try { xhr.send() } catch (e) { isProcessingCommand = false; }
     setOpenCodeState('stopped')
 }
 
@@ -130,10 +155,11 @@ function checkServerHealth(callback) {
 }
 
 function connectOpenCode() {
-    if (OPENCODE_STATE === 'running') return
+    if (OPENCODE_STATE === 'running') { isProcessingCommand = false; return; }
     setOpenCodeState('connecting')
     checkServerHealth(function(isRunning) {
         setOpenCodeState(isRunning ? 'running' : 'stopped')
+        isProcessingCommand = false;
     })
 }
 
@@ -144,8 +170,13 @@ function OnAddinLoad(ribbonUI) {
     return true
 }
 
+function getControlId(control) {
+    // WPS 不同版本/回调中 Id 属性大小写不一致（control.Id vs control.id）
+    return control.Id || control.id;
+}
+
 function OnAction(control) {
-    var eleId = control.Id
+    var eleId = getControlId(control)
     switch (eleId) {
         case "btnShowTaskPane":
             var tsId = window.Application.PluginStorage.getItem("taskpane_id")
@@ -168,20 +199,33 @@ function OnAction(control) {
 }
 
 function GetImage(control) {
-    if (!control || !control.id) return ''
-    if (control.id === 'btnShowTaskPane') return 'btn-panel.png'
-    if (control.id === 'btnDockWindow') return 'btn-dock.png'
-    if (control.id === 'btnCheckStatus') return 'btn-status.png'
+    if (!control) return ''
+    var id = getControlId(control);
+    if (!id) return '';
+    if (id === 'btnShowTaskPane') return 'btn-panel.png'
+    if (id === 'btnDockWindow') return 'btn-dock.png'
+    if (id === 'btnCheckStatus') return 'btn-status.png'
     return ''
 }
 
 function GetImageSize(control) {
-    if (!control || !control.id) return 16
-    if (control.id === 'btnShowTaskPane') return 32
+    if (!control) return 16
+    var id = getControlId(control);
+    if (!id) return 16;
+    if (id === 'btnShowTaskPane') return 32
     return 16
 }
 
-function OnGetEnabled(control) { return true }
+function OnGetEnabled(control) {
+    if (!control) return true;
+    // 任务窗格和Web面板按钮始终可用；连接状态按钮需文档已打开
+    var id = getControlId(control);
+    if (id === 'btnShowTaskPane' || id === 'btnDockWindow') return true;
+    if (id === 'btnCheckStatus') return checkDocument() !== null;
+    console.warn('[WPS] Unknown ribbon button: ' + (id || '(no id)') + ', disabled by default');
+    return false; // 未知按钮默认禁用（新增按钮需显式添加 case）
+}
+
 function OnGetVisible(control) { return true }
 function OnGetLabel(control) { return "" }
 
@@ -228,16 +272,21 @@ function dockOpenCodeWindow() {
     }
     xhr.onerror = function() { console.log('[OpenCode] Dock error') }
     xhr.send(JSON.stringify({ cwd: normalized, session: sessionId }))
+    sendDocInfo()
 }
 
 setInterval(function () {
+    if (isProcessingCommand) return;
+    sendDocInfo()
     try {
         var cmd = window.Application.PluginStorage.getItem('opencode_command')
         if (cmd) {
+            isProcessingCommand = true;
             window.Application.PluginStorage.setItem('opencode_command', '')
-            if (cmd === 'connect') connectOpenCode()
-            else if (cmd.indexOf('start:') === 0) startOpenCodeServer(cmd.substring(6))
-            else if (cmd === 'stop') stopOpenCodeServer()
+            if (cmd === 'connect') { connectOpenCode(); }
+            else if (cmd.indexOf('start:') === 0) { startOpenCodeServer(cmd.substring(6)); }
+            else if (cmd === 'stop') { stopOpenCodeServer(); }
+            else { isProcessingCommand = false; }
         }
-    } catch (e) {}
+    } catch (e) { isProcessingCommand = false; }
 }, 500)

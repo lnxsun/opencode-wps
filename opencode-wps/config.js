@@ -37,7 +37,12 @@ var CONFIG = {
         // 插件版本
         version: '1.1.0',
         // 用户主目录（安装时注入，见 install-addons.js）
-        userHome: '___WPS_USER_HOME___'
+        userHome: (function() {
+            var v = '__OPCODE_WPS_USER_HOME__';
+            if (v !== '__OPCODE_WPS_USER_HOME__') return v;
+            if (typeof process !== 'undefined' && process.env) return process.env.USERPROFILE || process.env.HOME || 'C:\\Users\\Default';
+            return 'C:\\Users\\Default';
+        })(),
     },
 
     // 会话配置

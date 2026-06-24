@@ -6,14 +6,12 @@ const { execSync } = require('child_process');
 const rootDir = __dirname;
 const homeDir = process.env.USERPROFILE || process.env.HOME;
 
-// ===== 回滚机制 =====
+// ===== 安装状态追踪 =====
 const installState = {
-    stepsCompleted: [],
     errors: []
 };
 
 function recordStep(stepName) {
-    installState.stepsCompleted.push(stepName);
     console.log('  ✓ ' + stepName);
 }
 
@@ -21,25 +19,6 @@ function handleError(stepName, error) {
     const errMsg = error.message || String(error);
     installState.errors.push({ step: stepName, error: errMsg });
     console.error('  ✗ ' + stepName + ': ' + errMsg);
-}
-
-function rollback() {
-    if (installState.stepsCompleted.length === 0) return;
-    console.log('\n⚠️ 开始回滚安装...');
-    console.log('已完成的步骤: ' + installState.stepsCompleted.join(', '));
-    // 回滚逻辑
-    // 1. 清理已安装的插件
-    const jsaddonsDir = path.join(process.env.APPDATA, 'kingsoft', 'wps', 'jsaddons');
-    try {
-        const addon = addons?.[0];
-        if (!addon) { console.log('  无插件定义可回滚'); return; }
-        const destDir = path.join(jsaddonsDir, addon.name + '_');
-        if (fsEx.existsSync(destDir)) {
-            fsEx.removeSync(destDir);
-            console.log('  已回滚: 删除插件目录');
-        }
-    } catch (e) { console.error('  回滚失败: ' + e.message); }
-    console.log('回滚完成，请重新运行安装脚本');
 }
 
 // ===== 1. WPS 插件定义 =====
@@ -102,6 +81,7 @@ console.log('  不再自动注册开机自启任务\n');
 // ============================================================
 console.log('【第 1 步】安装 WPS 插件');
 console.log('目标目录: ' + jsaddonsDir + '\n');
+recordStep('install_wps_plugin');
 
 fsEx.ensureDirSync(jsaddonsDir);
 
@@ -149,9 +129,9 @@ addons.forEach(addon => {
         if (fsEx.existsSync(configJsPath)) {
             const configJsContent = fs.readFileSync(configJsPath, 'utf-8');
             const userHome = process.env.USERPROFILE || require('os').homedir();
-            const updatedConfig = configJsContent.replace(/___WPS_USER_HOME___/g, () => userHome.replace(/\\/g, '\\\\'));
+            const updatedConfig = configJsContent.replace(/__OPCODE_WPS_USER_HOME__/g, () => userHome.replace(/\\/g, '\\\\'));
             if (updatedConfig === configJsContent) {
-                console.log('    [警告] config.js 中未找到 ___WPS_USER_HOME___，用户目录注入失败');
+                console.log('    [警告] config.js 中未找到 __OPCODE_WPS_USER_HOME__，用户目录注入失败');
             } else {
                 fs.writeFileSync(configJsPath, updatedConfig, 'utf-8');
                 console.log('    已注入用户目录: ' + userHome);
@@ -271,6 +251,7 @@ if (fsEx.existsSync(authaddinJsonPath)) {
 // 第 2 步: 编译 MCP 服务器
 // ============================================================
 console.log('\n【第 2 步】编译 MCP 服务器');
+recordStep('build_mcp_server');
 
 if (fsEx.existsSync(mcpServer.src)) {
     console.log('  源目录: ' + mcpServer.src);
@@ -302,6 +283,7 @@ if (fsEx.existsSync(mcpServer.src)) {
 // 第 3 步: 配置 OpenCode MCP 服务器
 // ============================================================
 console.log('\n【第 3 步】配置 OpenCode MCP 服务器');
+recordStep('configure_opencode_mcp');
 
 const mcpEntryPath = path.resolve(mcpServer.src, mcpServer.entryPoint);
 const mcpEntryForward = mcpEntryPath.replace(/\\/g, '/');  // opencode.json 用正斜杠
@@ -343,7 +325,7 @@ if (fsEx.existsSync(mcpEntryPath)) {
                 for (var key in source) {
                     if (source.hasOwnProperty(key)) {
                         if (Array.isArray(source[key])) {
-                            target[key] = source[key].slice();
+                            target[key] = source[key].slice(); // 数组合并：保留用户新增项
                         } else if (typeof source[key] === 'object' && source[key] !== null && !Array.isArray(source[key])) {
                             if (!target[key] || typeof target[key] !== 'object' || Array.isArray(target[key])) {
                                 target[key] = {};
@@ -405,6 +387,7 @@ if (fsEx.existsSync(mcpEntryPath)) {
 // 第 4 步: 安装 Skills 到 OpenCode
 // ============================================================
 console.log('\n【第 4 步】安装 OpenCode Skills');
+recordStep('install_skills');
 
 if (fsEx.existsSync(skillsSrcDir)) {
     const skills = fs.readdirSync(skillsSrcDir).filter(name => {
@@ -433,6 +416,7 @@ if (fsEx.existsSync(skillsSrcDir)) {
 // 第 5 步: 安装 Agents 到 OpenCode
 // ============================================================
 console.log('\n【第 5 步】安装 OpenCode Agents');
+recordStep('install_agents');
 
 if (fsEx.existsSync(agentsSrcDir)) {
     const agentFiles = fs.readdirSync(agentsSrcDir).filter(name => name.endsWith('.md'));
@@ -467,6 +451,7 @@ if (fsEx.existsSync(agentsSrcDir)) {
 // 第 6 步: 安装 OpenCode 插件到用户目录
 // ============================================================
 console.log('\n【第 6 步】安装 OpenCode 插件');
+recordStep('install_opencode_plugins');
 
 const pluginSrcDir = path.resolve(rootDir, '.opencode', 'plugins');
 const pluginDstDir = path.join(opencodeConfigDir, 'plugins');
@@ -505,6 +490,7 @@ try {
 // 第 7 步: 清理废弃配置
 // ============================================================
 console.log('\n【第 7 步】清理废弃配置');
+recordStep('cleanup_legacy_config');
 
 staleClaudeDirs.forEach(dir => {
     try {
@@ -535,6 +521,7 @@ stalePluginDirs.forEach(dir => {
 // 第 8 步: 注册 launcher 开机自启 + 立即启动
 // ============================================================
 console.log('\n【第 8 步】注册 launcher 开机自启');
+recordStep('register_launcher_autostart');
 
 const launcherPath = path.join(jsaddonsDir, 'opencode-wps_', 'launcher.js');
 
@@ -576,7 +563,7 @@ if (fsEx.existsSync(launcherPath)) {
         '</Task>'
     ].join('\r\n');
 
-    const tmpXml = path.join(rootDir, '_launcher_task.xml');
+    const tmpXml = path.join(require('os').tmpdir(), '_opencode_launcher_task.xml');
     const bom = Buffer.from([0xFF, 0xFE]);
     const xmlBuf = Buffer.from(xmlContent, 'utf16le');
     fs.writeFileSync(tmpXml, Buffer.concat([bom, xmlBuf]));

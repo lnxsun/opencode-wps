@@ -21,6 +21,7 @@ import { wpsClient } from '../client/wps-client';
 import { ToolCallResult, ToolCategory } from '../types/tools';
 import { createChildLogger } from '../utils/logger';
 import { McpError } from '../utils/error';
+import { fetchDocInfoFromLauncher } from '../utils/launcher';
 import { searchTools, executeTool } from '../tools/gateway';
 
 const logger = createChildLogger('McpServer');
@@ -220,17 +221,28 @@ export class WpsMcpServer {
       async () => {
         const doc = await wpsClient.getActiveDocument();
 
+        if (doc) {
+          return {
+            id: '',
+            success: true,
+            content: [{ type: 'text', text: JSON.stringify(doc) }],
+          };
+        }
+
+        // COM 失败时从 launcher 获取插件缓存的文档信息
+        try {
+          const launcherDoc = await fetchDocInfoFromLauncher();
+          if (launcherDoc) {
+            return { id: '', success: true, content: [{ type: 'text', text: JSON.stringify(launcherDoc) }] };
+          }
+        } catch(e) {
+          console.warn('[mcp-server] fetchDocInfoFromLauncher failed:', e);
+        }
+
         return {
           id: '',
-          success: doc !== null,
-          content: [
-            {
-              type: 'text',
-              text: doc
-                ? JSON.stringify(doc)
-                : '没有打开的文档',
-            },
-          ],
+          success: false,
+          content: [{ type: 'text', text: '没有打开的文档（COM 和插件缓存均未检测到文档）' }],
         };
       }
     );
@@ -432,7 +444,10 @@ export class WpsMcpServer {
     this.registry.register(
       {
         name: 'wps_execute_method',
-        description: '执行自定义WPS API方法',
+        description: `执行自定义WPS API方法。
+
+**安全警告**：此工具允许执行任意WPS COM方法，绕过了治理插件的精确控制。
+仅当标准工具无法满足需求时使用。安全性由 governance.js 插件钩子（G1-G7）保障。`,
         inputSchema: {
           type: 'object',
           properties: {
@@ -458,6 +473,35 @@ export class WpsMcpServer {
         const method = args.method as string;
         const params = args.params as Record<string, unknown> | undefined;
         const appType = args.appType as string | undefined;
+
+        // 禁止执行高危方法 — 按方法名段匹配，防止绕过白名单执行危险 COM API
+        // 设计依据：
+        //   CreateObject — 可创建任意 COM 对象，包括 WScript.Shell、ADODB.Stream 等
+        //   Shell        — Shell.Application，可执行系统命令
+        //   Exec / Run   — WScript.Shell.Exec / Shell.Run，命令执行
+        //   WScript      — WScript 对象是完整的脚本宿主
+        //   ScriptControl — 可动态执行任意脚本代码
+        //   Eval / Execute — 动态代码执行
+        // 按 . 切分方法名段，检查每段是否以黑名单前缀开头（而非任意位置子串），
+        // 避免误伤包含子串的合法方法名（如某方法名包含 "Run" 作为子串而非完整段）。
+        // 同时仍能拦截通过 G2 白名单前缀进行的绕过，如：
+        //   "Application.ActiveDocument.Application.CreateObject"
+        //   虽以 Application.ActiveDocument 开头（通过 G2 白名单），
+        //   但黑名单仍能拦截其中的 CreateObject 段。
+        // 如需放行，需确认该方法不可能被用于危险操作。
+        const blockedPrefixes = ['CreateObject', 'Shell', 'Exec', 'Run', 'WScript', 'ScriptControl', 'Eval', 'Execute'];
+        if (!method) {
+          return { id: '', success: false, content: [{ type: 'text', text: 'Error: method is required' }] };
+        }
+        const segments = method.split('.');
+        for (let i = 0; i < blockedPrefixes.length; i++) {
+          for (let j = 0; j < segments.length; j++) {
+            if (segments[j].toLowerCase().indexOf(blockedPrefixes[i].toLowerCase()) === 0) {
+              console.warn('[mcp-server] Blocked method "' + method + '" (matched prefix "' + blockedPrefixes[i] + '" on segment "' + segments[j] + '")');
+              return { id: '', success: false, content: [{ type: 'text', text: 'Error: method "' + method + '" is blocked for security reasons' }] };
+            }
+          }
+        }
 
         const response = await wpsClient.executeMethod(
           method,
@@ -559,7 +603,12 @@ export class WpsMcpServer {
       },
       async (args) => {
         const key = args.key as string;
-        const cached = WpsMcpServer.dataCache.get(key);
+        let cached = WpsMcpServer.dataCache.get(key);
+
+        if (cached && Date.now() - cached.timestamp > WpsMcpServer.MAX_CACHE_AGE) {
+          WpsMcpServer.dataCache.delete(key);
+          cached = undefined;
+        }
 
         if (!cached) {
           return {
@@ -785,6 +834,13 @@ export class WpsMcpServer {
       async (args) => {
         const tool_name = args.tool_name as string;
         const arguments_ = args.arguments as Record<string, unknown>;
+
+        if (!tool_name || typeof tool_name !== 'string') {
+          return { id: '', success: false, content: [{ type: 'text', text: 'Error: tool_name must be a non-empty string' }] };
+        }
+        if (!arguments_ || typeof arguments_ !== 'object' || Array.isArray(arguments_)) {
+          return { id: '', success: false, content: [{ type: 'text', text: 'Error: arguments must be a non-null object' }] };
+        }
 
         const result = await executeTool({ tool_name, arguments: arguments_ });
 

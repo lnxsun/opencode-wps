@@ -2,6 +2,7 @@
 <html>
 <head>
 <meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' http://127.0.0.1:*; img-src 'self' data: http: https:">
 <title>OpenCode</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
@@ -126,7 +127,7 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:-apple-system,Blink
 .input-area{padding:12px 16px 10px 16px;flex-shrink:0;background:#fff;border-top:1px solid #f0f0f0}
 .input-wrapper{border:1px solid #e5e5e5;border-radius:16px;padding:0;overflow:hidden;transition:border-color 0.15s,box-shadow 0.15s;background:#fafafa}
 .input-wrapper:focus-within{border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,0.1);background:#fff}
-.input-box{width:100%;border:none;outline:none;padding:12px 16px 6px 16px;font-family:inherit;font-size:14px;line-height:1.5;resize:none;min-height:44px;max-height:120px;color:#1a1a1a;background:transparent}
+.input-box{width:100%;border:none;outline:none;padding:12px 16px 6px 16px;font-family:inherit;font-size:14px;line-height:1.5;resize:none;min-height:44px;max-height:200px;color:#1a1a1a;background:transparent} /* 同步 MAX_INPUT_HEIGHT */
 .input-box::placeholder{color:#bbb}
 .input-toolbar{display:flex;align-items:center;justify-content:space-between;padding:2px 8px 6px 8px}
 .input-toolbar-left{display:flex;align-items:center;gap:4px}
@@ -365,6 +366,7 @@ function setLS(key, val) { try { localStorage.setItem(key, val) } catch(e) {} }
 // cookie 备用（WPS 内嵌浏览器普遍支持）
 function getCK(key) { try { var m = document.cookie.match(new RegExp('(^| )' + key + '=([^;]+)')); return m ? decodeURIComponent(m[2]) : '' } catch(e) { return '' } }
 function setCK(key, val) { try { document.cookie = key + '=' + encodeURIComponent(val) + ';path=/;max-age=31536000' } catch(e) {} }
+function clearCK(key) { try { document.cookie = key + '=;path=/;max-age=0' } catch(e) {} }
 
 // --- 安全函数 ---
 function safeInput(str) {
@@ -481,8 +483,7 @@ function selectFolderViaFile() {
                 if (cwdInput) cwdInput.value = folderPath
             }
         } else if (result === 0) {
-            if (setupCwd) setupCwd.value = ''
-            if (cwdInput) cwdInput.value = ''
+            // 用户取消，不修改已有输入
         }
     } catch(e) {
         alert('选择失败: ' + e.message + '\n请手动输入工作目录')
@@ -735,7 +736,13 @@ function createDropdown(anchorEl, html, direction) {
     anchorEl.appendChild(dd)
     if (anchorEl.classList) anchorEl.classList.add('active')
 }
-function escapeHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;') }
+function escapeHtml(s) {
+    if (typeof s !== 'string') return '';
+    return s.replace(/[<>&"']/g, function(c) {
+        var map = { '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;', "'": '&#39;' };
+        return map[c];
+    });
+}
 function escapeAttr(s) { return s.replace(/'/g, "\\'").replace(/"/g, '&quot;') }
 
 // Mode dropdown
@@ -1047,6 +1054,9 @@ function fetchWithRetry(method, path, body, onSuccess, onError, timeout, maxRetr
                     } else if (onError) {
                         onError(xhr.status, xhr.responseText);
                     }
+                } else {
+                    // xhr.status === 0: 请求被中断/网络不可达，由 ontimout/onerror 处理
+                    console.log('[fetch] Status 0 for ' + path + ' (ignored, handled by timeout/error)');
                 }
             }
         };
@@ -1111,7 +1121,7 @@ function renderHistoryMessage(msg) {
     var parts = msg.parts || []
     if (msg.info.role === 'user') {
         var texts = []
-        for (var i = 0; i < parts.length; i++) { if (parts[i].type === 'text' && !parts[i].ignored && !(parts[i].text && parts[i].text.indexOf('<wps-context>') === 0)) texts.push(parts[i].text) }
+        for (var i = 0; i < parts.length; i++) { if (parts[i].type === 'text' && !parts[i].ignored && !(parts[i].text && parts[i].text.indexOf('<wps-context>') === 0)) texts.push(parts[i].text) } // indexOf 替代 startsWith（ES5 coding convention）
         if (texts.length > 0) addUserMessage(texts.join('\n'))
     } else if (msg.info.role === 'assistant') {
         var reasoning = '', text = ''
@@ -1123,6 +1133,10 @@ function renderHistoryMessage(msg) {
 
 // --- SSE ---
 var sseReconnectTimer = null;
+function updateConnectionStatus() {
+    // SSE 连接状态变化时更新 UI（目前由健康检查自动处理）
+    // 状态变量 CONNECTED 已同步，无需额外 UI 操作
+}
 function connectSSE() {
     if (SSE) { SSE.close(); SSE = null }
     try {
@@ -1263,6 +1277,8 @@ function handleFileUpload(e) {
     var reader = new FileReader();
     reader.onload = function(evt) {
         var base64 = evt.target.result.split(',')[1];
+        // 文件内容以 base64 发送到服务端，可能在服务端日志/消息历史中留存
+        // 含敏感信息的文件建议使用完毕后清理服务器端会话历史
         var msg = '<file-upload>\nfilename: ' + file.name + '\ntype: ' + file.type + '\ndata: ' + base64 + '\n</file-upload>';
         postMessage('/session/' + SESSION_ID + '/message', { parts: [{ type: 'text', text: msg }] });
     };
@@ -1285,6 +1301,7 @@ function gatherWpsContext() {
 function abortMessage() { if (!SESSION_ID) return; fetchJSON('POST', '/session/' + SESSION_ID + '/abort', null, function() { addSystemMessage('Aborted'); finalizeStreaming() }) }
 
 // --- Input ---
+var MAX_INPUT_HEIGHT = 200;
 function onInputKey(e) {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage() }
     else if (e.key === 'ArrowUp') {
@@ -1310,9 +1327,9 @@ function onInputKey(e) {
             autoGrow($input)
         }
     }
-    setTimeout(updateSendButton, 0)
+    updateSendButton()
 }
-function autoGrow(el) { el.style.height = 'auto'; el.style.height = Math.min(el.scrollHeight, 120) + 'px'; updateSendButton() }
+function autoGrow(el) { el.style.height = 'auto'; el.style.height = Math.min(el.scrollHeight, MAX_INPUT_HEIGHT) + 'px'; updateSendButton() }
 function updateSendButton() { $sendBtn.className = 'send-btn ' + ($input.value.trim().length > 0 && !IS_BUSY ? 'ready' : 'disabled') }
 function updateInputState() {
     $input.disabled = IS_BUSY
@@ -1367,7 +1384,16 @@ function renderMarkdown(text) {
     closeList(); closePara(); closeTable()
     return out
 }
-function safeHref(url) { var u = (url || '').replace(/^\s+|\s+$/g, '').toLowerCase(); if (u.indexOf('javascript:') === 0 || u.indexOf('data:') === 0) return '#'; return url }
+function safeHref(url) {
+    if (!url) return '#'
+    var trimmed = url.replace(/^\s+|\s+$/g, '')
+    var low = trimmed.toLowerCase()
+    if (low.indexOf('http:') === 0 || low.indexOf('https:') === 0 || low.indexOf('mailto:') === 0) return url
+    if (low.indexOf('javascript:') === 0 || low.indexOf('data:') === 0 || low.indexOf('vbscript:') === 0) return '#'
+    // 协议相对 URL（//evil.com）在 file:// 环境下解析为 UNC 路径，非预期行为
+    if (trimmed.indexOf('//') === 0) return '#'
+    return url
+}
 function inlineFmt(s) {
     if (!s) return ''
     s = s.replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>')
@@ -1425,6 +1451,19 @@ function scrollToBottom() { setTimeout(function() { $messages.scrollTop = $messa
             }
         })
     })
+
+    // 在线状态监听：断网时标记，恢复后重连SSE
+    window.addEventListener('online', function() {
+        console.log('[network] Back online');
+        if (CONNECTED === false && SESSION_ID) {
+            connectSSE();
+        }
+    });
+    window.addEventListener('offline', function() {
+        console.log('[network] Offline');
+        CONNECTED = false;
+        updateConnectionStatus();
+    });
 })()
 </script>
 </body>

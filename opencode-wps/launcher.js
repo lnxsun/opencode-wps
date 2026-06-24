@@ -47,7 +47,7 @@ function parseBody(req, callback) {
 function sendJSON(res, statusCode, data) {
     res.writeHead(statusCode, {
         'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Origin': '*',  // launcher 仅绑定 127.0.0.1，无外部访问风险
         'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
         'Access-Control-Allow-Headers': 'Content-Type'
     });
@@ -75,9 +75,6 @@ function startOpenCode(cwd, port) {
     var opencodeBin = findOpenCodeBin();
     console.log('[launcher] Starting with: ' + opencodeBin);
 
-    var opencodeCmd = opencodeBin.endsWith('.ps1') 
-        ? ['-ExecutionPolicy', 'Bypass', '-File', opencodeBin]
-        : [opencodeBin];
     var opencodeArgs = opencodeBin.endsWith('.ps1')
         ? ['serve', '--port', String(port || 14096), '--hostname', '127.0.0.1', '--cors', 'file://']
         : ['serve', '--port', String(port || 14096), '--hostname', '127.0.0.1', '--cors', 'file://'];
@@ -391,11 +388,43 @@ var server = http.createServer(function(req, res) {
 
     if (req.method === 'POST' && url === '/dock') {
         parseBody(req, function(body) {
-            fs.writeFileSync(path.join(__dirname, 'dock-debug.log'), JSON.stringify(body), 'utf8')
+            if (process.env.NODE_ENV !== 'production') {
+                fs.writeFileSync(path.join(__dirname, 'dock-debug.log'), JSON.stringify(body), 'utf8')
+            }
             dockWindow(function(result) {
                 sendJSON(res, result.success ? 200 : 400, result);
             }, body);
         });
+        return;
+    }
+
+    if (req.method === 'POST' && url === '/docinfo') {
+        parseBody(req, function(body) {
+            var docInfoPath = path.join(__dirname, 'docinfo.cache.json');
+            if (body && body.closed === true) {
+                try { fs.unlinkSync(docInfoPath); } catch(e) { /* 文件不存在也视为清除成功 */ }
+                sendJSON(res, 200, { success: true });
+                return;
+            }
+            try {
+                fs.writeFileSync(docInfoPath, JSON.stringify(body), 'utf8');
+                sendJSON(res, 200, { success: true });
+            } catch(e) {
+                console.error('[launcher] Failed to write docinfo cache: ' + e.message);
+                sendJSON(res, 500, { success: false, error: 'Write failed: ' + e.message });
+            }
+        });
+        return;
+    }
+
+    if (req.method === 'GET' && url === '/docinfo') {
+        var docInfoPath = path.join(__dirname, 'docinfo.cache.json');
+        try {
+            var data = fs.readFileSync(docInfoPath, 'utf8');
+            sendJSON(res, 200, JSON.parse(data));
+        } catch(e) {
+            sendJSON(res, 404, { error: 'No document info available' });
+        }
         return;
     }
 
