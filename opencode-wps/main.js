@@ -96,7 +96,7 @@ function setOpenCodeState(state, error) {
 }
 
 function startOpenCodeServer(cwd) {
-    if (!cwd) return
+    if (!cwd) { isProcessingCommand = false; return; }
     try { window.Application.PluginStorage.setItem('opencode_cwd', cwd) } catch (e) {}
     var data = JSON.stringify({ cwd: cwd })
     console.log('[OpenCode] Sending: ' + data)
@@ -107,10 +107,11 @@ function startOpenCodeServer(cwd) {
     xhr.onreadystatechange = function() {
         if (xhr.readyState === 4) {
             console.log('[OpenCode] Launcher response: ' + xhr.status + ' ' + xhr.responseText)
+            isProcessingCommand = false;
         }
     }
-    xhr.onerror = function() { console.log('[OpenCode] Cannot reach launcher') }
-    try { xhr.send(data) } catch (e) { console.log('[OpenCode] Send error: ' + e.message) }
+    xhr.onerror = function() { console.log('[OpenCode] Cannot reach launcher'); isProcessingCommand = false; }
+    try { xhr.send(data) } catch (e) { console.log('[OpenCode] Send error: ' + e.message); isProcessingCommand = false; }
 }
 
 function stopOpenCodeServer() {
@@ -118,10 +119,10 @@ function stopOpenCodeServer() {
     xhr.timeout = 5000
     xhr.open('POST', LAUNCHER_API + '/stop', true)
     xhr.onreadystatechange = function() {
-        if (xhr.readyState === 4) console.log('[OpenCode] Stop: ' + xhr.status)
+        if (xhr.readyState === 4) { console.log('[OpenCode] Stop: ' + xhr.status); isProcessingCommand = false; }
     }
-    xhr.onerror = function() {}
-    try { xhr.send() } catch (e) {}
+    xhr.onerror = function() { isProcessingCommand = false; }
+    try { xhr.send() } catch (e) { isProcessingCommand = false; }
     setOpenCodeState('stopped')
 }
 
@@ -137,10 +138,11 @@ function checkServerHealth(callback) {
 }
 
 function connectOpenCode() {
-    if (OPENCODE_STATE === 'running') return
+    if (OPENCODE_STATE === 'running') { isProcessingCommand = false; return; }
     setOpenCodeState('connecting')
     checkServerHealth(function(isRunning) {
         setOpenCodeState(isRunning ? 'running' : 'stopped')
+        isProcessingCommand = false;
     })
 }
 
@@ -198,9 +200,9 @@ function GetImageSize(control) {
 }
 
 function OnGetEnabled(control) {
-    // 任务窗格按钮始终可用，其余按钮在文档打开时可用
+    // 任务窗格和Web面板按钮始终可用；连接状态按钮需文档已打开
     var id = getControlId(control);
-    if (id === 'btnShowTaskPane') return true;
+    if (id === 'btnShowTaskPane' || id === 'btnDockWindow') return true;
     return checkDocument() !== null;
 }
 function OnGetVisible(control) { return true }
@@ -260,9 +262,9 @@ setInterval(function () {
         if (cmd) {
             isProcessingCommand = true;
             window.Application.PluginStorage.setItem('opencode_command', '')
-            if (cmd === 'connect') { connectOpenCode(); isProcessingCommand = false; }
-            else if (cmd.indexOf('start:') === 0) { startOpenCodeServer(cmd.substring(6)); isProcessingCommand = false; }
-            else if (cmd === 'stop') { stopOpenCodeServer(); isProcessingCommand = false; }
+            if (cmd === 'connect') { connectOpenCode(); }
+            else if (cmd.indexOf('start:') === 0) { startOpenCodeServer(cmd.substring(6)); }
+            else if (cmd === 'stop') { stopOpenCodeServer(); }
             else { isProcessingCommand = false; }
         }
     } catch (e) { isProcessingCommand = false; }
