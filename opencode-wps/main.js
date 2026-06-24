@@ -202,6 +202,7 @@ function GetImageSize(control) {
 }
 
 function OnGetEnabled(control) {
+    if (!control) return true;
     // 任务窗格和Web面板按钮始终可用；连接状态按钮需文档已打开
     var id = getControlId(control);
     if (id === 'btnShowTaskPane' || id === 'btnDockWindow') return true;
