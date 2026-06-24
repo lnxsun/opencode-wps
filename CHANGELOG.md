@@ -22,6 +22,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - 安装脚本输出更详细的状态信息
+- `getActiveDocument` 输出格式：`页数` → `总段数`，对齐 COM 实际返回字段（`paragraphCount`）
+- `proofreadBasic` 增加异常空格检测（连续空格 / 全角空格）
 
 ### Security
 - XSS 防护：safeInput 函数

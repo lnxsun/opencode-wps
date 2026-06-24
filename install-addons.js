@@ -129,9 +129,9 @@ addons.forEach(addon => {
         if (fsEx.existsSync(configJsPath)) {
             const configJsContent = fs.readFileSync(configJsPath, 'utf-8');
             const userHome = process.env.USERPROFILE || require('os').homedir();
-            const updatedConfig = configJsContent.replace(/___WPS_USER_HOME___/g, () => userHome.replace(/\\/g, '\\\\'));
+            const updatedConfig = configJsContent.replace(/__OPCODE_WPS_USER_HOME__/g, () => userHome.replace(/\\/g, '\\\\'));
             if (updatedConfig === configJsContent) {
-                console.log('    [警告] config.js 中未找到 ___WPS_USER_HOME___，用户目录注入失败');
+                console.log('    [警告] config.js 中未找到 __OPCODE_WPS_USER_HOME__，用户目录注入失败');
             } else {
                 fs.writeFileSync(configJsPath, updatedConfig, 'utf-8');
                 console.log('    已注入用户目录: ' + userHome);

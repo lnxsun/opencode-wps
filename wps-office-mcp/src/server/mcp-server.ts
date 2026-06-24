@@ -21,6 +21,7 @@ import { wpsClient } from '../client/wps-client';
 import { ToolCallResult, ToolCategory } from '../types/tools';
 import { createChildLogger } from '../utils/logger';
 import { McpError } from '../utils/error';
+import { fetchDocInfoFromLauncher } from '../utils/launcher';
 import { searchTools, executeTool } from '../tools/gateway';
 
 const logger = createChildLogger('McpServer');
@@ -220,17 +221,28 @@ export class WpsMcpServer {
       async () => {
         const doc = await wpsClient.getActiveDocument();
 
+        if (doc) {
+          return {
+            id: '',
+            success: true,
+            content: [{ type: 'text', text: JSON.stringify(doc) }],
+          };
+        }
+
+        // COM 失败时从 launcher 获取插件缓存的文档信息
+        try {
+          const launcherDoc = await fetchDocInfoFromLauncher();
+          if (launcherDoc) {
+            return { id: '', success: true, content: [{ type: 'text', text: JSON.stringify(launcherDoc) }] };
+          }
+        } catch(e) {
+          console.warn('[mcp-server] fetchDocInfoFromLauncher failed:', e);
+        }
+
         return {
           id: '',
-          success: doc !== null,
-          content: [
-            {
-              type: 'text',
-              text: doc
-                ? JSON.stringify(doc)
-                : '没有打开的文档',
-            },
-          ],
+          success: false,
+          content: [{ type: 'text', text: '没有打开的文档（COM 和插件缓存均未检测到文档）' }],
         };
       }
     );
@@ -485,6 +497,7 @@ export class WpsMcpServer {
         for (let i = 0; i < blockedPrefixes.length; i++) {
           for (let j = 0; j < segments.length; j++) {
             if (segments[j].toLowerCase().indexOf(blockedPrefixes[i].toLowerCase()) === 0) {
+              console.warn('[mcp-server] Blocked method "' + method + '" (matched prefix "' + blockedPrefixes[i] + '" on segment "' + segments[j] + '")');
               return { id: '', success: false, content: [{ type: 'text', text: 'Error: method "' + method + '" is blocked for security reasons' }] };
             }
           }

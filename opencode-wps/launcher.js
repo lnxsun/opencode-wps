@@ -398,6 +398,36 @@ var server = http.createServer(function(req, res) {
         return;
     }
 
+    if (req.method === 'POST' && url === '/docinfo') {
+        parseBody(req, function(body) {
+            var docInfoPath = path.join(__dirname, 'docinfo.cache.json');
+            if (body && body.closed === true) {
+                try { fs.unlinkSync(docInfoPath); } catch(e) { /* 文件不存在也视为清除成功 */ }
+                sendJSON(res, 200, { success: true });
+                return;
+            }
+            try {
+                fs.writeFileSync(docInfoPath, JSON.stringify(body), 'utf8');
+                sendJSON(res, 200, { success: true });
+            } catch(e) {
+                console.error('[launcher] Failed to write docinfo cache: ' + e.message);
+                sendJSON(res, 500, { success: false, error: 'Write failed: ' + e.message });
+            }
+        });
+        return;
+    }
+
+    if (req.method === 'GET' && url === '/docinfo') {
+        var docInfoPath = path.join(__dirname, 'docinfo.cache.json');
+        try {
+            var data = fs.readFileSync(docInfoPath, 'utf8');
+            sendJSON(res, 200, JSON.parse(data));
+        } catch(e) {
+            sendJSON(res, 404, { error: 'No document info available' });
+        }
+        return;
+    }
+
     sendJSON(res, 404, { error: 'Not found' });
 });
 

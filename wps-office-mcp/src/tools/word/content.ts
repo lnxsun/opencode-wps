@@ -32,6 +32,7 @@ import {
 } from '../../types/tools';
 import { wpsClient } from '../../client/wps-client';
 import { WpsAppType } from '../../types/wps';
+import { fetchDocInfoFromLauncher } from '../../utils/launcher';
 
 /**
  * 插入文本到文档
@@ -393,6 +394,22 @@ export const getActiveDocumentDefinition: ToolDefinition = {
   },
 };
 
+async function tryLauncherFallback(failMsg: string, errorDetail?: string): Promise<ToolCallResult> {
+  try {
+    const launcherDoc = await fetchDocInfoFromLauncher();
+    if (launcherDoc) {
+      return {
+        id: uuidv4(),
+        success: true,
+        content: [{ type: 'text', text: `当前文档: ${launcherDoc.name}\n路径: ${launcherDoc.path}\n类型: ${launcherDoc.type}\n总段数: ${launcherDoc.paragraphCount || '未知'}\n字数: ${launcherDoc.wordCount || '未知'}` }],
+      };
+    }
+  } catch(e) {
+    // 不抛出，fall through 到 failMsg
+  }
+  return { id: uuidv4(), success: false, content: [{ type: 'text', text: failMsg }], error: errorDetail };
+}
+
 export const getActiveDocumentHandler: ToolHandler = async (
   _args: Record<string, unknown>
 ): Promise<ToolCallResult> => {
@@ -401,8 +418,9 @@ export const getActiveDocumentHandler: ToolHandler = async (
       success: boolean;
       name: string;
       path: string;
-      pageCount: number;
+      paragraphCount: number;
       wordCount: number;
+      characterCount: number;
     }>(
       'getActiveDocument',
       {},
@@ -413,18 +431,14 @@ export const getActiveDocumentHandler: ToolHandler = async (
       return {
         id: uuidv4(),
         success: true,
-        content: [{ type: 'text', text: `当前文档: ${d.name}\n路径: ${d.path}\n页数: ${d.pageCount}\n字数: ${d.wordCount}` }],
+        content: [{ type: 'text', text: `当前文档: ${d.name}\n路径: ${d.path}\n总段数: ${d.paragraphCount}\n字数: ${d.wordCount}\n字符数: ${d.characterCount}` }],
       };
     }
-    return {
-      id: uuidv4(),
-      success: false,
-      content: [{ type: 'text', text: `获取文档信息失败: ${response.error}` }],
-      error: response.error,
-    };
+
+    return await tryLauncherFallback(`获取文档信息失败: ${response.error}。请确认 WPS 文字已打开文档，且文档窗口处于活动状态。`, response.error);
   } catch (error) {
     const errMsg = error instanceof Error ? error.message : String(error);
-    return { id: uuidv4(), success: false, content: [{ type: 'text', text: `获取文档信息出错: ${errMsg}` }], error: errMsg };
+    return await tryLauncherFallback(`获取文档信息出错: ${errMsg}`, errMsg);
   }
 };
 

@@ -18,33 +18,6 @@ var WPS_Enum = {
     msoFileDialogOpen: 1
 }
 
-// --- 全局状态封装 ---
-var AppState = {
-    port: 14096,
-    host: '127.0.0.1',
-    apiBase: 'http://127.0.0.1:14096',
-    launcherApi: 'http://127.0.0.1:14097',
-    state: 'stopped',
-    error: '',
-
-    getApiBase: function() {
-        return 'http://' + this.host + ':' + this.port;
-    },
-
-    getLauncherApi: function() {
-        return this.launcherApi;
-    },
-
-    setState: function(state, error) {
-        this.state = state;
-        this.error = error || '';
-        // 同步到全局变量（兼容旧代码）
-        OPENCODE_STATE = state;
-        OPENCODE_ERROR = error || '';
-        OPENCODE_API_BASE = this.getApiBase();
-    }
-};
-
 // --- WPS 就绪检查 ---
 function checkWpsReady() {
     try {
@@ -83,6 +56,47 @@ function checkDocument() {
 function GetUrlPath() {
     var pluginPath = '___WPS_ADDON_PATH___';
     return pluginPath.replace(/\\/g, '/');
+}
+
+var lastDocInfo = '';
+
+function sendDocInfo() {
+    try {
+        var app = window.WPS && window.WPS.Application;
+        if (!app) app = window.Application;
+        if (!app) return;
+        var doc = app.ActiveDocument || app.ActiveWorkbook || app.ActivePresentation;
+        if (!doc) {
+            // 无文档打开时清除缓存，避免 MCP fallback 返回过期数据
+            if (lastDocInfo !== '') {
+                lastDocInfo = '';
+                var clearXhr = new XMLHttpRequest();
+                clearXhr.open('POST', LAUNCHER_API + '/docinfo', true);
+                clearXhr.setRequestHeader('Content-Type', 'application/json');
+                clearXhr.send(JSON.stringify({ closed: true }));
+            }
+            return;
+        }
+        var info = {
+            name: doc.Name,
+            path: doc.FullName,
+            type: app.ActiveDocument ? 'word' : app.ActiveWorkbook ? 'excel' : 'ppt'
+        };
+        if (app.ActiveDocument) {
+            try { info.paragraphCount = doc.Paragraphs.Count; } catch(e) {}
+            try { info.wordCount = doc.Words.Count; } catch(e) {}
+        }
+        var key = JSON.stringify(info);
+        if (key === lastDocInfo) return;
+        lastDocInfo = key;
+        var xhr = new XMLHttpRequest();
+        xhr.timeout = 3000;
+        xhr.open('POST', LAUNCHER_API + '/docinfo', true);
+        xhr.setRequestHeader('Content-Type', 'application/json');
+        xhr.send(key);
+    } catch(e) {
+        console.warn('[OpenCode] sendDocInfo failed: ' + e.message);
+    }
 }
 
 function setOpenCodeState(state, error) {
@@ -258,10 +272,12 @@ function dockOpenCodeWindow() {
     }
     xhr.onerror = function() { console.log('[OpenCode] Dock error') }
     xhr.send(JSON.stringify({ cwd: normalized, session: sessionId }))
+    sendDocInfo()
 }
 
 setInterval(function () {
     if (isProcessingCommand) return;
+    sendDocInfo()
     try {
         var cmd = window.Application.PluginStorage.getItem('opencode_command')
         if (cmd) {
