@@ -36,12 +36,36 @@ var CONFIG = {
         addonName: 'OpenCode AI',
         // 插件版本
         version: '1.1.0',
-        // 用户主目录（安装时注入，见 install-addons.js）
+        // 用户主目录（运行时动态解析，不硬编码安装时路径）
         userHome: (function() {
             var v = '__OPCODE_WPS_USER_HOME__';
             if (v !== '__OPCODE_WPS_USER_HOME__') return v;
-            if (typeof process !== 'undefined' && process.env) return process.env.USERPROFILE || process.env.HOME || 'C:\\Users\\Default';
-            return 'C:\\Users\\Default';
+            if (typeof process !== 'undefined' && process.env) return process.env.USERPROFILE || process.env.HOME || '';
+            // WPS 浏览器上下文：尝试从 PluginStorage 恢复上次 CWD
+            try {
+                if (typeof window !== 'undefined' && window.Application && window.Application.PluginStorage) {
+                    var saved = window.Application.PluginStorage.getItem('opencode_cwd');
+                    if (saved) return saved;
+                }
+                // 从 addon 路径提取用户主目录（file:///C:/Users/xxx/AppData/...）
+                if (typeof window !== 'undefined' && window.location && window.location.href) {
+                    var url = window.location.href;
+                    if (url.indexOf('file:///') === 0) {
+                        var path = url.substring(8); // remove file:///
+                        // 路径格式: C:/Users/Administrator/AppData/...
+                        var sep = path.indexOf('/');
+                        if (sep > 0) {
+                            var drive = path.substring(0, sep); // C:
+                            var rest = path.substring(sep + 1); // Users/Administrator/AppData/...
+                            var parts = rest.split('/');
+                            if (parts.length >= 2 && parts[0].toLowerCase() === 'users') {
+                                return drive + '\\Users\\' + parts[1];
+                            }
+                        }
+                    }
+                }
+            } catch(e) {}
+            return '';
         })(),
     },
 
