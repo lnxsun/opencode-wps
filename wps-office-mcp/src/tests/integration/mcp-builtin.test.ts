@@ -85,6 +85,7 @@ describe('MCP Server 内置工具注册', () => {
 
   afterEach(() => {
     registry.clear();
+    WpsMcpServer.clearCache();
   });
 
   describe('内置工具数量验证', () => {

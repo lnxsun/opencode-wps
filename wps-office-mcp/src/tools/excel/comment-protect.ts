@@ -59,7 +59,7 @@ export const deleteCellCommentHandler: ToolHandler = async (
     }
     return { id: uuidv4(), success: true, content: [{ type: 'text', text: `批注删除成功！单元格: ${cell}` }] };
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
+    const errMsg = error instanceof Error ? error.stack || error.message : String(error);
     return { id: uuidv4(), success: false, content: [{ type: 'text', text: `删除批注出错: ${errMsg}` }], error: errMsg };
   }
 };
@@ -106,7 +106,7 @@ export const getCellCommentsHandler: ToolHandler = async (
     });
     return { id: uuidv4(), success: true, content: [{ type: 'text', text: output }] };
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
+    const errMsg = error instanceof Error ? error.stack || error.message : String(error);
     return { id: uuidv4(), success: false, content: [{ type: 'text', text: `获取批注出错: ${errMsg}` }], error: errMsg };
   }
 };
@@ -142,7 +142,7 @@ export const unprotectSheetHandler: ToolHandler = async (
     }
     return { id: uuidv4(), success: true, content: [{ type: 'text', text: '工作表取消保护成功！' }] };
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
+    const errMsg = error instanceof Error ? error.stack || error.message : String(error);
     return { id: uuidv4(), success: false, content: [{ type: 'text', text: `取消保护工作表出错: ${errMsg}` }], error: errMsg };
   }
 };
@@ -180,7 +180,7 @@ export const lockCellsHandler: ToolHandler = async (
     }
     return { id: uuidv4(), success: true, content: [{ type: 'text', text: `单元格${locked ? '锁定' : '解锁'}成功！范围: ${range}` }] };
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
+    const errMsg = error instanceof Error ? error.stack || error.message : String(error);
     return { id: uuidv4(), success: false, content: [{ type: 'text', text: `${locked ? '锁定' : '解锁'}单元格出错: ${errMsg}` }], error: errMsg };
   }
 };
@@ -218,7 +218,7 @@ export const setArrayFormulaHandler: ToolHandler = async (
     }
     return { id: uuidv4(), success: true, content: [{ type: 'text', text: `数组公式设置成功！范围: ${range}，公式: ${formula}` }] };
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
+    const errMsg = error instanceof Error ? error.stack || error.message : String(error);
     return { id: uuidv4(), success: false, content: [{ type: 'text', text: `设置数组公式出错: ${errMsg}` }], error: errMsg };
   }
 };
@@ -277,7 +277,7 @@ export const insertExcelImageHandler: ToolHandler = async (
     if (width || height) text += `，尺寸: ${width || '自动'}x${height || '自动'}`;
     return { id: uuidv4(), success: true, content: [{ type: 'text', text }] };
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
+    const errMsg = error instanceof Error ? error.stack || error.message : String(error);
     return { id: uuidv4(), success: false, content: [{ type: 'text', text: `插入图片出错: ${errMsg}` }], error: errMsg };
   }
 };
@@ -316,7 +316,7 @@ export const setHyperlinkHandler: ToolHandler = async (
     }
     return { id: uuidv4(), success: true, content: [{ type: 'text', text: `超链接设置成功！单元格: ${cell}，URL: ${url}${text ? `，显示文本: ${text}` : ''}` }] };
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
+    const errMsg = error instanceof Error ? error.stack || error.message : String(error);
     return { id: uuidv4(), success: false, content: [{ type: 'text', text: `设置超链接出错: ${errMsg}` }], error: errMsg };
   }
 };

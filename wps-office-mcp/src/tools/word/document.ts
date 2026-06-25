@@ -95,7 +95,7 @@ export const getOpenDocumentsHandler: ToolHandler = async (
       };
     }
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
+    const errMsg = error instanceof Error ? error.stack || error.message : String(error);
     return {
       id: uuidv4(),
       success: false,
@@ -173,7 +173,7 @@ export const switchDocumentHandler: ToolHandler = async (
       };
     }
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
+    const errMsg = error instanceof Error ? error.stack || error.message : String(error);
     return {
       id: uuidv4(),
       success: false,
@@ -258,7 +258,7 @@ export const openDocumentHandler: ToolHandler = async (
       };
     }
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
+    const errMsg = error instanceof Error ? error.stack || error.message : String(error);
     return {
       id: uuidv4(),
       success: false,
@@ -342,7 +342,7 @@ export const getDocumentTextHandler: ToolHandler = async (
       };
     }
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
+    const errMsg = error instanceof Error ? error.stack || error.message : String(error);
     return {
       id: uuidv4(),
       success: false,
@@ -423,7 +423,7 @@ export const getDocumentTextByRangeHandler: ToolHandler = async (
       };
     }
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
+    const errMsg = error instanceof Error ? error.stack || error.message : String(error);
     return {
       id: uuidv4(),
       success: false,
@@ -501,7 +501,7 @@ export const insertHeaderHandler: ToolHandler = async (
       };
     }
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
+    const errMsg = error instanceof Error ? error.stack || error.message : String(error);
     return {
       id: uuidv4(),
       success: false,
@@ -579,7 +579,7 @@ export const insertFooterHandler: ToolHandler = async (
       };
     }
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
+    const errMsg = error instanceof Error ? error.stack || error.message : String(error);
     return {
       id: uuidv4(),
       success: false,
@@ -645,7 +645,7 @@ export const generateDocTocHandler: ToolHandler = async (
       };
     }
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
+    const errMsg = error instanceof Error ? error.stack || error.message : String(error);
     return {
       id: uuidv4(),
       success: false,
@@ -712,7 +712,7 @@ export const insertSectionBreakHandler: ToolHandler = async (
       };
     }
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
+    const errMsg = error instanceof Error ? error.stack || error.message : String(error);
     return {
       id: uuidv4(),
       success: false,
@@ -796,7 +796,7 @@ export const setLineSpacingHandler: ToolHandler = async (
       };
     }
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
+    const errMsg = error instanceof Error ? error.stack || error.message : String(error);
     return {
       id: uuidv4(),
       success: false,

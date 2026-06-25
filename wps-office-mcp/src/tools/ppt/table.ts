@@ -112,7 +112,7 @@ export const insertPptTableHandler: ToolHandler = async (
       };
     }
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
+    const errMsg = error instanceof Error ? error.stack || error.message : String(error);
     return {
       id: uuidv4(),
       success: false,
@@ -204,7 +204,7 @@ export const setPptTableCellHandler: ToolHandler = async (
       };
     }
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
+    const errMsg = error instanceof Error ? error.stack || error.message : String(error);
     return {
       id: uuidv4(),
       success: false,
@@ -292,7 +292,7 @@ export const getPptTableCellHandler: ToolHandler = async (
       };
     }
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
+    const errMsg = error instanceof Error ? error.stack || error.message : String(error);
     return {
       id: uuidv4(),
       success: false,
@@ -385,7 +385,7 @@ export const setPptTableStyleHandler: ToolHandler = async (
       };
     }
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
+    const errMsg = error instanceof Error ? error.stack || error.message : String(error);
     return {
       id: uuidv4(),
       success: false,
@@ -488,7 +488,7 @@ export const setPptTableCellStyleHandler: ToolHandler = async (
       };
     }
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
+    const errMsg = error instanceof Error ? error.stack || error.message : String(error);
     return {
       id: uuidv4(),
       success: false,
@@ -586,7 +586,7 @@ export const setPptTableRowStyleHandler: ToolHandler = async (
       };
     }
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
+    const errMsg = error instanceof Error ? error.stack || error.message : String(error);
     return {
       id: uuidv4(),
       success: false,

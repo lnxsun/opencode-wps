@@ -62,6 +62,11 @@ export class WpsMcpServer {
   private static readonly MAX_CACHE_AGE = 30 * 60 * 1000; // 30 分钟 TTL
   private static readonly MAX_CACHE_SIZE = 100;
 
+  // 清除全部缓存（供测试 cleanup 使用）
+  public static clearCache(): void {
+    WpsMcpServer.dataCache.clear();
+  }
+
   // 淘汰过期缓存条目
   private static evictStaleCache(): void {
     const now = Date.now();
@@ -491,11 +496,18 @@ export class WpsMcpServer {
         //   但黑名单仍能拦截其中的 CreateObject 段。
         // 如需放行，需确认该方法不可能被用于危险操作。
         // 第一层防御：Governance 插件 G2 白名单（governance.js）
-        // 第二层防御：MCP Server 端的黑名单前缀
-        // 两层必须同步更新
+        // 第二层防御：MCP Server 端的白名单 + 黑名单
+        // 两层必须同步更新。MCP 层做双重校验：若 G2 被绕过仍可拦截。
+        const allowPrefixes = ['Application.ActiveDocument', 'Application.ActiveWorkbook', 'Application.ActivePresentation'];
         const blockedPrefixes = ['CreateObject', 'Shell', 'Exec', 'Run', 'WScript', 'ScriptControl', 'Eval', 'Execute'];
         if (!method) {
           return { id: '', success: false, content: [{ type: 'text', text: 'Error: method is required' }] };
+        }
+        // 白名单检查：方法必须以允许前缀开头
+        const allowed = allowPrefixes.some(function(p) { return method.startsWith(p); });
+        if (!allowed) {
+          console.warn('[mcp-server] Method "' + method + '" not in allowlist, blocked');
+          return { id: '', success: false, content: [{ type: 'text', text: 'Error: method "' + method + '" is not allowed. Only Application.ActiveDocument / ActiveWorkbook / ActivePresentation are permitted.' }] };
         }
         const segments = method.split('.');
         for (let i = 0; i < blockedPrefixes.length; i++) {

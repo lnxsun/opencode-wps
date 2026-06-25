@@ -60,7 +60,7 @@ export const openWorkbookHandler: ToolHandler = async (
     }
     return { id: uuidv4(), success: true, content: [{ type: 'text', text: `工作簿已打开: ${filePath}` }] };
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
+    const errMsg = error instanceof Error ? error.stack || error.message : String(error);
     return { id: uuidv4(), success: false, content: [{ type: 'text', text: `打开工作簿出错: ${errMsg}` }], error: errMsg };
   }
 };
@@ -94,7 +94,7 @@ export const getOpenWorkbooksHandler: ToolHandler = async (
     const list = response.data?.workbooks || [];
     return { id: uuidv4(), success: true, content: [{ type: 'text', text: `已打开的工作簿 (${list.length}个):\n${list.join('\n') || '无'}` }] };
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
+    const errMsg = error instanceof Error ? error.stack || error.message : String(error);
     return { id: uuidv4(), success: false, content: [{ type: 'text', text: `获取工作簿列表出错: ${errMsg}` }], error: errMsg };
   }
 };
@@ -136,7 +136,7 @@ export const switchWorkbookHandler: ToolHandler = async (
     }
     return { id: uuidv4(), success: true, content: [{ type: 'text', text: `已切换到工作簿: ${name}` }] };
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
+    const errMsg = error instanceof Error ? error.stack || error.message : String(error);
     return { id: uuidv4(), success: false, content: [{ type: 'text', text: `切换工作簿出错: ${errMsg}` }], error: errMsg };
   }
 };
@@ -179,7 +179,7 @@ export const closeWorkbookHandler: ToolHandler = async (
     }
     return { id: uuidv4(), success: true, content: [{ type: 'text', text: `工作簿已关闭${name ? ': ' + name : ''}${save !== false ? '（已保存）' : '（未保存）'}` }] };
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
+    const errMsg = error instanceof Error ? error.stack || error.message : String(error);
     return { id: uuidv4(), success: false, content: [{ type: 'text', text: `关闭工作簿出错: ${errMsg}` }], error: errMsg };
   }
 };
@@ -212,7 +212,7 @@ export const createWorkbookHandler: ToolHandler = async (
     }
     return { id: uuidv4(), success: true, content: [{ type: 'text', text: '新工作簿已创建' }] };
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
+    const errMsg = error instanceof Error ? error.stack || error.message : String(error);
     return { id: uuidv4(), success: false, content: [{ type: 'text', text: `新建工作簿出错: ${errMsg}` }], error: errMsg };
   }
 };
@@ -250,7 +250,7 @@ export const getCellValueHandler: ToolHandler = async (
     }
     return { id: uuidv4(), success: true, content: [{ type: 'text', text: `单元格值: ${JSON.stringify(response.data?.value)}` }] };
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
+    const errMsg = error instanceof Error ? error.stack || error.message : String(error);
     return { id: uuidv4(), success: false, content: [{ type: 'text', text: `获取单元格值出错: ${errMsg}` }], error: errMsg };
   }
 };
@@ -289,7 +289,7 @@ export const setCellValueHandler: ToolHandler = async (
     }
     return { id: uuidv4(), success: true, content: [{ type: 'text', text: `单元格值已设置: ${sheet}!R${row}C${col} = ${value}` }] };
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
+    const errMsg = error instanceof Error ? error.stack || error.message : String(error);
     return { id: uuidv4(), success: false, content: [{ type: 'text', text: `设置单元格值出错: ${errMsg}` }], error: errMsg };
   }
 };
@@ -326,7 +326,7 @@ export const getFormulaHandler: ToolHandler = async (
     }
     return { id: uuidv4(), success: true, content: [{ type: 'text', text: `单元格 ${cell} 的公式: ${response.data?.formula || '无公式'}` }] };
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
+    const errMsg = error instanceof Error ? error.stack || error.message : String(error);
     return { id: uuidv4(), success: false, content: [{ type: 'text', text: `获取公式出错: ${errMsg}` }], error: errMsg };
   }
 };
@@ -363,7 +363,7 @@ export const getCellInfoHandler: ToolHandler = async (
     }
     return { id: uuidv4(), success: true, content: [{ type: 'text', text: `单元格 ${cell} 信息:\n${JSON.stringify(response.data, null, 2)}` }] };
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
+    const errMsg = error instanceof Error ? error.stack || error.message : String(error);
     return { id: uuidv4(), success: false, content: [{ type: 'text', text: `获取单元格信息出错: ${errMsg}` }], error: errMsg };
   }
 };
@@ -406,7 +406,7 @@ export const clearRangeHandler: ToolHandler = async (
     const typeLabel = type === 'contents' ? '内容' : type === 'formats' ? '格式' : '全部';
     return { id: uuidv4(), success: true, content: [{ type: 'text', text: `范围 ${range} 的${typeLabel}已清除` }] };
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
+    const errMsg = error instanceof Error ? error.stack || error.message : String(error);
     return { id: uuidv4(), success: false, content: [{ type: 'text', text: `清除范围出错: ${errMsg}` }], error: errMsg };
   }
 };

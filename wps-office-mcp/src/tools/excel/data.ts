@@ -122,7 +122,7 @@ export const readRangeHandler: ToolHandler = async (
       content: [{ type: 'text', text: output }],
     };
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
+    const errMsg = error instanceof Error ? error.stack || error.message : String(error);
     return {
       id: uuidv4(),
       success: false,
@@ -208,7 +208,7 @@ export const writeRangeHandler: ToolHandler = async (
       };
     }
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
+    const errMsg = error instanceof Error ? error.stack || error.message : String(error);
     return {
       id: uuidv4(),
       success: false,
@@ -326,7 +326,7 @@ export const cleanDataHandler: ToolHandler = async (
       content: [{ type: 'text', text: output }],
     };
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
+    const errMsg = error instanceof Error ? error.stack || error.message : String(error);
     return {
       id: uuidv4(),
       success: false,
@@ -422,7 +422,7 @@ export const removeDuplicatesHandler: ToolHandler = async (
       ],
     };
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
+    const errMsg = error instanceof Error ? error.stack || error.message : String(error);
     return {
       id: uuidv4(),
       success: false,
@@ -469,7 +469,7 @@ export const sortRangeHandler: ToolHandler = async (
     }
     return { id: uuidv4(), success: true, content: [{ type: 'text', text: `排序完成！范围: ${range}，按第${column}列${ascending !== false ? '升序' : '降序'}` }] };
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
+    const errMsg = error instanceof Error ? error.stack || error.message : String(error);
     return { id: uuidv4(), success: false, content: [{ type: 'text', text: `排序出错: ${errMsg}` }], error: errMsg };
   }
 };
@@ -512,7 +512,7 @@ export const findReplaceHandler: ToolHandler = async (
     const count = response.data?.count || 0;
     return { id: uuidv4(), success: true, content: [{ type: 'text', text: `查找替换完成！将"${find}"替换为"${replace}"，共替换${count}处` }] };
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
+    const errMsg = error instanceof Error ? error.stack || error.message : String(error);
     return { id: uuidv4(), success: false, content: [{ type: 'text', text: `查找替换出错: ${errMsg}` }], error: errMsg };
   }
 };
@@ -550,7 +550,7 @@ export const insertRowHandler: ToolHandler = async (
     }
     return { id: uuidv4(), success: true, content: [{ type: 'text', text: `插入行完成！在第${row}行前插入了${insertCount}行` }] };
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
+    const errMsg = error instanceof Error ? error.stack || error.message : String(error);
     return { id: uuidv4(), success: false, content: [{ type: 'text', text: `插入行出错: ${errMsg}` }], error: errMsg };
   }
 };
@@ -587,7 +587,7 @@ export const addCommentHandler: ToolHandler = async (
     }
     return { id: uuidv4(), success: true, content: [{ type: 'text', text: `批注添加成功！单元格: ${cell}` }] };
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
+    const errMsg = error instanceof Error ? error.stack || error.message : String(error);
     return { id: uuidv4(), success: false, content: [{ type: 'text', text: `添加批注出错: ${errMsg}` }], error: errMsg };
   }
 };
@@ -625,7 +625,7 @@ export const protectSheetHandler: ToolHandler = async (
     }
     return { id: uuidv4(), success: true, content: [{ type: 'text', text: `工作表${doProtect ? '保护' : '取消保护'}成功！` }] };
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
+    const errMsg = error instanceof Error ? error.stack || error.message : String(error);
     return { id: uuidv4(), success: false, content: [{ type: 'text', text: `${doProtect ? '保护' : '取消保护'}工作表出错: ${errMsg}` }], error: errMsg };
   }
 };
@@ -663,7 +663,7 @@ export const setConditionalFormatHandler: ToolHandler = async (
     }
     return { id: uuidv4(), success: true, content: [{ type: 'text', text: `条件格式设置成功！范围: ${range}，条件: ${condition}，格式: ${format}` }] };
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
+    const errMsg = error instanceof Error ? error.stack || error.message : String(error);
     return { id: uuidv4(), success: false, content: [{ type: 'text', text: `设置条件格式出错: ${errMsg}` }], error: errMsg };
   }
 };
@@ -700,7 +700,7 @@ export const protectWorkbookHandler: ToolHandler = async (
     }
     return { id: uuidv4(), success: true, content: [{ type: 'text', text: `工作簿${protect ? '保护' : '取消保护'}成功！` }] };
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
+    const errMsg = error instanceof Error ? error.stack || error.message : String(error);
     return { id: uuidv4(), success: false, content: [{ type: 'text', text: `${protect ? '保护' : '取消保护'}工作簿出错: ${errMsg}` }], error: errMsg };
   }
 };
@@ -742,7 +742,7 @@ export const setZoomHandler: ToolHandler = async (
     }
     return { id: uuidv4(), success: true, content: [{ type: 'text', text: `缩放比例已设置为${percent}%` }] };
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
+    const errMsg = error instanceof Error ? error.stack || error.message : String(error);
     return { id: uuidv4(), success: false, content: [{ type: 'text', text: `设置缩放出错: ${errMsg}` }], error: errMsg };
   }
 };

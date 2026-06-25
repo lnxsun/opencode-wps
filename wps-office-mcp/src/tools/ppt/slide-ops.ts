@@ -105,7 +105,7 @@ export const deleteSlideHandler: ToolHandler = async (
       };
     }
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
+    const errMsg = error instanceof Error ? error.stack || error.message : String(error);
     return {
       id: uuidv4(),
       success: false,
@@ -176,7 +176,7 @@ export const duplicateSlideHandler: ToolHandler = async (
       };
     }
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
+    const errMsg = error instanceof Error ? error.stack || error.message : String(error);
     return {
       id: uuidv4(),
       success: false,
@@ -253,7 +253,7 @@ export const moveSlideHandler: ToolHandler = async (
       };
     }
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
+    const errMsg = error instanceof Error ? error.stack || error.message : String(error);
     return {
       id: uuidv4(),
       success: false,
@@ -317,7 +317,7 @@ export const getSlideCountHandler: ToolHandler = async (
       };
     }
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
+    const errMsg = error instanceof Error ? error.stack || error.message : String(error);
     return {
       id: uuidv4(),
       success: false,
@@ -406,7 +406,7 @@ export const getSlideInfoHandler: ToolHandler = async (
       };
     }
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
+    const errMsg = error instanceof Error ? error.stack || error.message : String(error);
     return {
       id: uuidv4(),
       success: false,
@@ -476,7 +476,7 @@ export const switchSlideHandler: ToolHandler = async (
       };
     }
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
+    const errMsg = error instanceof Error ? error.stack || error.message : String(error);
     return {
       id: uuidv4(),
       success: false,
@@ -572,7 +572,7 @@ export const setSlideLayoutHandler: ToolHandler = async (
       };
     }
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
+    const errMsg = error instanceof Error ? error.stack || error.message : String(error);
     return {
       id: uuidv4(),
       success: false,
@@ -646,7 +646,7 @@ export const getSlideNotesHandler: ToolHandler = async (
       };
     }
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
+    const errMsg = error instanceof Error ? error.stack || error.message : String(error);
     return {
       id: uuidv4(),
       success: false,
@@ -723,7 +723,7 @@ export const setSlideNotesHandler: ToolHandler = async (
       };
     }
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
+    const errMsg = error instanceof Error ? error.stack || error.message : String(error);
     return {
       id: uuidv4(),
       success: false,
@@ -861,7 +861,7 @@ export const addShapeHandler: ToolHandler = async (
       };
     }
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
+    const errMsg = error instanceof Error ? error.stack || error.message : String(error);
     return {
       id: uuidv4(),
       success: false,
@@ -966,7 +966,7 @@ export const setShapeStyleHandler: ToolHandler = async (
       };
     }
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
+    const errMsg = error instanceof Error ? error.stack || error.message : String(error);
     return {
       id: uuidv4(),
       success: false,
@@ -1084,7 +1084,7 @@ export const addTextboxHandler: ToolHandler = async (
       };
     }
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
+    const errMsg = error instanceof Error ? error.stack || error.message : String(error);
     return {
       id: uuidv4(),
       success: false,
@@ -1166,7 +1166,7 @@ export const setSlideTitleHandler: ToolHandler = async (
       };
     }
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
+    const errMsg = error instanceof Error ? error.stack || error.message : String(error);
     return {
       id: uuidv4(),
       success: false,
@@ -1283,7 +1283,7 @@ export const setShapeTextHandler: ToolHandler = async (
       };
     }
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
+    const errMsg = error instanceof Error ? error.stack || error.message : String(error);
     return {
       id: uuidv4(),
       success: false,
@@ -1423,7 +1423,7 @@ export const setBackgroundHandler: ToolHandler = async (
       };
     }
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
+    const errMsg = error instanceof Error ? error.stack || error.message : String(error);
     return {
       id: uuidv4(),
       success: false,
@@ -1510,7 +1510,7 @@ export const setSlideSizeHandler: ToolHandler = async (
       };
     }
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
+    const errMsg = error instanceof Error ? error.stack || error.message : String(error);
     return {
       id: uuidv4(),
       success: false,
@@ -1682,7 +1682,7 @@ export const setShapeFillHandler: ToolHandler = async (
       };
     }
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
+    const errMsg = error instanceof Error ? error.stack || error.message : String(error);
     return {
       id: uuidv4(),
       success: false,

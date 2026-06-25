@@ -109,7 +109,7 @@ export const setCellFormatHandler: ToolHandler = async (
       ],
     };
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
+    const errMsg = error instanceof Error ? error.stack || error.message : String(error);
     return {
       id: uuidv4(),
       success: false,
@@ -183,7 +183,7 @@ export const setCellStyleHandler: ToolHandler = async (
       ],
     };
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
+    const errMsg = error instanceof Error ? error.stack || error.message : String(error);
     return {
       id: uuidv4(),
       success: false,
@@ -275,7 +275,7 @@ export const setBorderHandler: ToolHandler = async (
       ],
     };
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
+    const errMsg = error instanceof Error ? error.stack || error.message : String(error);
     return {
       id: uuidv4(),
       success: false,
@@ -358,7 +358,7 @@ export const setNumberFormatHandler: ToolHandler = async (
       ],
     };
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
+    const errMsg = error instanceof Error ? error.stack || error.message : String(error);
     return {
       id: uuidv4(),
       success: false,
@@ -427,7 +427,7 @@ export const mergeCellsHandler: ToolHandler = async (
       ],
     };
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
+    const errMsg = error instanceof Error ? error.stack || error.message : String(error);
     return {
       id: uuidv4(),
       success: false,
@@ -496,7 +496,7 @@ export const unmergeCellsHandler: ToolHandler = async (
       ],
     };
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
+    const errMsg = error instanceof Error ? error.stack || error.message : String(error);
     return {
       id: uuidv4(),
       success: false,
@@ -579,7 +579,7 @@ export const setColumnWidthHandler: ToolHandler = async (
       ],
     };
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
+    const errMsg = error instanceof Error ? error.stack || error.message : String(error);
     return {
       id: uuidv4(),
       success: false,
@@ -671,7 +671,7 @@ export const setRowHeightHandler: ToolHandler = async (
       ],
     };
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
+    const errMsg = error instanceof Error ? error.stack || error.message : String(error);
     return {
       id: uuidv4(),
       success: false,
@@ -759,7 +759,7 @@ export const hideRowHandler: ToolHandler = async (
       ],
     };
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
+    const errMsg = error instanceof Error ? error.stack || error.message : String(error);
     return {
       id: uuidv4(),
       success: false,
@@ -838,7 +838,7 @@ export const setDataValidationHandler: ToolHandler = async (
       ],
     };
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
+    const errMsg = error instanceof Error ? error.stack || error.message : String(error);
     return {
       id: uuidv4(),
       success: false,

@@ -198,7 +198,7 @@ async function execWpsActionWithRetry(action: string, params: Record<string, unk
       return await actionPromise;
     } catch (error) {
       lastError = error as Error;
-      const errMsg = error instanceof Error ? error.message : String(error);
+      const errMsg = error instanceof Error ? error.stack || error.message : String(error);
 
       if (errMsg.includes('超时')) {
         log.info(`WPS call timeout, attempt ${attempt}/${maxRetries}`, { action });

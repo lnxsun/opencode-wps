@@ -569,7 +569,7 @@ export async function executeTool(options: ExecuteOptions): Promise<ToolCallResu
     try {
       return await handler(mappedArgs);
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorMessage = error instanceof Error ? error.stack || error.message : String(error);
       return {
         id: '',
         success: false,
@@ -586,7 +586,7 @@ export async function executeTool(options: ExecuteOptions): Promise<ToolCallResu
       content: [{ type: 'text', text: JSON.stringify({ result, tool_name, appType: indexItem.appType }) }]
     };
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
+    const errorMessage = error instanceof Error ? error.stack || error.message : String(error);
     const errorStack = error instanceof Error ? error.stack : undefined;
     return {
       id: '',

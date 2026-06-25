@@ -173,6 +173,7 @@ describe('WpsMcpServer集成测试', () => {
 
   afterEach(() => {
     registry.clear();
+    WpsMcpServer.clearCache();
   });
 
   describe('服务器创建', () => {
