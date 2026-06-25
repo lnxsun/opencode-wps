@@ -102,9 +102,6 @@ const HANDLER_PARAM_MAP: Record<string, Record<string, string>> = {
   getDocumentTextByRange: { startOffset: 'start_offset' },
 };
 
-// 无工具需要跳过 handler 路由（所有 COM schema 参数名已与 handler inputSchema 对齐）
-const HANDLER_SKIP = new Set<string>();
-
 // 从注册工具中预先构建 handler 映射表：COM 短名 + appType → TS handler
 // 使用 "name|appType" 复合键解决跨应用同名冲突（如 insertImage 同时存在于 Word 和 PPT）
 // 使 executeTool 能根据 TOOLS_INDEX 中的 appType 精确路由到正确的 handler
@@ -559,7 +556,7 @@ export async function executeTool(options: ExecuteOptions): Promise<ToolCallResu
   const handlerKey = `${tool_name}|${indexItem.appType}`;
   const fallbackKey = `${camelName}|${indexItem.appType}`;
   const handler = HANDLER_MAP.get(handlerKey) ?? HANDLER_MAP.get(fallbackKey);
-  if (handler && !HANDLER_SKIP.has(tool_name)) {
+  if (handler) {
     // 应用逐工具参数名映射（将 COM 参数名转为 handler 期望的参数名）
     const paramMap = HANDLER_PARAM_MAP[tool_name];
     const mappedArgs = paramMap && Object.keys(paramMap).length > 0

@@ -40,7 +40,10 @@ import {
 } from '../../types/tools';
 import { wpsClient } from '../../client/wps-client';
 import { WpsAppType } from '../../types/wps';
-import { validateFilePath, validateImagePath } from '../../utils/path-safety';
+import { validateImagePath } from '../../utils/path-safety';
+import { insertPptImageHandler } from './image';
+import { addAnimationHandler, setSlideTransitionHandler } from './animation';
+import { insertPptChartHandler } from './chart-flow';
 
 // ============================================================
 // 1. wps_ppt_delete_slide - 删除指定幻灯片
@@ -1174,9 +1177,10 @@ export const setSlideTitleHandler: ToolHandler = async (
 };
 
 // ============================================================
-// 14. wps_ppt_insert_image - 插入图片
+// 14. wps_ppt_insert_image - 插入图片 (deprecated)
 // ============================================================
 
+/** @deprecated Use wps_ppt_insert_ppt_image instead. */
 export const insertImageDefinition: ToolDefinition = {
   name: 'wps_ppt_insert_image',
   description: `[DEPRECATED] Prefer wps_ppt_insert_ppt_image which supports cross-platform path aliases. 在幻灯片中插入图片。
@@ -1218,76 +1222,8 @@ export const insertImageDefinition: ToolDefinition = {
   },
 };
 
-export const insertImageHandler: ToolHandler = async (
-  args: Record<string, unknown>
-): Promise<ToolCallResult> => {
-  const { slideIndex, path, left, top, width, height } = args as {
-    slideIndex?: number;
-    path: string;
-    left?: number;
-    top?: number;
-    width?: number;
-    height?: number;
-  };
-
-  if (!path) {
-    return {
-      id: uuidv4(),
-      success: false,
-      content: [{ type: 'text', text: '图片文件路径不能为空' }],
-      error: '图片文件路径为空',
-    };
-  }
-
-  try {
-    const safePath = validateFilePath(path, []);
-    const response = await wpsClient.executeMethod<{
-      success: boolean;
-      message: string;
-      name: string;
-      path: string;
-    }>(
-      'insertPptImage',
-      {
-        slideIndex: slideIndex || 1,
-        path: safePath,
-        left: left || 100,
-        top: top || 100,
-        width: width || -1,
-        height: height || -1,
-      },
-      WpsAppType.PRESENTATION
-    );
-
-    if (response.success && response.data) {
-      return {
-        id: uuidv4(),
-        success: true,
-        content: [
-          {
-            type: 'text',
-            text: `图片插入成功！\n幻灯片: 第 ${slideIndex || 1} 页\n图片名称: ${response.data.name}\n图片路径: ${response.data.path}`,
-          },
-        ],
-      };
-    } else {
-      return {
-        id: uuidv4(),
-        success: false,
-        content: [{ type: 'text', text: `插入图片失败: ${response.error}` }],
-        error: response.error,
-      };
-    }
-  } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
-    return {
-      id: uuidv4(),
-      success: false,
-      content: [{ type: 'text', text: `插入图片出错: ${errMsg}` }],
-      error: errMsg,
-    };
-  }
-};
+/** @deprecated Use insertPptImageHandler instead. */
+export const insertImageHandler: ToolHandler = insertPptImageHandler;
 
 // ============================================================
 // 15. wps_ppt_set_shape_text - 设置形状文字
@@ -1358,9 +1294,10 @@ export const setShapeTextHandler: ToolHandler = async (
 };
 
 // ============================================================
-// 16. wps_ppt_set_animation - 设置元素动画
+// 16. wps_ppt_set_animation - 设置元素动画 (deprecated)
 // ============================================================
 
+/** @deprecated Use wps_ppt_add_animation instead. */
 export const setAnimationDefinition: ToolDefinition = {
   name: 'wps_ppt_set_animation',
   description: `[DEPRECATED] Prefer wps_ppt_add_animation which supports trigger parameter (onClick/withPrevious/afterPrevious). 设置幻灯片中指定元素的动画效果。
@@ -1400,59 +1337,8 @@ export const setAnimationDefinition: ToolDefinition = {
   },
 };
 
-export const setAnimationHandler: ToolHandler = async (
-  args: Record<string, unknown>
-): Promise<ToolCallResult> => {
-  const { slideIndex, shapeIndex, animationType } = args as {
-    slideIndex: number;
-    shapeIndex: number;
-    animationType: string;
-  };
-
-  try {
-    const response = await wpsClient.executeMethod<{
-      success: boolean;
-      message: string;
-    }>(
-      'addAnimation',
-      { slideIndex, shapeIndex, animationType },
-      WpsAppType.PRESENTATION
-    );
-
-    if (response.success) {
-      const animNameMap: Record<string, string> = {
-        fadeIn: '淡入', flyIn: '飞入', wipeIn: '擦除', zoomIn: '缩放进入',
-        bounceIn: '弹跳进入', spinIn: '旋转进入', fadeOut: '淡出', flyOut: '飞出',
-      };
-
-      return {
-        id: uuidv4(),
-        success: true,
-        content: [
-          {
-            type: 'text',
-            text: `动画设置成功！\n幻灯片: 第 ${slideIndex} 页\n形状: 第 ${shapeIndex} 个\n动画: ${animNameMap[animationType] || animationType}`,
-          },
-        ],
-      };
-    } else {
-      return {
-        id: uuidv4(),
-        success: false,
-        content: [{ type: 'text', text: `设置动画失败: ${response.error}` }],
-        error: response.error,
-      };
-    }
-  } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
-    return {
-      id: uuidv4(),
-      success: false,
-      content: [{ type: 'text', text: `设置动画出错: ${errMsg}` }],
-      error: errMsg,
-    };
-  }
-};
+/** @deprecated Use addAnimationHandler instead. */
+export const setAnimationHandler: ToolHandler = addAnimationHandler;
 
 // ============================================================
 // 17. wps_ppt_set_background - 设置幻灯片背景
@@ -1635,9 +1521,10 @@ export const setSlideSizeHandler: ToolHandler = async (
 };
 
 // ============================================================
-// 19. wps_ppt_set_transition - 设置幻灯片切换效果
+// 19. wps_ppt_set_transition - 设置幻灯片切换效果 (deprecated)
 // ============================================================
 
+/** @deprecated Use wps_ppt_set_slide_transition instead. */
 export const setTransitionDefinition: ToolDefinition = {
   name: 'wps_ppt_set_transition',
   description: `[DEPRECATED] Prefer wps_ppt_set_slide_transition which supports duration and sound parameters. 设置幻灯片切换效果。
@@ -1673,63 +1560,14 @@ export const setTransitionDefinition: ToolDefinition = {
   },
 };
 
-export const setTransitionHandler: ToolHandler = async (
-  args: Record<string, unknown>
-): Promise<ToolCallResult> => {
-  const { slideIndex, transition } = args as {
-    slideIndex: number;
-    transition: string;
-  };
-
-  try {
-    const response = await wpsClient.executeMethod<{
-      success: boolean;
-      message: string;
-    }>(
-      'setSlideTransition',
-      { slideIndex, transition },
-      WpsAppType.PRESENTATION
-    );
-
-    if (response.success) {
-      const transNameMap: Record<string, string> = {
-        fade: '淡出', push: '推入', wipe: '擦除', split: '拆分',
-        reveal: '揭开', cover: '覆盖', dissolve: '溶解', curtains: '帷幕',
-      };
-
-      return {
-        id: uuidv4(),
-        success: true,
-        content: [
-          {
-            type: 'text',
-            text: `切换效果设置成功！\n幻灯片: 第 ${slideIndex} 页\n切换效果: ${transNameMap[transition] || transition}`,
-          },
-        ],
-      };
-    } else {
-      return {
-        id: uuidv4(),
-        success: false,
-        content: [{ type: 'text', text: `设置切换效果失败: ${response.error}` }],
-        error: response.error,
-      };
-    }
-  } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
-    return {
-      id: uuidv4(),
-      success: false,
-      content: [{ type: 'text', text: `设置切换效果出错: ${errMsg}` }],
-      error: errMsg,
-    };
-  }
-};
+/** @deprecated Use setSlideTransitionHandler instead. */
+export const setTransitionHandler: ToolHandler = setSlideTransitionHandler;
 
 // ============================================================
-// 20. wps_ppt_add_chart - 在幻灯片中插入图表
+// 20. wps_ppt_add_chart - 在幻灯片中插入图表 (deprecated)
 // ============================================================
 
+/** @deprecated Use wps_ppt_insert_ppt_chart instead. */
 export const addChartDefinition: ToolDefinition = {
   name: 'wps_ppt_add_chart',
   description: `[DEPRECATED] Prefer wps_ppt_insert_ppt_chart which supports categories/series data model and left/top positioning. 在幻灯片中插入图表。
@@ -1774,60 +1612,8 @@ export const addChartDefinition: ToolDefinition = {
   },
 };
 
-export const addChartHandler: ToolHandler = async (
-  args: Record<string, unknown>
-): Promise<ToolCallResult> => {
-  const { slideIndex, chartType, data } = args as {
-    slideIndex: number;
-    chartType: string;
-    data: Array<{ label: string; value: number }>;
-  };
-
-  try {
-    const response = await wpsClient.executeMethod<{
-      success: boolean;
-      message: string;
-      chartId?: string;
-    }>(
-      'insertPptChart',
-      { slideIndex, chartType, data },
-      WpsAppType.PRESENTATION
-    );
-
-    if (response.success) {
-      const chartNameMap: Record<string, string> = {
-        bar: '柱形图', line: '折线图', pie: '饼图', scatter: '散点图',
-        area: '面积图', doughnut: '圆环图',
-      };
-
-      return {
-        id: uuidv4(),
-        success: true,
-        content: [
-          {
-            type: 'text',
-            text: `图表插入成功！\n幻灯片: 第 ${slideIndex} 页\n图表类型: ${chartNameMap[chartType] || chartType}\n数据点数: ${data.length}`,
-          },
-        ],
-      };
-    } else {
-      return {
-        id: uuidv4(),
-        success: false,
-        content: [{ type: 'text', text: `插入图表失败: ${response.error}` }],
-        error: response.error,
-      };
-    }
-  } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
-    return {
-      id: uuidv4(),
-      success: false,
-      content: [{ type: 'text', text: `插入图表出错: ${errMsg}` }],
-      error: errMsg,
-    };
-  }
-};
+/** @deprecated Use insertPptChartHandler instead. */
+export const addChartHandler: ToolHandler = insertPptChartHandler;
 
 // ============================================================
 // 21. wps_ppt_set_shape_fill - 设置形状填充颜色
@@ -1910,6 +1696,7 @@ export const setShapeFillHandler: ToolHandler = async (
 // 22. wps_ppt_add_speaker_notes - 添加演讲者备注
 // ============================================================
 
+/** @deprecated Use wps_ppt_set_slide_notes instead. */
 export const addSpeakerNotesDefinition: ToolDefinition = {
   name: 'wps_ppt_add_speaker_notes',
   description: `[DEPRECATED] Use wps_ppt_set_slide_notes instead. 添加或追加演讲者备注到指定幻灯片。

@@ -26,7 +26,7 @@ import {
   RegisteredTool,
 } from '../../types/tools';
 import { wpsClient } from '../../client/wps-client';
-import { validateFilePath } from '../../utils/path-safety';
+import { validateFilePath, ALLOWED_WRITE_ROOTS } from '../../utils/path-safety';
 
 // ============================================================
 // 1. wps_common_save - 保存当前文档
@@ -138,7 +138,7 @@ export const saveAsHandler: ToolHandler = async (
     };
   }
 
-  const safePath = validateFilePath(filePath, []);
+  const safePath = validateFilePath(filePath, ALLOWED_WRITE_ROOTS);
   try {
     const params: Record<string, unknown> = {
       filePath: safePath,
@@ -601,7 +601,7 @@ export const writeFileHandler: ToolHandler = async (
       };
     }
 
-    const safePath = validateFilePath(filePath, []);
+    const safePath = validateFilePath(filePath, ALLOWED_WRITE_ROOTS);
 
     // 确保父目录存在
     const dir = path.dirname(safePath);

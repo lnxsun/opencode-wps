@@ -542,7 +542,7 @@ function renderCwdHistory() {
     for (var i = 0; i < CWD_HISTORY.length; i++) {
         var c = CWD_HISTORY[i]
         var sel = (c === PROJECT_DIR)
-        html += '<div class="cwd-history-item' + (sel ? ' active' : '') + '" onclick="selectCwdHistory(\'' + c.replace(/\\/g, '\\\\').replace(/'/g, "\\'") + '\')">' + escapeHtml(c) + '</div>'
+        html += '<div class="cwd-history-item' + (sel ? ' active' : '') + '" onclick="selectCwdHistory(\'' + c.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '&quot;').replace(/&/g, '&amp;') + '\')">' + escapeHtml(c) + '</div>'
     }
     container.innerHTML = html
 }
@@ -1443,7 +1443,7 @@ function inlineFmt(s) {
     s = s.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
     s = s.replace(/\*(.+?)\*/g, '<em>$1</em>')
     s = s.replace(/~~(.+?)~~/g, '<del>$1</del>')
-    s = s.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, function(m, alt, url) { return '<img src="' + safeHref(url) + '" alt="' + escapeHtml(alt) + '" style="max-width:100%">' })
+    s = s.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, function(m, alt, url) { return '<img src="' + safeHref(url) + '" alt="' + alt + '" style="max-width:100%">' })
     s = s.replace(/\[([^\]]+)\]\(([^)]+)\)/g, function(m, text, url) { return '<a href="' + safeHref(url) + '" target="_blank">' + text + '</a>' })
     return s
 }

@@ -20,31 +20,12 @@ import {
 } from '../../types/tools';
 import { wpsClient } from '../../client/wps-client';
 import { WpsAppType } from '../../types/wps';
-import { validateFilePath } from '../../utils/path-safety';
+import { validateFilePath, ALLOWED_WRITE_ROOTS } from '../../utils/path-safety';
 
 /**
  * 根据文件扩展名判断应该用哪个WPS应用类型
  */
-export const getAppTypeByExtension = (filePath: string): WpsAppType | null => {
-  const ext = filePath.toLowerCase().split('.').pop();
 
-  // Word文档
-  if (['doc', 'docx', 'docm', 'dot', 'dotx', 'dotm', 'rtf', 'wps', 'wpt'].includes(ext || '')) {
-    return WpsAppType.WRITER;
-  }
-
-  // Excel表格
-  if (['xls', 'xlsx', 'xlsm', 'xlsb', 'xlt', 'xltx', 'xltm', 'csv', 'et', 'ett'].includes(ext || '')) {
-    return WpsAppType.SPREADSHEET;
-  }
-
-  // PPT演示
-  if (['ppt', 'pptx', 'pptm', 'pot', 'potx', 'potm', 'pps', 'ppsx', 'ppsm', 'dps', 'dpt'].includes(ext || '')) {
-    return WpsAppType.PRESENTATION;
-  }
-
-  return null;
-};
 
 /**
  * 根据输出格式获取对应的文件格式代码
@@ -118,7 +99,7 @@ export const getFormatCode = (format: string, appType: WpsAppType): number => {
       return pptFormats[formatLower] ?? 24; // 默认pptx
 
     default:
-      return -1;
+      throw new Error('Unknown app type: ' + appType);
   }
 };
 
@@ -167,7 +148,7 @@ export const convertToPdfHandler: ToolHandler = async (
 
   let safeOutputPath: string | undefined;
   if (outputPath) {
-    safeOutputPath = validateFilePath(outputPath, []);
+    safeOutputPath = validateFilePath(outputPath, ALLOWED_WRITE_ROOTS);
   }
 
   try {
@@ -276,7 +257,7 @@ export const convertFormatHandler: ToolHandler = async (
 
   let safeOutputPath: string | undefined;
   if (outputPath) {
-    safeOutputPath = validateFilePath(outputPath, []);
+    safeOutputPath = validateFilePath(outputPath, ALLOWED_WRITE_ROOTS);
   }
 
   if (!targetFormat || targetFormat.trim() === '') {

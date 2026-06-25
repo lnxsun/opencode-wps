@@ -31,7 +31,6 @@ import { macPollServer } from './mac-poll-server';
 function isMacPlatform() {
   return os.platform() === 'darwin';
 }
-// const IS_WINDOWS = os.platform() === 'win32';  // 暂时不用，保留备用
 
 // PowerShell脚本路径 (Windows)
 const PS_SCRIPT_PATH = path.join(__dirname, '../../scripts/wps-com.ps1');
