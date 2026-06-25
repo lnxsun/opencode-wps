@@ -91,7 +91,7 @@ async function main(): Promise<void> {
 }
 
 // 如果是直接运行而不是被导入，则启动服务器
-if (require.main === module) {
+if (process.argv[1] && require.main === module) {
   main().catch((error) => {
     log.error('Fatal error', error);
     process.exit(1);

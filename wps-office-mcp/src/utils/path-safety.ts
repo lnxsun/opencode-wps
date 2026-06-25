@@ -3,6 +3,7 @@ import * as os from 'os';
 
 const PATH_TRAVERSAL_REGEX = /\.\.(\/|\\)/;
 const ALLOWED_PROTOCOLS = ['http:', 'https:', 'ftp:', 'file:'];
+const DOS_DEVICE_PATH_REGEX = /^\\\\[.?]\\/;
 
 /**
  * 写操作允许的根目录白名单。
@@ -14,6 +15,18 @@ export const ALLOWED_WRITE_ROOTS: string[] = process.env.OPCODE_ALLOWED_ROOTS
   ? process.env.OPCODE_ALLOWED_ROOTS.split(path.delimiter).filter(Boolean)
   : [os.homedir(), os.tmpdir()].filter(Boolean);
 
+/**
+ * 校验文件路径合法性。
+ * - 拒绝空路径
+ * - 拒绝路径穿越（..）
+ * - 拒绝 DOS 设备路径（\\.\COM1）
+ * - 拒绝 NTFS 备用数据流（file:stream）
+ * - 可选白名单校验（allowedRoots）
+ * @param filePath - 待校验的文件路径
+ * @param allowedRoots - 允许的根目录白名单
+ * @returns 规范化后的安全路径
+ * @throws 路径不合法时抛出
+ */
 export function validateFilePath(filePath: string, allowedRoots: string[]): string {
   if (typeof filePath !== 'string' || !filePath) {
     throw new Error('filePath must be a non-empty string');
@@ -23,6 +36,17 @@ export function validateFilePath(filePath: string, allowedRoots: string[]): stri
   // Check path traversal
   if (PATH_TRAVERSAL_REGEX.test(filePath) || PATH_TRAVERSAL_REGEX.test(normalized)) {
     throw new Error('Path traversal detected: ' + filePath);
+  }
+  
+  // Check DOS device paths (\\.\COM1, \\?\C:\...)
+  if (DOS_DEVICE_PATH_REGEX.test(filePath)) {
+    throw new Error('DOS device paths are not allowed: ' + filePath);
+  }
+  
+  // Check NTFS alternate data streams (file:stream) — 排除驱动器盘符 C:
+  const colonIdx = normalized.indexOf(':');
+  if (colonIdx >= 0 && colonIdx !== 1) {
+    throw new Error('NTFS alternate data streams are not allowed: ' + filePath);
   }
   
   // Check allowed roots

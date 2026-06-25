@@ -31,7 +31,7 @@ export function fetchDocInfoFromLauncher(): Promise<{
         }
       });
     });
-    req.on('error', function() { resolve(null); });
+    req.on('error', function(e) { console.warn('[launcher] fetchDocInfoFromLauncher network error:', e); resolve(null); });
     req.on('timeout', function() { req.destroy(); resolve(null); });
   });
 }

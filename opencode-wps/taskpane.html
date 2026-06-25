@@ -1245,7 +1245,7 @@ function updateStreamingBubble() {
     var el = document.getElementById('streaming-msg'); if (!el) { ensureStreamingBubble(); el = document.getElementById('streaming-msg') }
     var html = ''
     if (STREAMING_REASONING) { html += '<div class="thinking-toggle" onclick="toggleThinking(this)">&#9654; 思考中 (' + STREAMING_REASONING.length + ' chars)</div><div class="thinking-content">' + escapeHtml(STREAMING_REASONING) + '</div>' }
-    if (STREAMING_TEXT) { html += renderMarkdown(STREAMING_TEXT) + '<span class="streaming-cursor"></span>' } else if (!STREAMING_REASONING) { html += '<span class="streaming-cursor"></span>' }
+    if (STREAMING_TEXT) { try { html += renderMarkdown(STREAMING_TEXT) } catch(e) { html += escapeHtml(STREAMING_TEXT) } html += '<span class="streaming-cursor"></span>' } else if (!STREAMING_REASONING) { html += '<span class="streaming-cursor"></span>' }
     el.innerHTML = html; scrollToBottom()
 }
 function finalizeStreaming() {
@@ -1253,7 +1253,7 @@ function finalizeStreaming() {
     if (el && (STREAMING_TEXT || STREAMING_REASONING)) {
         var html = ''
         if (STREAMING_REASONING) html += '<div class="thinking-toggle" onclick="toggleThinking(this)">&#9654; 思考中 (' + STREAMING_REASONING.length + ' chars)</div><div class="thinking-content">' + escapeHtml(STREAMING_REASONING) + '</div>'
-        if (STREAMING_TEXT) html += renderMarkdown(STREAMING_TEXT)
+        if (STREAMING_TEXT) { try { html += renderMarkdown(STREAMING_TEXT) } catch(e) { html += escapeHtml(STREAMING_TEXT) } }
         el.innerHTML = html; el.removeAttribute('id')
     } else if (el) el.removeAttribute('id')
     STREAMING_MSG_ID = ''; STREAMING_TEXT = ''; STREAMING_REASONING = ''; STREAMING_TEXT_PART_ID = ''; STREAMING_REASONING_PART_ID = ''
@@ -1266,7 +1266,7 @@ function addUserMessage(text) { var el = document.createElement('div'); el.class
 function addAssistantMessage(text, reasoning) {
     var el = document.createElement('div'); el.className = 'msg-assistant'; var html = ''
     if (reasoning) html += '<div class="thinking-toggle" onclick="toggleThinking(this)">&#9654; 思考中 (' + reasoning.length + ' chars)</div><div class="thinking-content">' + escapeHtml(reasoning) + '</div>'
-    html += renderMarkdown(text || ''); el.innerHTML = html; $messages.appendChild(el); scrollToBottom()
+    try { html += renderMarkdown(text || '') } catch(e) { html += escapeHtml(text || '') }; el.innerHTML = html; $messages.appendChild(el); scrollToBottom()
 }
 function addSystemMessage(text) { var el = document.createElement('div'); el.className = 'msg-system'; el.textContent = text; $messages.appendChild(el); scrollToBottom() }
 
@@ -1376,6 +1376,12 @@ function updateInputState() {
 }
 
 // --- Markdown ---
+/**
+ * 将 Markdown 文本渲染为 HTML
+ * 流程：提取代码块 → 提取行内代码 → 全局 escapeHtml → 恢复占位符 → 逐行解析
+ * @param {string} text - 原始 Markdown 文本
+ * @returns {string} 渲染后的 HTML
+ */
 function renderMarkdown(text) {
     if (!text) return ''
     var codeBlocks = []
@@ -1437,6 +1443,12 @@ function safeHref(url) {
     if (trimmed.indexOf('//') === 0) return '#'
     return url
 }
+/**
+ * 处理行内 Markdown 格式：粗体、斜体、删除线、图片、链接
+ * 注：入参 s 已在 renderMarkdown 中经过 escapeHtml 转义
+ * @param {string} s - 已转义的行内文本
+ * @returns {string} 渲染后的 HTML
+ */
 function inlineFmt(s) {
     if (!s) return ''
     s = s.replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>')
