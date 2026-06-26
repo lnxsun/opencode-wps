@@ -39,9 +39,10 @@ var CONFIG = {
         // 用户主目录（安装时注入，见 install-addons.js）
         userHome: (function() {
             var v = '__OPCODE_WPS_USER_HOME__';
-            if (v !== '__OPCODE_WPS_USER_HOME__') return v;
-            if (typeof process !== 'undefined' && process.env) return process.env.USERPROFILE || process.env.HOME || 'C:\\Users\\Default';
-            return 'C:\\Users\\Default';
+            // 使用不含双下划线的 sentinel 做比较，避免 install-addons.js 的 regex 误替换
+            if (v.indexOf('OPCODE_WPS_USER_HOME') < 0) return v;
+            if (typeof process !== 'undefined' && process.env) return process.env.USERPROFILE || process.env.HOME;
+            return '';
         })(),
     },
 
