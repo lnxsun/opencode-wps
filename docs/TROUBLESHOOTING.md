@@ -1,5 +1,62 @@
 # WPS 插件问题排查与避坑指南
 
+## 零、`config.js` 用户目录自引用哨兵被 install-addons.js 误替换（反复踩坑 4 次）
+
+### 问题现象
+- 重新安装插件后，默认工作目录变成了 `C:\Users\Default` 而不是 `~`（真实的用户主目录）
+- 每次修复后隔一段时间又复现
+
+### 根因
+`config.js` 中 `userHome` 使用自引用哨兵判断是否已被替换：
+
+```javascript
+// 错误写法 — 两处都会被 regex 匹配
+var v = '__OPCODE_WPS_USER_HOME__';
+if (v !== '__OPCODE_WPS_USER_HOME__') return v;  // ← install-addons.js 的 regex 也会替换这一行！
+```
+
+`install-addons.js` 的替换逻辑：`replace(/__OPCODE_WPS_USER_HOME__/g, userHome)` — 这是一个 **全局 regex**，会匹配文件中的所有出现。BOTH 行都被替换后：
+
+```javascript
+var v = 'C:\\Users\\Administrator';
+if (v !== 'C:\\Users\\Administrator') return v;  // ← 恒为 false！
+```
+
+哨兵永远返回 false，代码 fallthrough 到 `process.env.USERPROFILE`。而在 **WPS 浏览器上下文（taskpane.html/main.js）中 `process` 对象不存在**，最终返回硬编码 `'C:\\Users\\Default'`。
+
+### 如何避坑
+
+**1. 自引用哨兵必须使用 regex 无法匹配的字符串**
+
+`install-addons.js` 的 regex 是 `/__OPCODE_WPS_USER_HOME__/g`（带双下划线前缀后缀）。比较字符串时必须**去掉双下划线**：
+
+```javascript
+// 正确写法 — indexOf 字符串不含双下划线，不会被 regex 匹配
+var v = '__OPCODE_WPS_USER_HOME__';
+if (v.indexOf('OPCODE_WPS_USER_HOME') < 0) return v;
+```
+
+**2. 验证方法**
+
+安装后检查 `%APPDATA%\kingsoft\wps\jsaddons\opencode-wps_\config.js`：
+
+```powershell
+Select-String "userHome:" "$env:APPDATA\kingsoft\wps\jsaddons\opencode-wps_\config.js" -Context 0,7
+```
+
+确认输出中：
+- `var v = 'C:\\Users\\XXX'` — 替换了真实用户目录 ✓
+- `if (v.indexOf('OPCODE_WPS_USER_HOME') < 0) return v;` — 哨兵行**未被替换** ✓
+
+**3. 如果再次复现**
+
+检查 `config.js` 中 `userHome` IIFE 的逻辑：
+- 确认 `install-addons.js` 的 regex 没有误替换哨兵行的字符串
+- 确认 WPS 浏览器上下文中 `process` 的 fallback 是 `''`（空字符串），不是 `'C:\\Users\\Default'`
+- 运行 `node install-addons.js` 后再检查
+
+---
+
 ## 一、插件不显示的坑
 
 ### 问题现象
