@@ -27,7 +27,7 @@ export interface ToolIndexItem {
 }
 
 import { wpsClient } from '../../client/wps-client';
-import { ToolCallResult, ToolHandler, ToolInputSchema } from '../../types/tools';
+import { RegisteredTool, ToolCallResult, ToolHandler, ToolInputSchema } from '../../types/tools';
 import { WpsAppType } from '../../types/wps';
 import { allTools } from '../index';
 
@@ -102,14 +102,13 @@ const HANDLER_PARAM_MAP: Record<string, Record<string, string>> = {
   getDocumentTextByRange: { startOffset: 'start_offset' },
 };
 
-// 无工具需要跳过 handler 路由（所有 COM schema 参数名已与 handler inputSchema 对齐）
-const HANDLER_SKIP = new Set<string>();
-
 // 从注册工具中预先构建 handler 映射表：COM 短名 + appType → TS handler
 // 使用 "name|appType" 复合键解决跨应用同名冲突（如 insertImage 同时存在于 Word 和 PPT）
 // 使 executeTool 能根据 TOOLS_INDEX 中的 appType 精确路由到正确的 handler
 const HANDLER_MAP = new Map<string, ToolHandler>();
+const toolByName = new Map<string, RegisteredTool>();
 for (const tool of allTools) {
+  toolByName.set(tool.definition.name, tool);
   const shortName = tool.definition.name.replace(/^wps_(word|excel|ppt|common)_/i, '');
   const camelName = toCamelCase(shortName);
   const appType = appTypeFromName(tool.definition.name);
@@ -121,11 +120,11 @@ for (const tool of allTools) {
 }
 // 处理命名不遵循 wps_{word|excel|ppt|common}_ 约定的工具
 // wps_convert_to_pdf 无 common 段，toCamelCase 产生 wpsConvertToPdf 而非 convertToPDF
-const pdfTool = allTools.find(t => t.definition.name === 'wps_convert_to_pdf');
+const pdfTool = toolByName.get('wps_convert_to_pdf');
 if (pdfTool) {
   HANDLER_MAP.set('convertToPDF|wps', pdfTool.handler);
 }
-const paragraphsTool = allTools.find(t => t.definition.name === 'wps_word_get_paragraphs');
+const paragraphsTool = toolByName.get('wps_word_get_paragraphs');
 if (paragraphsTool) {
   HANDLER_MAP.set('getDocumentParagraphs|wps', paragraphsTool.handler);
 }
@@ -559,7 +558,7 @@ export async function executeTool(options: ExecuteOptions): Promise<ToolCallResu
   const handlerKey = `${tool_name}|${indexItem.appType}`;
   const fallbackKey = `${camelName}|${indexItem.appType}`;
   const handler = HANDLER_MAP.get(handlerKey) ?? HANDLER_MAP.get(fallbackKey);
-  if (handler && !HANDLER_SKIP.has(tool_name)) {
+  if (handler) {
     // 应用逐工具参数名映射（将 COM 参数名转为 handler 期望的参数名）
     const paramMap = HANDLER_PARAM_MAP[tool_name];
     const mappedArgs = paramMap && Object.keys(paramMap).length > 0
@@ -570,7 +569,7 @@ export async function executeTool(options: ExecuteOptions): Promise<ToolCallResu
     try {
       return await handler(mappedArgs);
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorMessage = error instanceof Error ? error.stack || error.message : String(error);
       return {
         id: '',
         success: false,
@@ -587,7 +586,7 @@ export async function executeTool(options: ExecuteOptions): Promise<ToolCallResu
       content: [{ type: 'text', text: JSON.stringify({ result, tool_name, appType: indexItem.appType }) }]
     };
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
+    const errorMessage = error instanceof Error ? error.stack || error.message : String(error);
     const errorStack = error instanceof Error ? error.stack : undefined;
     return {
       id: '',

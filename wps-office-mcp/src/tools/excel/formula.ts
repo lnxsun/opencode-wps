@@ -96,7 +96,7 @@ export const setFormulaHandler: ToolHandler = async (
       };
     }
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
+    const errMsg = error instanceof Error ? error.stack || error.message : String(error);
     return {
       id: uuidv4(),
       success: false,
@@ -197,7 +197,7 @@ ${context.headers.map((h) => `  ${h.column}列: ${h.value}`).join('\n')}
       ],
     };
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
+    const errMsg = error instanceof Error ? error.stack || error.message : String(error);
     return {
       id: uuidv4(),
       success: false,
@@ -306,7 +306,7 @@ export const diagnoseFormulaHandler: ToolHandler = async (
       ],
     };
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
+    const errMsg = error instanceof Error ? error.stack || error.message : String(error);
     return {
       id: uuidv4(),
       success: false,
@@ -351,7 +351,7 @@ export const evaluateFormulaHandler: ToolHandler = async (
 
     return { id: uuidv4(), success: true, content: [{ type: 'text', text: JSON.stringify(response.data) }] };
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
+    const errMsg = error instanceof Error ? error.stack || error.message : String(error);
     return { id: uuidv4(), success: false, content: [{ type: 'text', text: `公式计算出错: ${errMsg}` }], error: errMsg };
   }
 };
@@ -381,7 +381,7 @@ export const setPrintAreaHandler: ToolHandler = async (
 
     return { id: uuidv4(), success: true, content: [{ type: 'text', text: '打印区域已设置' }] };
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
+    const errMsg = error instanceof Error ? error.stack || error.message : String(error);
     return { id: uuidv4(), success: false, content: [{ type: 'text', text: `设置打印区域出错: ${errMsg}` }], error: errMsg };
   }
 };
@@ -414,7 +414,7 @@ export const zoomHandler: ToolHandler = async (
 
     return { id: uuidv4(), success: true, content: [{ type: 'text', text: '缩放已设置' }] };
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
+    const errMsg = error instanceof Error ? error.stack || error.message : String(error);
     return { id: uuidv4(), success: false, content: [{ type: 'text', text: `设置缩放出错: ${errMsg}` }], error: errMsg };
   }
 };

@@ -31,7 +31,6 @@ import { macPollServer } from './mac-poll-server';
 function isMacPlatform() {
   return os.platform() === 'darwin';
 }
-// const IS_WINDOWS = os.platform() === 'win32';  // 暂时不用，保留备用
 
 // PowerShell脚本路径 (Windows)
 const PS_SCRIPT_PATH = path.join(__dirname, '../../scripts/wps-com.ps1');
@@ -199,7 +198,7 @@ async function execWpsActionWithRetry(action: string, params: Record<string, unk
       return await actionPromise;
     } catch (error) {
       lastError = error as Error;
-      const errMsg = error instanceof Error ? error.message : String(error);
+      const errMsg = error instanceof Error ? error.stack || error.message : String(error);
 
       if (errMsg.includes('超时')) {
         log.info(`WPS call timeout, attempt ${attempt}/${maxRetries}`, { action });

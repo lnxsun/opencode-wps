@@ -89,7 +89,7 @@ export const enableTrackChangesHandler: ToolHandler = async (
       error: response.error,
     };
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
+    const errMsg = error instanceof Error ? error.stack || error.message : String(error);
     return {
       id: uuidv4(),
       success: false,
@@ -152,7 +152,7 @@ export const getTrackChangesStatusHandler: ToolHandler = async (
       error: response.error,
     };
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
+    const errMsg = error instanceof Error ? error.stack || error.message : String(error);
     return {
       id: uuidv4(),
       success: false,
@@ -285,7 +285,7 @@ export const replaceRangeHandler: ToolHandler = async (
       error: response.error,
     };
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
+    const errMsg = error instanceof Error ? error.stack || error.message : String(error);
     return {
       id: uuidv4(),
       success: false,
@@ -440,7 +440,7 @@ export const replaceInParagraphHandler: ToolHandler = async (
       error: response.error,
     };
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
+    const errMsg = error instanceof Error ? error.stack || error.message : String(error);
     return {
       id: uuidv4(),
       success: false,
@@ -1022,7 +1022,7 @@ export const proofreadBasicHandler: ToolHandler = async (
       const safePath = validateFilePath(file_path, []);
       content = fs.readFileSync(safePath, 'utf-8');
     } catch (err) {
-      const errMsg = err instanceof Error ? err.message : String(err);
+      const errMsg = err instanceof Error ? err.stack || err.message : String(err);
       return {
         id: uuidv4(),
         success: false,
@@ -1079,7 +1079,7 @@ export const proofreadBasicHandler: ToolHandler = async (
       ],
     };
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
+    const errMsg = error instanceof Error ? error.stack || error.message : String(error);
     return {
       id: uuidv4(),
       success: false,

@@ -101,7 +101,7 @@ test('safeInput: 正常文本不过滤', function() {
 });
 
 test('safeInput: 混合内容', function() {
-  assertEqual(safeInput('Hello <script>x</script> & "test"', 'utf-8'), 'Hello &lt;script&gt;x&lt;/script&gt; &amp; &quot;test&quot;');
+  assertEqual(safeInput('Hello <script>x</script> & "test"'), 'Hello &lt;script&gt;x&lt;/script&gt; &amp; &quot;test&quot;');
 });
 
 // --- 2. 路径遍历防护测试 ---

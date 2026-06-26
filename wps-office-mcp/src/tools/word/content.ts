@@ -135,7 +135,7 @@ export const insertTextHandler: ToolHandler = async (
       };
     }
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
+    const errMsg = error instanceof Error ? error.stack || error.message : String(error);
     return {
       id: uuidv4(),
       success: false,
@@ -281,7 +281,7 @@ export const findReplaceHandler: ToolHandler = async (
       };
     }
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
+    const errMsg = error instanceof Error ? error.stack || error.message : String(error);
     return {
       id: uuidv4(),
       success: false,
@@ -332,7 +332,7 @@ export const insertTableHandler: ToolHandler = async (
       error: response.error,
     };
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
+    const errMsg = error instanceof Error ? error.stack || error.message : String(error);
     return { id: uuidv4(), success: false, content: [{ type: 'text', text: `插入表格出错: ${errMsg}` }], error: errMsg };
   }
 };
@@ -377,7 +377,7 @@ export const setParagraphHandler: ToolHandler = async (
       error: response.error,
     };
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
+    const errMsg = error instanceof Error ? error.stack || error.message : String(error);
     return { id: uuidv4(), success: false, content: [{ type: 'text', text: `设置段落出错: ${errMsg}` }], error: errMsg };
   }
 };
@@ -438,7 +438,7 @@ export const getActiveDocumentHandler: ToolHandler = async (
 
     return await tryLauncherFallback(`获取文档信息失败: ${response.error}。请确认 WPS 文字已打开文档，且文档窗口处于活动状态。`, response.error);
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
+    const errMsg = error instanceof Error ? error.stack || error.message : String(error);
     return await tryLauncherFallback(`获取文档信息出错: ${errMsg}`, errMsg);
   }
 };
@@ -524,7 +524,7 @@ export const insertImageHandler: ToolHandler = async (
       error: response.error,
     };
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
+    const errMsg = error instanceof Error ? error.stack || error.message : String(error);
     return {
       id: uuidv4(),
       success: false,
@@ -566,7 +566,7 @@ export const insertPageBreakHandler: ToolHandler = async (
       content: [{ type: 'text', text: '分页符已插入' }],
     };
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
+    const errMsg = error instanceof Error ? error.stack || error.message : String(error);
     return { id: uuidv4(), success: false, content: [{ type: 'text', text: `插入分页符出错: ${errMsg}` }], error: errMsg };
   }
 };
@@ -605,7 +605,7 @@ export const setFontStyleHandler: ToolHandler = async (
       content: [{ type: 'text', text: '字体已设置' }],
     };
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
+    const errMsg = error instanceof Error ? error.stack || error.message : String(error);
     return { id: uuidv4(), success: false, content: [{ type: 'text', text: `设置字体出错: ${errMsg}` }], error: errMsg };
   }
 };
@@ -648,7 +648,7 @@ export const insertCommentHandler: ToolHandler = async (
       content: [{ type: 'text', text: '批注已插入' }],
     };
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
+    const errMsg = error instanceof Error ? error.stack || error.message : String(error);
     return { id: uuidv4(), success: false, content: [{ type: 'text', text: `插入批注出错: ${errMsg}` }], error: errMsg };
   }
 };
@@ -694,7 +694,7 @@ export const setTextColorHandler: ToolHandler = async (
       content: [{ type: 'text', text: `文字颜色已设置为 ${color}` }],
     };
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
+    const errMsg = error instanceof Error ? error.stack || error.message : String(error);
     return { id: uuidv4(), success: false, content: [{ type: 'text', text: `设置文字颜色出错: ${errMsg}` }], error: errMsg };
   }
 };
@@ -781,7 +781,7 @@ export const getParagraphsHandler: ToolHandler = async (
       };
     }
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
+    const errMsg = error instanceof Error ? error.stack || error.message : String(error);
     return {
       id: uuidv4(),
       success: false,
@@ -904,7 +904,7 @@ export const findInDocumentHandler: ToolHandler = async (
       };
     }
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
+    const errMsg = error instanceof Error ? error.stack || error.message : String(error);
     return {
       id: uuidv4(),
       success: false,
@@ -1036,7 +1036,7 @@ export const smartFillFieldHandler: ToolHandler = async (
       };
     }
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
+    const errMsg = error instanceof Error ? error.stack || error.message : String(error);
     return {
       id: uuidv4(),
       success: false,
@@ -1137,7 +1137,7 @@ export const replaceBookmarkContentHandler: ToolHandler = async (
       };
     }
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
+    const errMsg = error instanceof Error ? error.stack || error.message : String(error);
     return {
       id: uuidv4(),
       success: false,

@@ -47,7 +47,7 @@ export const deleteTextboxHandler: ToolHandler = async (
     }
     return { id: uuidv4(), success: true, content: [{ type: 'text', text: `第${slideIndex}页的文本框${textboxIndex}已删除` }] };
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
+    const errMsg = error instanceof Error ? error.stack || error.message : String(error);
     return { id: uuidv4(), success: false, content: [{ type: 'text', text: `删除文本框出错: ${errMsg}` }], error: errMsg };
   }
 };
@@ -83,7 +83,7 @@ export const getTextboxesHandler: ToolHandler = async (
     }
     return { id: uuidv4(), success: true, content: [{ type: 'text', text: `第${slideIndex}页文本框:\n${JSON.stringify(response.data?.textboxes || [], null, 2)}` }] };
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
+    const errMsg = error instanceof Error ? error.stack || error.message : String(error);
     return { id: uuidv4(), success: false, content: [{ type: 'text', text: `获取文本框列表出错: ${errMsg}` }], error: errMsg };
   }
 };
@@ -123,7 +123,7 @@ export const setTextboxTextHandler: ToolHandler = async (
     }
     return { id: uuidv4(), success: true, content: [{ type: 'text', text: `文本框内容已更新` }] };
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
+    const errMsg = error instanceof Error ? error.stack || error.message : String(error);
     return { id: uuidv4(), success: false, content: [{ type: 'text', text: `设置文本框内容出错: ${errMsg}` }], error: errMsg };
   }
 };
@@ -166,7 +166,7 @@ export const setTextboxStyleHandler: ToolHandler = async (
     }
     return { id: uuidv4(), success: true, content: [{ type: 'text', text: `文本框样式已更新` }] };
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
+    const errMsg = error instanceof Error ? error.stack || error.message : String(error);
     return { id: uuidv4(), success: false, content: [{ type: 'text', text: `设置文本框样式出错: ${errMsg}` }], error: errMsg };
   }
 };
@@ -202,7 +202,7 @@ export const getSlideTitleHandler: ToolHandler = async (
     }
     return { id: uuidv4(), success: true, content: [{ type: 'text', text: `第${slideIndex}页标题: ${response.data?.title || '无标题'}` }] };
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
+    const errMsg = error instanceof Error ? error.stack || error.message : String(error);
     return { id: uuidv4(), success: false, content: [{ type: 'text', text: `获取标题出错: ${errMsg}` }], error: errMsg };
   }
 };
@@ -239,7 +239,7 @@ export const setSlideSubtitleHandler: ToolHandler = async (
     }
     return { id: uuidv4(), success: true, content: [{ type: 'text', text: `第${slideIndex}页副标题已设置` }] };
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
+    const errMsg = error instanceof Error ? error.stack || error.message : String(error);
     return { id: uuidv4(), success: false, content: [{ type: 'text', text: `设置副标题出错: ${errMsg}` }], error: errMsg };
   }
 };
@@ -276,7 +276,7 @@ export const setSlideContentHandler: ToolHandler = async (
     }
     return { id: uuidv4(), success: true, content: [{ type: 'text', text: `第${slideIndex}页正文内容已设置` }] };
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
+    const errMsg = error instanceof Error ? error.stack || error.message : String(error);
     return { id: uuidv4(), success: false, content: [{ type: 'text', text: `设置正文内容出错: ${errMsg}` }], error: errMsg };
   }
 };

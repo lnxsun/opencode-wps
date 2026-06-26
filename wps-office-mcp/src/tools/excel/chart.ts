@@ -24,7 +24,7 @@ import {
 } from '../../types/tools';
 import { wpsClient } from '../../client/wps-client';
 import { WpsAppType } from '../../types/wps';
-import { validateFilePath } from '../../utils/path-safety';
+import { validateFilePath, ALLOWED_WRITE_ROOTS } from '../../utils/path-safety';
 
 /**
  * 支持的图表类型枚举
@@ -278,7 +278,7 @@ export const createChartHandler: ToolHandler = async (
       ],
     };
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
+    const errMsg = error instanceof Error ? error.stack || error.message : String(error);
     return {
       id: uuidv4(),
       success: false,
@@ -491,7 +491,7 @@ export const updateChartHandler: ToolHandler = async (
       ],
     };
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
+    const errMsg = error instanceof Error ? error.stack || error.message : String(error);
     return {
       id: uuidv4(),
       success: false,
@@ -581,7 +581,7 @@ export const exportChartAsImageHandler: ToolHandler = async (
   }
 
   try {
-    const safeOutputPath = validateFilePath(outputPath, []);
+    const safeOutputPath = validateFilePath(outputPath, ALLOWED_WRITE_ROOTS);
     // 归一化 format：JPEG 在 WPS COM 滤镜表中按 JPG 处理（参考 PPT 同款工具）
     const rawFormat = (format || 'PNG').toUpperCase();
     const filterName = rawFormat === 'JPEG' ? 'JPG' : rawFormat;
@@ -627,7 +627,7 @@ export const exportChartAsImageHandler: ToolHandler = async (
       };
     }
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
+    const errMsg = error instanceof Error ? error.stack || error.message : String(error);
     return {
       id: uuidv4(),
       success: false,
@@ -738,7 +738,7 @@ export const exportRangeAsImageHandler: ToolHandler = async (
   }
 
   try {
-    const safeOutputPath = validateFilePath(outputPath, []);
+    const safeOutputPath = validateFilePath(outputPath, ALLOWED_WRITE_ROOTS);
     // 归一化 format：JPEG → JPG
     const rawFormat = (format || 'PNG').toUpperCase();
     const filterName = rawFormat === 'JPEG' ? 'JPG' : rawFormat;
@@ -784,7 +784,7 @@ export const exportRangeAsImageHandler: ToolHandler = async (
       };
     }
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
+    const errMsg = error instanceof Error ? error.stack || error.message : String(error);
     return {
       id: uuidv4(),
       success: false,

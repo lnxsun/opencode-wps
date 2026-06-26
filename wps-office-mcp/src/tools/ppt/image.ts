@@ -22,7 +22,7 @@ import {
 } from '../../types/tools';
 import { wpsClient } from '../../client/wps-client';
 import { WpsAppType } from '../../types/wps';
-import { validateFilePath } from '../../utils/path-safety';
+import { validateFilePath, ALLOWED_WRITE_ROOTS } from '../../utils/path-safety';
 
 // ==================== 1. 插入图片 ====================
 
@@ -125,7 +125,7 @@ export const insertPptImageHandler: ToolHandler = async (
       };
     }
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
+    const errMsg = error instanceof Error ? error.stack || error.message : String(error);
     return {
       id: uuidv4(),
       success: false,
@@ -199,7 +199,7 @@ export const deletePptImageHandler: ToolHandler = async (
       };
     }
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
+    const errMsg = error instanceof Error ? error.stack || error.message : String(error);
     return {
       id: uuidv4(),
       success: false,
@@ -315,7 +315,7 @@ export const setImageStyleHandler: ToolHandler = async (
       };
     }
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
+    const errMsg = error instanceof Error ? error.stack || error.message : String(error);
     return {
       id: uuidv4(),
       success: false,
@@ -400,7 +400,7 @@ export const exportSlideAsImageHandler: ToolHandler = async (
   }
 
   try {
-    const safeOutputPath = validateFilePath(outputPath, []);
+    const safeOutputPath = validateFilePath(outputPath, ALLOWED_WRITE_ROOTS);
     // 归一化 format：JPEG 在 WPS COM 中实际对应 JPG 滤镜
     const rawFormat = (format || 'PNG').toUpperCase();
     const filterName = rawFormat === 'JPEG' ? 'JPG' : rawFormat;
@@ -449,7 +449,7 @@ export const exportSlideAsImageHandler: ToolHandler = async (
       };
     }
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
+    const errMsg = error instanceof Error ? error.stack || error.message : String(error);
     return {
       id: uuidv4(),
       success: false,

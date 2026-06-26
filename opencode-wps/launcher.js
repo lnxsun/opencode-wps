@@ -41,7 +41,6 @@ function parseBody(req, callback) {
     var body = '';
     req.on('data', function(chunk) { body += chunk; });
     req.on('end', function() {
-        console.log('[launcher] Raw body: ' + body);
         try { callback(JSON.parse(body)); }
         catch(e) { 
             console.log('[launcher] Parse error: ' + e.message);
@@ -295,13 +294,12 @@ function findOpenCodeBin() {
  * @throws {Error} 路径不合法时抛出
  */
 function validateCwd(cwd) {
-    if (typeof cwd !== 'string') throw new Error('cwd must be a string');
+    if (typeof cwd !== 'string' || !cwd) {
+        return { valid: false, error: 'cwd 不能为空' };
+    }
     // 拒绝 UNC 路径和 DOS 设备路径
     if (/^\\\\[?.]/.test(cwd) || /^\\\\/.test(cwd)) {
         throw new Error('UNC and DOS device paths are not allowed');
-    }
-    if (!cwd) {
-        return { valid: false, error: 'cwd 不能为空' };
     }
     // 防止路径遍历
     if (cwd.includes('..')) {
