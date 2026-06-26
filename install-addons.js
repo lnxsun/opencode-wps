@@ -125,16 +125,15 @@ addons.forEach(addon => {
         }
 
         // 注入用户主目录到 config.js（修复 CWD 硬编码问题）
+        // 注意：不做安装时替换，改为运行时在 config.js 中通过 PluginStorage 动态解析
+        // 这样每个用户的 ~ 都不一样，不会硬编码路径
         const configJsPath = path.join(destDir, 'config.js');
         if (fsEx.existsSync(configJsPath)) {
             const configJsContent = fs.readFileSync(configJsPath, 'utf-8');
-            const userHome = process.env.USERPROFILE || require('os').homedir();
-            const updatedConfig = configJsContent.replace(/__OPCODE_WPS_USER_HOME__/g, () => userHome.replace(/\\/g, '\\\\'));
-            if (updatedConfig === configJsContent) {
-                console.log('    [警告] config.js 中未找到 __OPCODE_WPS_USER_HOME__，用户目录注入失败');
+            if (configJsContent.includes('__OPCODE_WPS_USER_HOME__')) {
+                console.log('    userHome 由运行时动态解析（已跳过安装时替换）');
             } else {
-                fs.writeFileSync(configJsPath, updatedConfig, 'utf-8');
-                console.log('    已注入用户目录: ' + userHome);
+                console.log('    [跳过] config.js 未包含占位符，无需处理');
             }
         }
     }

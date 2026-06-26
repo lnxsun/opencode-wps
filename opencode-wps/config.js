@@ -36,12 +36,35 @@ var CONFIG = {
         addonName: 'OpenCode AI',
         // 插件版本
         version: '1.1.0',
-        // 用户主目录（安装时注入，见 install-addons.js）
+        // 用户主目录（安装时由 install-addons.js 注入，WPS 浏览器上下文有额外 fallback）
         userHome: (function() {
             var v = '__OPCODE_WPS_USER_HOME__';
             // 使用不含双下划线的 sentinel 做比较，避免 install-addons.js 的 regex 误替换
             if (v.indexOf('OPCODE_WPS_USER_HOME') < 0) return v;
-            if (typeof process !== 'undefined' && process.env) return process.env.USERPROFILE || process.env.HOME;
+            if (typeof process !== 'undefined' && process.env) return process.env.USERPROFILE || process.env.HOME || '';
+            // WPS 浏览器上下文：尝试从 PluginStorage 恢复上次 CWD
+            try {
+                if (typeof window !== 'undefined' && window.Application && window.Application.PluginStorage) {
+                    var saved = window.Application.PluginStorage.getItem('opencode_cwd');
+                    if (saved) return saved;
+                }
+                // 从 addon 路径提取用户主目录（file:///C:/Users/xxx/AppData/...）
+                if (typeof window !== 'undefined' && window.location && window.location.href) {
+                    var url = window.location.href;
+                    if (url.indexOf('file:///') === 0) {
+                        var path = url.substring(8);
+                        var sep = path.indexOf('/');
+                        if (sep > 0) {
+                            var drive = path.substring(0, sep);
+                            var rest = path.substring(sep + 1);
+                            var parts = rest.split('/');
+                            if (parts.length >= 2 && parts[0].toLowerCase() === 'users') {
+                                return drive + '\\Users\\' + parts[1];
+                            }
+                        }
+                    }
+                }
+            } catch(e) {}
             return '';
         })(),
     },

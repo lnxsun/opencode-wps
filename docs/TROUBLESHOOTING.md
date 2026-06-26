@@ -320,6 +320,7 @@ stopOpenCodeByPort(14096);  // 复用 stopOpenCodeByPort 函数
 ```javascript
 execSync('wmic process where "ProcessId=' + pid + '" get Name /format:csv', ...);
 // 确认进程名为 node.exe 或 opencode.exe 后再执行：
+// 注意：2>nul 是 cmd.exe 重定向语法，PowerShell 应使用 2>$null
 execSync('taskkill /F /PID ' + pid + ' 2>nul', ...);
 ```
 

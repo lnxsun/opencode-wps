@@ -31,7 +31,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 安装脚本输出更详细的状态信息
 - `getActiveDocument` 输出格式：`页数` → `总段数`，对齐 COM 实际返回字段（`paragraphCount`）
 - `proofreadBasic` 增加异常空格检测（连续空格 / 全角空格）
-- 代理端口 14097 → 14098（opencode-proxy.js）
 - manifest.xml Version → 1.1.0
 - SSE 指数退避：初始 1s，最大 30s
 - `taskkill` 参数：`/PID xxx /F` → `/F /PID xxx 2>nul`
