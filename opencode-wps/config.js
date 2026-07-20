@@ -48,18 +48,24 @@ var CONFIG = {
                     var saved = window.Application.PluginStorage.getItem('opencode_cwd');
                     if (saved) return saved;
                 }
-                // 从 addon 路径提取用户主目录（file:///C:/Users/xxx/AppData/...）
+                // 从 addon 路径提取用户主目录
+                // Windows:  file:///C:/Users/xxx/AppData/...
+                // Mac:      file:///Users/xxx/Library/Containers/...
                 if (typeof window !== 'undefined' && window.location && window.location.href) {
                     var url = window.location.href;
                     if (url.indexOf('file:///') === 0) {
                         var path = url.substring(8);
                         var sep = path.indexOf('/');
                         if (sep > 0) {
-                            var drive = path.substring(0, sep);
+                            var first = path.substring(0, sep);
                             var rest = path.substring(sep + 1);
                             var parts = rest.split('/');
-                            if (parts.length >= 2 && parts[0].toLowerCase() === 'users') {
-                                return drive + '\\Users\\' + parts[1];
+                            if (first.toLowerCase() === 'users' && parts.length >= 1) {
+                                // Mac: path = Users/xxx/... → /Users/xxx
+                                return '/Users/' + parts[0];
+                            } else if (parts.length >= 2 && parts[0].toLowerCase() === 'users') {
+                                // Windows: path = C:/Users/xxx/... → C:\Users\xxx
+                                return first + '\\Users\\' + parts[1];
                             }
                         }
                     }

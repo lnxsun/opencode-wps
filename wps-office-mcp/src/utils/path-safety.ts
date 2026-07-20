@@ -1,9 +1,10 @@
 import * as path from 'path';
 import * as os from 'os';
 
+const IS_WIN = process.platform === 'win32';
 const PATH_TRAVERSAL_REGEX = /\.\.(\/|\\)/;
 const ALLOWED_PROTOCOLS = ['http:', 'https:', 'ftp:', 'file:'];
-const DOS_DEVICE_PATH_REGEX = /^\\\\[.?]\\/;
+const DOS_DEVICE_PATH_REGEX = IS_WIN ? /^\\\\[.?]\\/ : /(?!)/;
 
 /**
  * 写操作允许的根目录白名单。
@@ -38,15 +39,17 @@ export function validateFilePath(filePath: string, allowedRoots: string[]): stri
     throw new Error('Path traversal detected: ' + filePath);
   }
   
-  // Check DOS device paths (\\.\COM1, \\?\C:\...)
-  if (DOS_DEVICE_PATH_REGEX.test(filePath)) {
+  // Check DOS device paths (Windows only: \\.\COM1, \\?\C:\...)
+  if (IS_WIN && DOS_DEVICE_PATH_REGEX.test(filePath)) {
     throw new Error('DOS device paths are not allowed: ' + filePath);
   }
   
-  // Check NTFS alternate data streams (file:stream) — 排除驱动器盘符 C:
-  const colonIdx = normalized.indexOf(':');
-  if (colonIdx >= 0 && colonIdx !== 1) {
-    throw new Error('NTFS alternate data streams are not allowed: ' + filePath);
+  // Check NTFS alternate data streams (Windows only: file:stream)
+  if (IS_WIN) {
+    const colonIdx = normalized.indexOf(':');
+    if (colonIdx >= 0 && colonIdx !== 1) {
+      throw new Error('NTFS alternate data streams are not allowed: ' + filePath);
+    }
   }
   
   // Check allowed roots

@@ -463,3 +463,67 @@ if (result === -1) {
 2. 执行 `console.log(typeof fetch)` 确认 API 存在性
 3. 测试核心路径（如 `fetch('http://127.0.0.1:14096/global/health')`）是否返回 Promise 并 resolve
 4. 测试完成后，**再决定是否集成**该库
+
+---
+
+## 七、macOS 特有排查
+
+### 插件不显示
+```
+~/Library/Containers/com.kingsoft.wpsformac/Data/Documents/jsaddons/
+├── opencode-wps-assistant/
+│   ├── manifest.xml            # 必须有
+│   ├── index.html
+│   └── ...
+```
+
+**排查**：
+1. 确认 `manifest.xml` 在正确的插件目录
+2. WPS for Mac 功能区 → 配置工具 → 加载项管理 — 确认插件已启用
+3. 重启 WPS（完全退出，不是关闭窗口）
+4. 检查 Console 日志（WPS 中按 F12）
+
+### MCP 不连接
+
+MCP 服务器在 Mac 上使用 HTTP 轮询（`:58891/poll`），不同于 Windows 的 PowerShell COM：
+
+```bash
+# 检查 mac-poll-server 是否在运行
+lsof -i :58891
+
+# 测试轮询端点的连通性
+curl -s http://127.0.0.1:58891/poll | head -c 100
+
+# 检查 launcher-mac 日志
+ps aux | grep launcher-mac
+```
+
+**排查**：
+1. `node launcher-mac.js` 是否在运行？
+2. `opencode serve` 是否在 `:14096` 运行？
+3. `mac-poll-server.ts` 是否已编译？（`cd wps-office-mcp && npm run build`）
+
+### WPS JS API 不支持某些操作
+
+由于 Mac 版 WPS 使用 JS API（而非 Windows 的 COM 桥接），部分操作可能受限：
+
+| 操作 | Mac 支持 | 说明 |
+|------|----------|------|
+| `Application.Evaluate()` | 部分支持 | 降级为设置公式→读取值→恢复 |
+| `ActiveWindow.Zoom` | 支持 | 读写缩放比例 |
+| `ApplyTemplate(theme)` | 部分支持 | 降级到 `ApplyTheme` |
+| 文件对话框 | 不支持 | WPS JS API 无 `FileDialog` |
+| ActiveX/OLE 对象 | 不支持 | 仅 Windows COM 可用 |
+
+如果遇到不支持的操作，错误信息会在 Chat UI 中显示，通常包含 "未知操作" 或具体的 JS 异常信息。
+
+### 安装后 Skills/Agents 不生效
+
+```bash
+# 重新运行安装脚本
+node install-addons-mac.js
+
+# 重启 OpenCode 服务（通过 Launcher API）
+curl -X POST http://127.0.0.1:14097/stop
+curl -X POST http://127.0.0.1:14097/start -H "Content-Type: application/json" -d '{"cwd": "'$PWD'"}'
+```

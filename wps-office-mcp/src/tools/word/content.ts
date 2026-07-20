@@ -672,16 +672,13 @@ export const setTextColorDefinition: ToolDefinition = {
 export const setTextColorHandler: ToolHandler = async (
   args: Record<string, unknown>
 ): Promise<ToolCallResult> => {
-  if (process.platform === 'darwin') {
-    return { id: uuidv4(), success: false, content: [{ type: 'text', text: '此功能仅在 Windows 上支持' }], error: 'macOS not supported' };
-  }
   const { color } = args as { color: string };
   if (!color || color.trim() === '') {
     return { id: uuidv4(), success: false, content: [{ type: 'text', text: '颜色值不能为空！' }], error: '颜色值为空' };
   }
   try {
     const response = await wpsClient.executeMethod<{ success: boolean; message: string }>(
-      'setTextColor', // NOTE: macOS未实现，仅Windows支持
+      'setFont',
       { color },
       WpsAppType.WRITER
     );

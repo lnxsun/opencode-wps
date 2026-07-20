@@ -1472,9 +1472,6 @@ export const setSlideSizeDefinition: ToolDefinition = {
 export const setSlideSizeHandler: ToolHandler = async (
   args: Record<string, unknown>
 ): Promise<ToolCallResult> => {
-  if (process.platform === 'darwin') {
-    return { id: uuidv4(), success: false, content: [{ type: 'text', text: '此功能仅在 Windows 上支持' }], error: 'macOS not supported' };
-  }
   const { width, height } = args as {
     width: number;
     height: number;
@@ -1485,7 +1482,7 @@ export const setSlideSizeHandler: ToolHandler = async (
       success: boolean;
       message: string;
     }>(
-      'setSlideSize', // NOTE: macOS未实现，仅Windows支持
+      'setSlideSize',
       { width, height },
       WpsAppType.PRESENTATION
     );
@@ -1642,9 +1639,6 @@ export const setShapeFillDefinition: ToolDefinition = {
 export const setShapeFillHandler: ToolHandler = async (
   args: Record<string, unknown>
 ): Promise<ToolCallResult> => {
-  if (process.platform === 'darwin') {
-    return { id: uuidv4(), success: false, content: [{ type: 'text', text: '此功能仅在 Windows 上支持' }], error: 'macOS not supported' };
-  }
   const { slideIndex, shapeIndex, color } = args as {
     slideIndex: number;
     shapeIndex: number;
@@ -1655,9 +1649,8 @@ export const setShapeFillHandler: ToolHandler = async (
     const response = await wpsClient.executeMethod<{
       success: boolean;
       message: string;
-      name?: string;
     }>(
-      'setShapeFill', // NOTE: macOS未实现，仅Windows支持
+      'setShapeFill',
       { slideIndex, shapeIndex, color },
       WpsAppType.PRESENTATION
     );

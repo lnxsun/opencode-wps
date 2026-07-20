@@ -724,16 +724,13 @@ export const setZoomDefinition: ToolDefinition = {
 export const setZoomHandler: ToolHandler = async (
   args: Record<string, unknown>
 ): Promise<ToolCallResult> => {
-  if (process.platform === 'darwin') {
-    return { id: uuidv4(), success: false, content: [{ type: 'text', text: '此功能仅在 Windows 上支持' }], error: 'macOS not supported' };
-  }
   const { percent } = args as { percent: number };
   if (percent < 10 || percent > 400) {
     return { id: uuidv4(), success: false, content: [{ type: 'text', text: '缩放比例必须在10-400之间' }], error: '缩放比例超出范围' };
   }
   try {
     const response = await wpsClient.executeMethod<{ message: string }>(
-      'setZoom', // NOTE: macOS未实现，仅Windows支持
+      'setZoom',
       { percent },
       WpsAppType.SPREADSHEET
     );

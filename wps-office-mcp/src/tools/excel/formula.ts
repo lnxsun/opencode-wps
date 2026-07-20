@@ -337,12 +337,9 @@ export const evaluateFormulaDefinition: ToolDefinition = {
 export const evaluateFormulaHandler: ToolHandler = async (
   args: Record<string, unknown>
 ): Promise<ToolCallResult> => {
-  if (process.platform === 'darwin') {
-    return { id: uuidv4(), success: false, content: [{ type: 'text', text: '此功能仅在 Windows 上支持' }], error: 'macOS not supported' };
-  }
   try {
     const response = await wpsClient.executeMethod<{ success: boolean; result: unknown }>(
-      'evaluateFormula', args, WpsAppType.SPREADSHEET // NOTE: macOS未实现，仅Windows支持
+      'evaluateFormula', args, WpsAppType.SPREADSHEET
     );
 
     if (!response.success) {
@@ -400,12 +397,9 @@ export const zoomDefinition: ToolDefinition = {
 export const zoomHandler: ToolHandler = async (
   args: Record<string, unknown>
 ): Promise<ToolCallResult> => {
-  if (process.platform === 'darwin') {
-    return { id: uuidv4(), success: false, content: [{ type: 'text', text: '此功能仅在 Windows 上支持' }], error: 'macOS not supported' };
-  }
   try {
     const response = await wpsClient.executeMethod<{ success: boolean }>(
-      'setZoom', args, WpsAppType.SPREADSHEET // NOTE: macOS未实现，仅Windows支持
+      'setZoom', args, WpsAppType.SPREADSHEET
     );
 
     if (!response.success) {

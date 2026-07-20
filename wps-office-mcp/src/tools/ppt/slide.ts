@@ -404,9 +404,6 @@ export const setFontColorDefinition: ToolDefinition = {
 export const setFontColorHandler: ToolHandler = async (
   args: Record<string, unknown>
 ): Promise<ToolCallResult> => {
-  if (process.platform === 'darwin') {
-    return { id: uuidv4(), success: false, content: [{ type: 'text', text: '此功能仅在 Windows 上支持' }], error: 'macOS not supported' };
-  }
   const { slideIndex, shapeIndex, color } = args as {
     slideIndex: number;
     shapeIndex: number;
@@ -418,7 +415,7 @@ export const setFontColorHandler: ToolHandler = async (
       success: boolean;
       message: string;
     }>(
-      'setFontColor', // NOTE: macOS未实现，仅Windows支持
+      'setFontColor',
       { slideIndex, shapeIndex, color },
       WpsAppType.PRESENTATION
     );

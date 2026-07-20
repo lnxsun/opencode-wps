@@ -59,7 +59,15 @@ docs/
 ## 快速链接
 
 - **项目主页**: https://github.com/lnxsun/opencode-wps
-- **WPS 加载项**: `%APPDATA%\kingsoft\wps\jsaddons\opencode-wps_`
 - **OpenCode 配置**: `~/.config/opencode/opencode.json`
 - **Launcher**: http://127.0.0.1:14097
 - **OpenCode 服务**: http://127.0.0.1:14096
+
+### 平台路径参考
+
+| 资源 | Windows | macOS |
+|------|---------|-------|
+| WPS 插件目录 | `%APPDATA%\kingsoft\wps\jsaddons\opencode-wps_` | `~/Library/Containers/com.kingsoft.wpsformac/Data/Documents/jsaddons/` |
+| 安装脚本 | `install-addons.js` | `install-addons-mac.js` |
+| Launcher | `opencode-wps/launcher.js`（计划任务自启） | `launcher-mac.js`（LaunchAgent 自启） |
+| MCP 通信 | PowerShell COM（wps-com.ps1） | HTTP 轮询（mac-poll-server.ts:58891） |

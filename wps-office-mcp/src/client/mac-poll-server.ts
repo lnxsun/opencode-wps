@@ -440,8 +440,8 @@ class MacPollServer {
    * 调用wps-auto.sh脚本自动关闭当前应用并启动目标应用
    */
   private async switchApp(app: string): Promise<void> {
-    // wps-auto.sh脚本路径 - 在wps-claude-assistant目录下
-    const scriptPath = path.join(__dirname, '../../../wps-claude-assistant/wps-auto.sh');
+    // wps-auto.sh脚本路径 - 在opencode-wps-assistant目录下
+    const scriptPath = path.join(__dirname, '../../../opencode-wps-assistant/wps-auto.sh');
 
     return new Promise((resolve, _reject) => {
       log.info(`[Mac] Executing switch script: ${scriptPath} switch ${app}`);

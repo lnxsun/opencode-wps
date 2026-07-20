@@ -10,6 +10,8 @@ import axios from 'axios';
 import { exec } from 'child_process';
 import { log } from '../utils/logger';
 
+const IS_MAC = process.platform === 'darwin';
+
 const WPS_SERVICE_URL = 'http://127.0.0.1:58890';
 const CHECK_INTERVAL = 5000; // 5秒检查一次
 const STARTUP_PROTOCOL = 'ksoWPSCloudSvr://start=RelayHttpServer';
@@ -40,6 +42,20 @@ function startService(): Promise<void> {
     }
     isStarting = true;
     log.info('[Keepalive] Starting WPS relay service...');
+
+    if (IS_MAC) {
+      // Mac下通过open命令启动WPS
+      exec(`open "${STARTUP_PROTOCOL}"`, (error) => {
+        if (error) {
+          log.error('[Keepalive] Failed to start WPS service on Mac', error);
+        }
+        setTimeout(() => {
+          isStarting = false;
+          resolve();
+        }, 3000);
+      });
+      return;
+    }
 
     // Windows下通过start命令启动自定义协议
     exec(`start "" "${STARTUP_PROTOCOL}"`, (error) => {

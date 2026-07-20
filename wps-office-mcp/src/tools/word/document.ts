@@ -682,9 +682,6 @@ export const insertSectionBreakDefinition: ToolDefinition = {
 export const insertSectionBreakHandler: ToolHandler = async (
   args: Record<string, unknown>
 ): Promise<ToolCallResult> => {
-  if (process.platform === 'darwin') {
-    return { id: uuidv4(), success: false, content: [{ type: 'text', text: '此功能仅在 Windows 上支持' }], error: 'macOS not supported' };
-  }
   const { breakType = 'nextPage' } = args as { breakType?: string };
 
   try {
@@ -692,7 +689,7 @@ export const insertSectionBreakHandler: ToolHandler = async (
       success: boolean;
       message: string;
     }>(
-      'insertSectionBreak', // NOTE: macOS未实现，仅Windows支持
+      'insertSectionBreak',
       { breakType },
       WpsAppType.WRITER
     );
@@ -753,9 +750,6 @@ export const setLineSpacingDefinition: ToolDefinition = {
 export const setLineSpacingHandler: ToolHandler = async (
   args: Record<string, unknown>
 ): Promise<ToolCallResult> => {
-  if (process.platform === 'darwin') {
-    return { id: uuidv4(), success: false, content: [{ type: 'text', text: '此功能仅在 Windows 上支持' }], error: 'macOS not supported' };
-  }
   const { lineSpacing, paragraphIndex } = args as { lineSpacing: number; paragraphIndex?: number };
 
   if (lineSpacing === undefined || lineSpacing <= 0) {
@@ -775,7 +769,7 @@ export const setLineSpacingHandler: ToolHandler = async (
       success: boolean;
       message: string;
     }>(
-      'setLineSpacing', // NOTE: macOS未实现，仅Windows支持
+      'setLineSpacing',
       params,
       WpsAppType.WRITER
     );
