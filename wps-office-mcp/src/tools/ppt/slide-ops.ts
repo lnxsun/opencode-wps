@@ -1639,10 +1639,10 @@ export const setShapeFillDefinition: ToolDefinition = {
 export const setShapeFillHandler: ToolHandler = async (
   args: Record<string, unknown>
 ): Promise<ToolCallResult> => {
-  const { slideIndex, shapeIndex, color } = args as {
+  const { slideIndex, shapeIndex, fillColor } = args as {
     slideIndex: number;
     shapeIndex: number;
-    color: string;
+    fillColor: string;
   };
 
   try {
@@ -1651,7 +1651,7 @@ export const setShapeFillHandler: ToolHandler = async (
       message: string;
     }>(
       'setShapeFill',
-      { slideIndex, shapeIndex, color },
+      { slideIndex, shapeIndex, fillColor },
       WpsAppType.PRESENTATION
     );
 
@@ -1662,7 +1662,7 @@ export const setShapeFillHandler: ToolHandler = async (
         content: [
           {
             type: 'text',
-            text: `形状填充颜色设置成功！\n幻灯片: 第 ${slideIndex} 页\n形状: 第 ${shapeIndex} 个\n填充颜色: ${color}`,
+            text: `形状填充颜色设置成功！\n幻灯片: 第 ${slideIndex} 页\n形状: 第 ${shapeIndex} 个\n填充颜色: ${fillColor}`,
           },
         ],
       };

@@ -508,14 +508,22 @@ switch ($Action) {
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; exit }
         $wb = $excel.ActiveWorkbook
         if ($null -eq $wb) { Output-Json @{ success = $false; error = "No active workbook" }; exit }
-        $sheet = if ($p.sheet -is [int]) { $wb.Sheets.Item($p.sheet) } else { $wb.Sheets.Item($p.sheet) }
-        if ($null -ne $p.targetCell) {
-            $range = $sheet.Range($p.targetCell)
-            $range.Select()
+        $sheet = $wb.ActiveSheet
+        $range = if ($p.range) { $sheet.Range($p.range) } else { $sheet.UsedRange }
+        $range.Select()
+        $result = $null
+        try {
+            $result = $excel.WorksheetFunction.Sum($range)
+        } catch {
+            $cells = $range.Cells
+            $sum = 0
+            for ($i = 1; $i -le $cells.Count; $i++) {
+                $v = $cells.Item($i).Value2
+                if ($v -is [number]) { $sum += $v }
+            }
+            $result = $sum
         }
-        $excel.Selection.Autofill($excel.Selection.MergeArea, 0)
-        $excel.Selection.AutoSum()
-        Output-Json @{ success = $true }
+        Output-Json @{ success = $true; data = @{ range = $p.range; targetCell = $p.targetCell; result = $result } }
     }
 
     "setZoom" {
