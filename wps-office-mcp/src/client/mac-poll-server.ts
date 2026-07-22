@@ -111,7 +111,6 @@ const COMMAND_APP_MAP: Record<string, string> = {
   setZoom: 'excel',
   evaluateFormula: 'excel',
   autoSum: 'excel',
-  diagnoseFormula: 'excel',
   exportChartAsImage: 'excel',
   exportRangeAsImage: 'excel',
   // ==================== Word 命令 ====================
