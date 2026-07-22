@@ -2010,7 +2010,7 @@ switch ($Action) {
         if ($null -ne $p.italic) { $range.Font.Italic = $p.italic }
         if ($null -ne $p.underline) { $range.Font.Underline = $p.underline }
         if ($p.color) {
-        $colorMap = @{ red = 255; blue = 16711680; green = 65280; yellow = 65535; cyan = 16776960; magenta = 16711935; white = 16777215; black = 0; gray = 8421504; grey = 8421504; orange = 42495; purple = 8388736; pink = 13353215; brown = 2763429; navy = 8388608; teal = 8421376; maroon = 128; lime = 65280; silver = 12632256; gold = 55295 }
+            $colorMap = @{ red = 255; blue = 16711680; green = 65280; yellow = 65535; cyan = 16776960; magenta = 16711935; white = 16777215; black = 0; gray = 8421504; grey = 8421504; orange = 42495; purple = 8388736; pink = 13353215; brown = 2763429; navy = 8388608; teal = 8421376; maroon = 128; lime = 65280; silver = 12632256; gold = 55295 }
             $colorValue = $colorMap[$p.color.ToLower()]
             if ($null -eq $colorValue) { $colorValue = Convert-HexColorToRgbInt([string]$p.color) }
             if ($null -ne $colorValue) { $range.Font.Color = $colorValue }
