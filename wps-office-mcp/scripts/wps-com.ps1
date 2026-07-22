@@ -519,9 +519,12 @@ switch ($Action) {
             $sum = 0
             for ($i = 1; $i -le $cells.Count; $i++) {
                 $v = $cells.Item($i).Value2
-                if ($v -is [number]) { $sum += $v }
+                if ($v -is [double]) { $sum += $v }
             }
             $result = $sum
+        }
+        if ($p.targetCell) {
+            $sheet.Range($p.targetCell).Value2 = $result
         }
         Output-Json @{ success = $true; data = @{ range = $p.range; targetCell = $p.targetCell; result = $result } }
     }
@@ -2020,7 +2023,7 @@ switch ($Action) {
         if ($null -eq $word) { Output-Json @{ success = $false; error = "WPS Word not running" }; exit }
         $doc = $word.ActiveDocument
         if ($null -eq $doc) { Output-Json @{ success = $false; error = "No active document" }; exit }
-        $colorMap = @{ red = 255; blue = 16711680; green = 65280; black = 0 }
+        $colorMap = @{ red = 255; blue = 16711680; green = 65280; yellow = 65535; cyan = 16776960; magenta = 16711935; white = 16777215; black = 0; gray = 8421504; grey = 8421504; orange = 42495; purple = 8388736; pink = 13353215; brown = 2763429; navy = 8388608; teal = 8421376; maroon = 128; lime = 65280; silver = 12632256; gold = 55295 }
         $colorValue = $colorMap[$p.color.ToLower()]
         if ($null -eq $colorValue) { $colorValue = Convert-HexColorToRgbInt([string]$p.color) }
         if ($null -ne $colorValue) {
@@ -3287,7 +3290,7 @@ switch ($Action) {
             $slide.Shapes.Item(1)
         }
         if ($p.fillColor) {
-            $shape.Fill.ForeColor.RGB = [System.Drawing.ColorTranslator]::FromHtml($p.fillColor).ToArgb()
+            $shape.Fill.ForeColor.RGB = Convert-HexColorToRgbInt([string]$p.fillColor)
         }
         Output-Json @{ success = $true; data = @{ shapeName = $shape.Name } }
     }
@@ -3307,7 +3310,7 @@ switch ($Action) {
             $slide.Shapes.Item(1)
         }
         if ($p.color) {
-            $shape.TextFrame.TextRange.Font.Color.RGB = [System.Drawing.ColorTranslator]::FromHtml($p.color).ToArgb()
+            $shape.TextFrame.TextRange.Font.Color.RGB = Convert-HexColorToRgbInt([string]$p.color)
         }
         Output-Json @{ success = $true; data = @{ shapeName = $shape.Name } }
     }
