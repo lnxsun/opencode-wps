@@ -678,7 +678,7 @@ export const setTextColorHandler: ToolHandler = async (
   }
   try {
     const response = await wpsClient.executeMethod<{ success: boolean; message: string }>(
-      'setFont',
+      'setTextColor',
       { color },
       WpsAppType.WRITER
     );

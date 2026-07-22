@@ -489,6 +489,28 @@ switch ($Action) {
         Output-Json @{ success = $true; data = @{ cell = $p.cell; formula = $formula; currentValue = $value; errorType = $errorType; diagnosis = $diagnosis; suggestion = $suggestion; precedents = $precedents } }
     }
 
+    "evaluateFormula" {
+        $excel = Get-WpsExcel
+        if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; exit }
+        $wb = $excel.ActiveWorkbook
+        if ($null -eq $wb) { Output-Json @{ success = $false; error = "No active workbook" }; exit }
+        $result = $null
+        try {
+            $result = $excel.Evaluate($p.formula)
+            Output-Json @{ success = $true; data = @{ result = $result } }
+        } catch {
+            Output-Json @{ success = $false; error = "Formula evaluation failed: $_" }
+        }
+    }
+
+    "setZoom" {
+        $excel = Get-WpsExcel
+        if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; exit }
+        if ($p.percent -lt 10 -or $p.percent -gt 400) { Output-Json @{ success = $false; error = "缩放比例必须在10-400之间" }; exit }
+        $excel.ActiveWindow.Zoom = $p.percent
+        Output-Json @{ success = $true; data = @{ percent = $p.percent } }
+    }
+
     "cleanData" {
         $excel = Get-WpsExcel
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; exit }
@@ -1962,12 +1984,28 @@ switch ($Action) {
         if ($null -ne $p.italic) { $range.Font.Italic = $p.italic }
         if ($null -ne $p.underline) { $range.Font.Underline = $p.underline }
         if ($p.color) {
-            $colorMap = @{ red = 255; blue = 16711680; green = 65280; black = 0 }
+        $colorMap = @{ red = 255; blue = 16711680; green = 65280; yellow = 65535; cyan = 16776960; magenta = 16711935; white = 16777215; black = 0; gray = 8421504; grey = 8421504; orange = 42495; purple = 8388736; pink = 13353215; brown = 2763429; navy = 8388608; teal = 8421376; maroon = 128; lime = 65280; silver = 12632256; gold = 55295 }
             $colorValue = $colorMap[$p.color.ToLower()]
             if ($null -eq $colorValue) { $colorValue = Convert-HexColorToRgbInt([string]$p.color) }
             if ($null -ne $colorValue) { $range.Font.Color = $colorValue }
         }
         Output-Json @{ success = $true; data = @{ settings = @{ fontName = $p.fontName; fontSize = $p.fontSize; bold = $p.bold; italic = $p.italic; underline = $p.underline; color = $p.color } } }
+    }
+
+    "setTextColor" {
+        $word = Get-WpsWord
+        if ($null -eq $word) { Output-Json @{ success = $false; error = "WPS Word not running" }; exit }
+        $doc = $word.ActiveDocument
+        if ($null -eq $doc) { Output-Json @{ success = $false; error = "No active document" }; exit }
+        $colorMap = @{ red = 255; blue = 16711680; green = 65280; black = 0 }
+        $colorValue = $colorMap[$p.color.ToLower()]
+        if ($null -eq $colorValue) { $colorValue = Convert-HexColorToRgbInt([string]$p.color) }
+        if ($null -ne $colorValue) {
+            $word.Selection.Range.Font.Color = $colorValue
+            Output-Json @{ success = $true; data = @{ color = $p.color } }
+        } else {
+            Output-Json @{ success = $false; error = "Invalid color value: $($p.color)" }
+        }
     }
 
     "findReplace" {

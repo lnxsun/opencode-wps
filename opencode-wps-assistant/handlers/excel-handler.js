@@ -1195,3 +1195,38 @@ registerHandler('setZoom', function(params) {
         return fail('设置缩放失败: ' + e.message);
     }
 });
+
+registerHandler('diagnoseFormula', function(params) {
+    try {
+        var wb = Application.ActiveWorkbook;
+        if (!wb) return fail('没有打开的工作簿');
+        var sheet = Application.ActiveSheet;
+        var cell = sheet.Range(params.cell);
+        var value = cell.Value;
+        var formula = cell.Formula;
+        var errorType = null, diagnosis = '', suggestion = '';
+        var precedents = [];
+        if (typeof value === 'string' && value.charAt(0) === '#') {
+            errorType = value;
+            if (value === '#REF!') { diagnosis = '引用了不存在的单元格或区域'; suggestion = '检查引用区域是否被删除或移动'; }
+            else if (value === '#N/A') { diagnosis = '查找函数未找到匹配值'; suggestion = '确认查找值存在，或检查匹配条件'; }
+            else if (value === '#VALUE!') { diagnosis = '参数类型不正确或运算类型不匹配'; suggestion = '检查函数参数类型和引用单元格'; }
+            else if (value === '#NAME?') { diagnosis = '函数名或名称拼写错误'; suggestion = '检查函数名是否正确'; }
+            else if (value === '#DIV/0!') { diagnosis = '除数为零'; suggestion = '检查除数单元格，避免除以零'; }
+            else if (value === '#NUM!') { diagnosis = '数值无效或超出范围'; suggestion = '检查函数参数范围'; }
+            else if (value === '#NULL!') { diagnosis = '交集为空'; suggestion = '检查引用区域的交集是否存在'; }
+            else { diagnosis = '未知错误'; suggestion = '检查公式与引用'; }
+        }
+        try {
+            var refs = cell.DirectPrecedents;
+            if (refs) {
+                for (var i = 1; i <= refs.Areas.Count; i++) {
+                    precedents.push(refs.Areas.Item(i).Address());
+                }
+            }
+        } catch (e) {}
+        return ok({ cell: params.cell, formula: formula, currentValue: value, errorType: errorType, diagnosis: diagnosis, suggestion: suggestion, precedents: precedents });
+    } catch (e) {
+        return fail('诊断公式失败: ' + e.message);
+    }
+});

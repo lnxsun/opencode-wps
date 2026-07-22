@@ -351,6 +351,47 @@ registerHandler('setParagraph', function(params) {
     }
 });
 
+function toBgr(rgb) {
+    return ((rgb & 0xFF) << 16) | (rgb & 0xFF00) | ((rgb >> 16) & 0xFF);
+}
+
+var COLOR_NAMES = {
+    red: toBgr(0xFF0000), green: toBgr(0x00FF00), blue: toBgr(0x0000FF), yellow: toBgr(0xFFFF00),
+    cyan: toBgr(0x00FFFF), magenta: toBgr(0xFF00FF), white: toBgr(0xFFFFFF), black: toBgr(0x000000),
+    gray: toBgr(0x808080), grey: toBgr(0x808080), orange: toBgr(0xFFA500), purple: toBgr(0x800080),
+    pink: toBgr(0xFFC0CB), brown: toBgr(0xA52A2A), navy: toBgr(0x000080), teal: toBgr(0x008080),
+    maroon: toBgr(0x800000), lime: toBgr(0x00FF00), silver: toBgr(0xC0C0C0), gold: toBgr(0xFFD700)
+};
+
+registerHandler('setTextColor', function(params) {
+    try {
+        var doc = Application.ActiveDocument;
+        if (!doc) return fail('没有打开的文档');
+        var range = Application.Selection.Range;
+        var color;
+        if (typeof params.color === 'string') {
+            var lower = params.color.toLowerCase();
+            if (COLOR_NAMES[lower] !== undefined) {
+                color = COLOR_NAMES[lower];
+            } else if (params.color.indexOf('#') === 0) {
+                var hex = parseInt(params.color.substring(1), 16);
+                if (isNaN(hex)) return fail('无效的颜色值: ' + params.color);
+                color = toBgr(hex);
+            } else {
+                var hex = parseInt(params.color, 16);
+                if (isNaN(hex)) return fail('无效的颜色值: ' + params.color + '，支持的格式: #FF0000, FF0000, red, blue 等');
+                color = toBgr(hex);
+            }
+        } else {
+            color = params.color;
+        }
+        range.Font.Color = color;
+        return ok({});
+    } catch (e) {
+        return fail('设置文字颜色失败: ' + e.message);
+    }
+});
+
 registerHandler('insertSectionBreak', function(params) {
     try {
         var doc = Application.ActiveDocument;
@@ -362,5 +403,27 @@ registerHandler('insertSectionBreak', function(params) {
         return ok({});
     } catch (e) {
         return fail('插入分节符失败: ' + e.message);
+    }
+});
+
+registerHandler('setLineSpacing', function(params) {
+    try {
+        var doc = Application.ActiveDocument;
+        if (!doc) return fail('没有打开的文档');
+        var lineSpacing = params.lineSpacing;
+        if (lineSpacing === undefined || lineSpacing <= 0) return fail('行距值必须为正数');
+        var range;
+        if (params.paragraphIndex !== undefined) {
+            var paraIdx = parseInt(params.paragraphIndex);
+            if (isNaN(paraIdx) || paraIdx < 0 || paraIdx >= doc.Paragraphs.Count) return fail('段落索引超出范围');
+            range = doc.Paragraphs.Item(paraIdx + 1).Range;
+        } else {
+            range = Application.Selection.Range;
+        }
+        range.ParagraphFormat.LineSpacingRule = 5;
+        range.ParagraphFormat.LineSpacing = lineSpacing;
+        return ok({});
+    } catch (e) {
+        return fail('设置行距失败: ' + e.message);
     }
 });

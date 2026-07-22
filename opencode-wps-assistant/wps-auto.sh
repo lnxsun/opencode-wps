@@ -47,7 +47,9 @@ p.save('${file_path}.pptx')
 
 close_all() {
     echo "[WPS-Auto] 关闭所有 WPS 应用..."
-    pkill -f "wpsoffice" 2>/dev/null
+    for name in "wpsoffice" "WPS" "com.kingsoft.wpsoffice.mac" "WPS Office"; do
+        pkill -f "$name" 2>/dev/null || true
+    done
     sleep 2
 }
 

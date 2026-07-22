@@ -1289,6 +1289,17 @@ registerHandler('setImageStyle', function(params) {
     }
 });
 
+function findShape(slide, nameOrIndex) {
+    if (typeof nameOrIndex === 'number') {
+        try { return slide.Shapes.Item(nameOrIndex); } catch (e) { return null; }
+    }
+    if (nameOrIndex == null) return slide.Shapes.Count > 0 ? slide.Shapes.Item(1) : null;
+    for (var j = 1; j <= slide.Shapes.Count; j++) {
+        if (slide.Shapes.Item(j).Name === nameOrIndex) return slide.Shapes.Item(j);
+    }
+    return null;
+}
+
 registerHandler('setBackgroundColor', function(params) {
     try {
         var pres = getPPT();
@@ -1296,7 +1307,7 @@ registerHandler('setBackgroundColor', function(params) {
         var idx = params.slideIndex || 1;
         var slide = pres.Slides.Item(idx);
         slide.FollowMasterBackground = 0;
-        slide.Background.Fill.ForeColor.RGB = params.color || 0xFFFFFF;
+        slide.Background.Fill.ForeColor.RGB = params.color !== undefined ? params.color : 0xFFFFFF;
         slide.Background.Fill.Visible = 1;
         return ok({});
     } catch (e) {
@@ -1396,17 +1407,20 @@ registerHandler('setShapeRoundness', function(params) {
     }
 });
 
+function toBgr(rgb) {
+    return ((rgb & 0xFF) << 16) | (rgb & 0xFF00) | ((rgb >> 16) & 0xFF);
+}
+
 registerHandler('setFontColor', function(params) {
     try {
         var pres = Application.ActivePresentation;
         if (!pres) return fail('没有打开的演示文稿');
         var slideIndex = params.slideIndex || 1;
         var slide = pres.Slides.Item(slideIndex);
-        var shapeName = params.shapeName || '';
-        var shape = findShape(slide, shapeName);
+        var shape = findShape(slide, params.shapeIndex !== undefined ? params.shapeIndex : params.shapeName);
         if (!shape) return fail('未找到形状');
         var textRange = shape.TextFrame.TextRange;
-        var color = typeof params.color === 'number' ? params.color : parseInt(params.color, 16);
+        var color = typeof params.color === 'number' ? params.color : toBgr(parseInt(('' + params.color).replace(/^#/, ''), 16));
         textRange.Font.Color.RGB = color;
         if (params.size) textRange.Font.Size = params.size;
         if (params.bold !== undefined) textRange.Font.Bold = params.bold;
@@ -1436,11 +1450,10 @@ registerHandler('setShapeFill', function(params) {
         if (!pres) return fail('没有打开的演示文稿');
         var slideIndex = params.slideIndex || 1;
         var slide = pres.Slides.Item(slideIndex);
-        var shapeName = params.shapeName || '';
-        var shape = findShape(slide, shapeName);
+        var shape = findShape(slide, params.shapeIndex !== undefined ? params.shapeIndex : params.shapeName);
         if (!shape) return fail('未找到形状');
         if (params.fillColor !== undefined) {
-            var color = typeof params.fillColor === 'number' ? params.fillColor : parseInt(params.fillColor, 16);
+            var color = typeof params.fillColor === 'number' ? params.fillColor : toBgr(parseInt(('' + params.fillColor).replace(/^#/, ''), 16));
             shape.Fill.ForeColor.RGB = color;
         }
         if (params.transparency !== undefined) shape.Fill.Transparency = params.transparency;

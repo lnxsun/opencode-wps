@@ -152,7 +152,7 @@ const VERIFIED_TOOLS = new Set([
   // === Word ===
   'getActiveDocument', 'getDocumentText', 'getDocumentTextByRange', 'getSelectedText', 'setSelectedText', 'save',
   'saveAs', 'openFile', 'openDocument', 'createDocument', 'closeDocument',
-  'setFont', 'setParagraph', 'applyStyle', 'generateTOC',
+  'setFont', 'setTextColor', 'setParagraph', 'applyStyle', 'generateTOC',
   'insertBookmark', 'getBookmarks', 'replaceBookmarkContent',
   'findInDocument', 'findReplace',
   'getDocumentParagraphs', 'getDocumentStats',
@@ -164,7 +164,7 @@ const VERIFIED_TOOLS = new Set([
   'enableTrackChanges', 'getTrackChangesStatus', 'replaceRange', 'replaceInParagraph', 'proofreadBasic', 'confirmBatchAiProofread',
   // === Excel ===
   'getActiveWorkbook', 'getCellValue', 'setCellValue', 'getRangeData', 'setRangeData',
-  'setFormula', 'getFormula', 'setArrayFormula', 'diagnoseFormula',
+  'setFormula', 'getFormula', 'setArrayFormula', 'diagnoseFormula', 'evaluateFormula',
   'createSheet', 'deleteSheet', 'renameSheet', 'copySheet', 'getSheetList', 'switchSheet', 'moveSheet',
   'createPivotTable', 'updatePivotTable',
   'createChart', 'updateChart', 'createDonutChart', 'createFlowChart', 'createGauge', 'createGrid', 'createKpiCards', 'createMiniCharts',
@@ -182,7 +182,7 @@ const VERIFIED_TOOLS = new Set([
   'protectSheet', 'unprotectSheet', 'protectWorkbook',
   'insertExcelImage', 'lockCells', 'openWorkbook', 'getOpenWorkbooks', 'createWorkbook',
   'cleanData', 'removeDuplicates', 'sortRange', 'autoFilter', 'getCellInfo',
-  'refreshLinks', 'consolidate', 'calculateSheet', 'getExcelContext', 'generateFormula',
+  'refreshLinks', 'consolidate', 'calculateSheet', 'getExcelContext', 'generateFormula', 'setZoom',
   'remove_duplicates', 'unify_date', 'closeWorkbook',
   // === PPT ===
   'getActivePresentation', 'createPresentation', 'openPresentation', 'closePresentation',
@@ -231,6 +231,7 @@ const COM_ACTIONS: ToolIndexItem[] = [
   { name: 'closeDocument', description: '关闭当前文档', keywords: ['关闭'], category: 'word', appType: WpsAppType.WRITER, paramsSchema: {} },
   { name: 'openDocument', description: '打开文档', keywords: ['打开'], category: 'word', appType: WpsAppType.WRITER, paramsSchema: { filePath: { type: 'string', description: '文件路径', required: true } } },
   { name: 'setFont', description: '设置字体格式', keywords: ['字体', '格式'], category: 'word', appType: WpsAppType.WRITER, paramsSchema: { fontName: { type: 'string', description: '字体名称', required: false }, fontSize: { type: 'number', description: '字号', required: false }, bold: { type: 'boolean', description: '加粗', required: false }, italic: { type: 'boolean', description: '斜体', required: false } } },
+  { name: 'setTextColor', description: '设置文字颜色', keywords: ['颜色', '文字', '字体颜色'], category: 'word', appType: WpsAppType.WRITER, paramsSchema: { color: { type: 'string', description: '颜色值', required: true } } },
   { name: 'setParagraph', description: '设置段落格式', keywords: ['段落', '对齐'], category: 'word', appType: WpsAppType.WRITER, paramsSchema: { alignment: { type: 'string', description: '对齐方式', required: false } } },
   { name: 'applyStyle', description: '应用文档样式', keywords: ['样式'], category: 'word', appType: WpsAppType.WRITER, paramsSchema: { styleName: { type: 'string', description: '样式名称', required: true } } },
   { name: 'generateTOC', description: '生成目录', keywords: ['目录'], category: 'word', appType: WpsAppType.WRITER, paramsSchema: {} },
@@ -309,6 +310,7 @@ const COM_ACTIONS: ToolIndexItem[] = [
   { name: 'autoFitAll', description: '自动调整所有行列', keywords: ['自动'], category: 'excel', appType: WpsAppType.SPREADSHEET, paramsSchema: {} },
   { name: 'setNumberFormat', description: '设置数字格式', keywords: ['数字'], category: 'excel', appType: WpsAppType.SPREADSHEET, paramsSchema: { range: { type: 'string', description: '区域', required: true }, format: { type: 'string', description: '格式', required: true } } },
   { name: 'wrapText', description: '自动换行', keywords: ['换行'], category: 'excel', appType: WpsAppType.SPREADSHEET, paramsSchema: { range: { type: 'string', description: '区域', required: true } } },
+  { name: 'setZoom', description: '设置工作表缩放比例', keywords: ['缩放', '比例'], category: 'excel', appType: WpsAppType.SPREADSHEET, paramsSchema: { percent: { type: 'number', description: '缩放比例（10-400）', required: true } } },
   { name: 'setPrintArea', description: '设置打印区域', keywords: ['打印'], category: 'excel', appType: WpsAppType.SPREADSHEET, paramsSchema: { range: { type: 'string', description: '区域', required: true } } },
   { name: 'getSelection', description: '获取选区', keywords: ['选区'], category: 'excel', appType: WpsAppType.SPREADSHEET, paramsSchema: {} },
   { name: 'clearRange', description: '清除区域内容', keywords: ['清除'], category: 'excel', appType: WpsAppType.SPREADSHEET, paramsSchema: { range: { type: 'string', description: '区域', required: true } } },
