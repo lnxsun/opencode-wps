@@ -1630,9 +1630,9 @@ export const setShapeFillDefinition: ToolDefinition = {
     properties: {
       slideIndex: { type: 'number', description: '幻灯片索引（从1开始）' },
       shapeIndex: { type: 'number', description: '形状索引（从1开始）' },
-      color: { type: 'string', description: '填充颜色，十六进制如 #FF0000' },
+      fillColor: { type: 'string', description: '填充颜色，十六进制如 #FF0000' },
     },
-    required: ['slideIndex', 'shapeIndex', 'color'],
+    required: ['slideIndex', 'shapeIndex', 'fillColor'],
   },
 };
 
