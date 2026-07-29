@@ -459,7 +459,7 @@ OpenCode 服务通过 Launcher 进程管理（监听 `127.0.0.1:14097`），无�
 
 <img src="docs/assets/wechat-group.png" alt="OpenCode-WPS 微信交流群" width="300">
 
-> 二维码有效期至 7/23，加入后会更新。如二维码过期，请提交 [Issue](https://github.com/lnxsun/opencode-wps/issues) 联系维护者。
+> 二维码有效期至 8/5，加入后会更新。如二维码过期，请提交 [Issue](https://github.com/lnxsun/opencode-wps/issues) 联系维护者。
 
 ## 致谢
 
