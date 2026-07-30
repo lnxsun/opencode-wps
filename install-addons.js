@@ -353,11 +353,6 @@ if (fsEx.existsSync(mcpEntryPath)) {
                     var envVal = process.env.AGNES_API_KEY;
                     if (envVal) obj[key] = envVal;
                 }
-                // ___WPS_USER_HOME___ → 用户主目录
-                if (obj[key] === '___WPS_USER_HOME___') {
-                    var userHome = process.env.USERPROFILE || require('os').homedir();
-                    obj[key] = userHome.replace(/\\/g, '\\\\');
-                }
             } else if (typeof obj[key] === 'object' && obj[key] !== null) {
                 replacePlaceholders(obj[key]);
             }

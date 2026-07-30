@@ -178,9 +178,6 @@ if (fsEx.existsSync(mcpEntryPath)) {
                     var envVal = process.env.AGNES_API_KEY;
                     if (envVal) obj[key] = envVal;
                 }
-                if (obj[key] === '___WPS_USER_HOME___') {
-                    obj[key] = homeDir;
-                }
             } else if (typeof obj[key] === 'object' && obj[key] !== null) {
                 replacePlaceholders(obj[key]);
             }
