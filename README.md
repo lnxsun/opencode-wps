@@ -15,14 +15,13 @@ OpenCode WPS 将 OpenCode AI 的能力集成到 WPS Office 中，通过侧边栏
 
 - **WPS 内嵌 AI 对话** — 侧边栏 Chat UI，支持 SSE 流式输出、Markdown 渲染
 - **多会话管理** — 创建、重命名、切换、删除对话会话
-- **MCP 工具集成** — 通过 WPS Office MCP 服务器，AI 可以直接操作文档（读/写/格式化），492 个工具覆盖三大应用
+- **MCP 工具集成** — 通过 WPS Office MCP 服务器，AI 可以直接操作文档（读/写/格式化），490 个工具覆盖三大应用
 - **WPS 专用 Agents** — 自定义 wps-expert/wps-word/wps-excel/wps-ppt agents，通过 Agent 选择实现功能聚焦
-- **执行治理插件** — `.opencode/plugins/governance.js` 使用 7 条通用规则（G1-G7）+ 16 条校对规则（P1-P16）+ 11 条模板填写规则（T1-T11），运行时拦截所有 MCP 调用
+- **执行治理** — `.opencode/plugins/governance.js` 使用 7 条通用规则（G1-G7）+ 16 条校对规则（P1-P16）+ 11 条模板填写规则（T1-T11），运行时拦截所有 MCP 调用（强制逐批校对、禁止 AI 编造问题、交叉校验修复内容）
 - **Agent 选择** — 底部工具栏支持切换不同 agent，消息自动传递 agent 参数
 - **一键安装** — 运行 `node install-addons.js` 自动完成全部组件安装（8 步）
 - **开机自启** — 通过 Launcher 进程自动管理 OpenCode 服务（监听 14097 端口），用户登录时自动启动
-- **执行治理** — governance.js 使用 P1-P16 规则强制 AI 遵守工具调用规范（严格逐批校对、禁止 AI 编造问题、交叉校验修复内容）
-- **完整技术文档** — `docs/` 目录包含开发指南、API 参考、问题排查等 10+ 份文档
+- **完整技术文档** — `docs/` 目录包含开发指南、API 参考、问题排查等 14 份文档
 
 ## 项目组成（4 层架构）
 
@@ -30,40 +29,70 @@ OpenCode WPS 将 OpenCode AI 的能力集成到 WPS Office 中，通过侧边栏
 opencode-wps/
 ├── docs/                      # 技术文档
 │   ├── README.md              # 文档索引
-│   ├── DEVELOPMENT_GUIDE.md  # 开发指南
-│   ├── TROUBLESHOOTING.md    # 问题排查
-│   ├── OPENCODE_API.md       # OpenCode API 文档
-│   ├── WPS_COM_API.md        # WPS COM API 参考
-│   ├── WPS_COM_PS1.md        # wps-com.ps1 实现原理
-│   ├── MCP.md                # MCP 协议说明
-│   ├── POWERSHELL_COM.md     # PowerShell COM 调用
-│   ├── SKILLS.md             # Skills 开发指南
-│   ├── INSTALL_SCRIPT.md     # 安装脚本说明
-│   └── WPSJS_DEVELOPMENT.md  # WPS JS 开发指南
-├──
+│   ├── CODE_REVIEW_GUIDE.md   # 代码评审指南
+│   ├── DEVELOPMENT_GUIDE.md   # 开发指南
+│   ├── I18N_PLAN.md           # 国际化方案
+│   ├── INSTALL_SCRIPT.md      # 安装脚本说明
+│   ├── MCP.md                 # MCP 协议说明
+│   ├── OPENCODE_API.md        # OpenCode API 文档
+│   ├── POWERSHELL_COM.md      # PowerShell COM 调用
+│   ├── SECURITY.md            # 安全策略
+│   ├── SKILLS.md              # Skills 开发指南
+│   ├── TROUBLESHOOTING.md     # 问题排查
+│   ├── WPSJS_DEVELOPMENT.md   # WPS JS 开发指南
+│   ├── WPS_COM_API.md         # WPS COM API 参考
+│   ├── WPS_COM_PS1.md         # wps-com.ps1 实现原理
+│   ├── assets/                # 文档资源（图片等）
+│   └── superpowers/           # 超能力扩展
 ├── opencode-wps/              # 第 1 层（Win）：WPS JS 插件（前台 Chat 窗口 + 后台 Launcher）
 │   ├── main.js                # Ribbon 回调、状态管理、OpenCode 连接
 │   ├── taskpane.html          # Chat UI（SSE 流式对话、Markdown 渲染、会话管理、Agent 选择）
 │   ├── launcher.js            # Launcher 进程（Windows 版）
+│   ├── opencode-proxy.js      # CORS 代理（端口 14098，剥离 CSP 头）
 │   ├── config.js              # 全局配置中心
+│   ├── DESIGN.md              # 设计文档
+│   ├── serve.js               # 静态开发服务器
 │   ├── ribbon.xml             # 功能区按钮定义
-│   └── manifest.xml           # 加载项清单
+│   ├── manifest.xml           # 加载项清单
+│   ├── index.html             # 入口页
+│   ├── package.json           # 插件依赖
+│   ├── wpsjs.config.js        # wpsjs 开发配置
+│   ├── _sse_test.js           # SSE 测试脚本
+│   └── browsertest.html       # 浏览器测试页
 ├── opencode-wps-assistant/    # 第 1 层（Mac）：WPS JS 插件（反向轮询客户端）
 │   ├── main.js                # 轮询循环 + 命令分发
 │   ├── handlers/              # Word/Excel/PPT 操作处理器（~300 个动作）
+│   ├── utils/                 # 工具函数
+│   │   └── response.js        # 响应格式化
 │   ├── index.html             # Chat 入口页
 │   ├── ribbon.xml             # 功能区按钮定义
-│   └── manifest.xml           # 加载项清单
+│   ├── manifest.xml           # 加载项清单
+│   ├── package.json           # 插件依赖
+│   └── wps-auto.sh            # Mac 自动安装脚本
+├── tests/                     # 测试文件
+│   ├── e2e.test.js            # 端到端测试
+│   ├── launcher.test.js       # Launcher 测试
+│   ├── security.test.js       # 安全测试
+│   └── utils.test.js          # 工具函数测试
+├── .github/workflows/         # CI/CD 工作流
+│   ├── ci.yml                 # CI 主流程
+│   └── opencode.yml           # OpenCode 专用流程
 ├── agents/                    # 第 2 层：Agents（跨平台通用）
 ├── skills/                    # 第 3 层：Skills（跨平台通用）
 ├── .opencode/                 # 项目级配置（跨平台通用）
 ├── wps-office-mcp/            # 第 4 层：MCP 服务器（Win→COM 桥接 / Mac→HTTP 轮询）
 │   ├── src/
 │   │   ├── client/
-│   │   │   ├── wps-client.ts  # 跨平台路由：Win→PowerShell COM, Mac→HTTP poll
-│   │   │   └── mac-poll-server.ts  # Mac HTTP 轮询服务器（:58891）
-│   │   └── tools/             # 11 个 darwin 守卫已移除，全部跨平台
-│   └── scripts/               # Windows COM 脚本（仅 Windows 使用）
+│   │   │   ├── wps-client.ts      # 跨平台路由：Win→PowerShell COM, Mac→HTTP poll
+│   │   │   ├── mac-poll-server.ts # Mac HTTP 轮询服务器（:58891）
+│   │   │   ├── wps-keepalive.ts   # 连接保活
+│   │   │   └── README.md          # client 说明
+│   │   └── tools/                 # 11 个 darwin 守卫已移除，全部跨平台
+│   └── scripts/                   # Windows COM 脚本（仅 Windows 使用）
+├── AGENTS.md                  # AI 助手行为指引
+├── CHANGELOG.md               # 更新日志
+├── CODE_OF_CONDUCT.md         # 行为准则
+├── CONTRIBUTING.md            # 贡献指南
 ├── install-addons.js          # Windows 一键安装脚本
 ├── install-addons-mac.js      # macOS 安装脚本（launchd plist + 插件部署）
 ├── launcher-mac.js            # macOS Launcher 进程（lsof/kill/ps/open）
@@ -116,7 +145,7 @@ MCP 服务器采用三层工具体系，AI 通过不同的方式发现和调用�
 |--------|------|--------|
 | `CONFIG.opencode.apiBase` | OpenCode 服务地址 | `http://127.0.0.1:14096` |
 | `CONFIG.launcher.apiBase` | Launcher 管理地址 | `http://127.0.0.1:14097` |
-| `CONFIG.plugin.userHome` | 用户主目录（安装时注入） | `___WPS_USER_HOME___` |
+| `CONFIG.plugin.userHome` | 用户主目录（安装时注入） | `__OPCODE_WPS_USER_HOME__` |
 | `CONFIG.network.timeout` | HTTP 请求超时 | `30000ms` |
 | `CONFIG.session.defaultAgent` | 默认 agent | `wps-expert` |
 
@@ -210,11 +239,6 @@ before 钩子拦截违规 → 工具执行 → after 钩子更新状态 → befo
 
 ---
 
-### 组件说明
-
-| 组件 | 说明 |
-|------|------|
-
 本项目经历了以下演进过程：
 
 1. **wpsjs 起步** — 按 WPS 官方的 JS 加载项文档实在开发不出来，最后从 [wpsjs](https://github.com/laihaojie/wpsjs) 项目起步，才成功开发出 WPS 插件
@@ -264,12 +288,12 @@ node install-addons.js
 | 步骤 | 操作 | 说明 |
 |------|------|------|
 | 1 | 安装 WPS 插件 | 复制 opencode-wps 到 `%APPDATA%\kingsoft\wps\jsaddons\`，注册到 publish.xml/jsplugins.xml |
-| 2 | 安装 MCP 依赖 | 在 wps-office-mcp 目录执行 `npm install` |
-| 3 | 编译 MCP 服务器 | 在 wps-office-mcp 目录执行 `npm run build` |
-| 4 | 配置 OpenCode MCP | 修改 `~/.config/opencode/opencode.json`，添加 wps-office MCP 服务器 |
-| 5 | 安装 Skills | 复制 5 个技能到 `~/.opencode/skills/` |
-| 6 | 安装 Agents | 复制自定义 agents 到 `~/.config/opencode/agents/` 和 `~/.opencode/agents/` |
-| 7 | 安装 Plugins | 复制治理插件到 `~/.config/opencode/plugins/` |
+| 2 | 安装并编译 MCP 服务器 | 在 wps-office-mcp 目录执行 `npm install` + `npm run build` |
+| 3 | 配置 OpenCode MCP | 修改 `~/.config/opencode/opencode.json`，添加 wps-office MCP 服务器 |
+| 4 | 安装 Skills | 复制 5 个技能到 `~/.opencode/skills/` |
+| 5 | 安装 Agents | 复制自定义 agents 到 `~/.config/opencode/agents/` 和 `~/.opencode/agents/` |
+| 6 | 安装 Plugins | 复制治理插件到 `~/.config/opencode/plugins/` |
+| 7 | 清理旧配置 | 移除旧版 legacy 配置文件残留 |
 | 8 | 注册 Launcher | 注册 Windows 计划任务实现开机自启，监听 14097 端口管理服务 |
 
 #### 4. 重启 WPS Office
@@ -303,15 +327,17 @@ cd wps-office-mcp && npm install && npm run build && cd ..
 node install-addons-mac.js
 ```
 
-安装脚本会自动完成以下步骤：
+安装脚本会自动完成以下 7 个步骤：
 
 | 步骤 | 操作 | 说明 |
 |------|------|------|
 | 1 | 安装 WPS 插件 | 复制 `opencode-wps-assistant/` 到 `~/Library/Containers/com.kingsoft.wpsformac/Data/Documents/jsaddons/` |
-| 2 | 安装 Skills | 复制 5 个技能到 `~/.opencode/skills/` |
-| 3 | 安装 Agents | 复制 agents 到 `~/.config/opencode/agents/` 和 `~/.opencode/agents/` |
-| 4 | 安装 Plugins | 复制治理插件到 `~/.config/opencode/plugins/` |
-| 5 | 注册 LaunchAgent | 创建 `~/Library/LaunchAgents/com.opencode.launcher.plist` 实现开机自启 |
+| 2 | 安装并编译 MCP 服务器 | 在 wps-office-mcp 目录执行 `npm install` + `npm run build` |
+| 3 | 配置 OpenCode MCP | 修改 `~/.config/opencode/opencode.json`，添加 wps-office MCP 服务器 |
+| 4 | 安装 Skills | 复制 5 个技能到 `~/.opencode/skills/` |
+| 5 | 安装 Agents | 复制 agents 到 `~/.config/opencode/agents/` 和 `~/.opencode/agents/` |
+| 6 | 安装 Plugins | 复制治理插件到 `~/.config/opencode/plugins/` |
+| 7 | 注册 LaunchAgent | 创建 `~/Library/LaunchAgents/com.opencode.launcher.plist` 实现开机自启 |
 
 #### 4. 启动服务
 
