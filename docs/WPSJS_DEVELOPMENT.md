@@ -374,7 +374,7 @@ install-addons.js 会自动完成：
 
 ### 浏览器版本限制
 
-WPS Office 内置的 Chromium 版本为 **Chrome 104**（2022年），这意味着：
+WPS Office 内置的 Chromium 版本停留在 **Chrome 104**（2022年），这意味着：
 
 | 特性 | 支持情况 |
 |------|----------|
@@ -412,7 +412,7 @@ async function fetchJSON() { }
 
 ### 原因说明
 
-- WPS 内置浏览器内核为 Chrome 104，新语法可能导致解析错误
+- WPS 内置浏览器内核较旧（Chrome 104），新语法可能导致解析错误
 - callback 模式比 async/await 在旧浏览器中更可靠
 - XMLHttpRequest 在 WPS 环境中经过验证，兼容性更好
 - `fetch()` 在 WPS 104 中的 Promise 会永远 pending（不 resolve 也不 reject），不能使用
@@ -430,7 +430,7 @@ async function fetchJSON() { }
 
 ### 已知不兼容库（2026-06 验证）
 
-以下库/协议在 WPS Chromium 103/104 环境中已验证不可用：
+以下库/协议在 WPS Chromium 104 环境中已验证不可用：
 
 | 库/协议 | 失败原因 | 现象 |
 |---------|---------|------|

@@ -433,7 +433,7 @@ opencode-wps/
   package.json        项目元信息
   wpsjs.config.js     端口等基础配置
 
-> 注：项目早期命名为 `test-wps-addon/`，现已更名为 `opencode-wps/`。第292行 XML 注册名 `<jspluginonline name="test-wps-addon"` 是 WPS 加载项注册名，不可修改。
+> 注：项目早期命名为 `test-wps-addon/`，现已更名为 `opencode-wps/`。第292行 `<jspluginonline name="test-wps-addon"` 是 WPS 加载项注册名，不可修改（修改会导致插件失效）。
 
 %APPDATA%\kingsoft\wps\jsaddons\
   publish.xml         WPS 加载项注册文件
