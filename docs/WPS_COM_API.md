@@ -26,8 +26,12 @@ WPS COM API 按文档类型分为：
 
 ```powershell
 # 创建 WPS 文字 Application 对象
+# 方式一：创建新实例
 $word = New-Object -ComObject "WPS.Application"
 $doc = $word.Documents.Open("C:\test.docx")
+
+# 方式二：获取已运行实例（推荐，本项目的实际使用方式）
+$word = [System.Runtime.InteropServices.Marshal]::GetActiveObject('Kwps.Application')
 
 # 操作完成后关闭
 $doc.Close($false)
@@ -94,6 +98,8 @@ $ppt.Quit()
 ---
 
 ## 常用操作示例
+
+> **架构说明**：以下示例使用 `New-Object -ComObject` 创建新实例，便于独立演示。本项目实际使用 `[System.Runtime.InteropServices.Marshal]::GetActiveObject()` 获取已运行的 WPS 实例（如上方所示），避免重复创建进程。详见 [WPS_COM_PS1.md](./WPS_COM_PS1.md)。
 
 ### 文字 - 读取文档内容
 

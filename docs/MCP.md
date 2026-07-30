@@ -137,7 +137,7 @@ MCP 使用 JSON-RPC 2.0 消息格式：
 
 ### 本项目的 MCP 工具
 
-本项目的 MCP 服务器采用**渐进式加载模式**——启动时只注册 14 个工具，其余工具通过 Gateway 按需发现和执行：
+本项目的 MCP 服务器采用**渐进式加载模式**——启动时只注册 14 个工具（12 个内置工具 + 2 个 Gateway 工具），其余工具通过 Gateway 按需发现和执行：
 
 - **12 个内置工具** — 启动时直接注册（`wps_check_connection`、`wps_get_cell_value` 等）
 - **2 个 Gateway 工具** — `wps_office_search` 搜索、`wps_office_execute` 执行
@@ -179,7 +179,7 @@ import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio';
 
 const transport = new StdioClientTransport({
   command: 'node',
-  args: ['./wps-mcp-server.js']
+  args: ['./dist/index.js']
 });
 
 const client = new Client({

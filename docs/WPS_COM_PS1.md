@@ -324,11 +324,11 @@ async function callWpsMethod(action: string, params: object): Promise<any> {
 
 ## 代码统计
 
-- **总行数**: ~4600 行
+- **总行数**: 5100+ 行
 - **操作数**: 200+ 个
-- **Excel 操作**: ~90 个
-- **Word 操作**: ~29 个
-- **PPT 操作**: ~85 个
+- **Excel 操作**: ~100 个
+- **Word 操作**: ~39 个
+- **PPT 操作**: ~120 个
 
 ---
 

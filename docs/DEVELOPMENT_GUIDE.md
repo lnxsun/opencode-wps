@@ -203,6 +203,7 @@ git commit -m "feat(mcp): 添加 Excel 图表创建工具"
 node tests/security.test.js
 node tests/utils.test.js
 node tests/launcher.test.js
+node tests/e2e.test.js
 
 # 运行路径安全测试
 cd wps-office-mcp && npx jest src/tests/unit/path-safety.test.ts

@@ -378,28 +378,30 @@ WPS Office 内置的 Chromium 版本停留在 **Chrome 103**（2022年），这�
 
 | 特性 | 支持情况 |
 |------|----------|
-| ES6 (let/const, arrow functions) | ✅ 支持 |
-| ES6+ (async/await, class) | ✅ 支持 |
+| ES6 (let/const, arrow functions) | ⚠️ 引擎支持但项目禁止使用 ES6 语法 |
+| ES6+ (async/await, class) | ⚠️ 引擎支持但项目禁止使用 |
 | ES2017+ (dynamic import) | ⚠️ 部分支持 |
 | Modern APIs (fetch, ES Modules) | ⚠️ 有限支持 |
 
+> **注意**：Chrome 103 引擎层面支持 ES6 语法，但项目经实测发现 WPS 各版本存在兼容性差异，统一要求 ES5 语法。详见 [CODE_REVIEW_GUIDE.md §5.4 红线](./CODE_REVIEW_GUIDE.md#54-项目专属红线do-not-touch)。
+
 ### 代码风格要求
 
-为确保最大兼容性，项目采用 **ES5 语法**：
+项目有强制要求：WPS 侧**必须使用 ES5 语法**（见 CODE_REVIEW_GUIDE.md §5.4 红线）：
 
 ```javascript
-// ✅ 推荐：ES5 语法（兼容 WPS 内置浏览器）
+// ✅ 正确：ES5 语法（兼容 WPS 内置浏览器）
 var API_BASE = 'http://127.0.0.1:14096';
 function fetchJSON(method, path, body, onSuccess, onError) { }
 
-// ❌ 避免：箭头函数（在某些旧版本可能有问题）
+// ❌ 禁止：箭头函数（RED LINE — CODE_REVIEW_GUIDE.md §5.4）
 const fetchJSON = (method, path) => { };
 
-// ❌ 避免：async/await（优先使用回调风格）
+// ❌ 禁止：async/await（RED LINE — CODE_REVIEW_GUIDE.md §5.4）
 async function fetchJSON() { }
 ```
 
-### 开发规范
+### 开发规范（强制 RED LINE — CODE_REVIEW_GUIDE.md §5.4）
 
 1. **使用 `var`** 而非 `let/const`
 2. **使用 `function`** 而非箭头函数

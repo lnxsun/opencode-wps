@@ -34,12 +34,10 @@ Skills 是 AI 的"技能包"，告诉 AI：
 ```
 wps-excel/
 ├── SKILL.md          # Skill 定义（必需）
-├── prompts/          # 预定义提示
-│   └── analyze.md
-├── resources/        # 资源模板
-│   └── template.xlsx
-└── README.md         # 使用说明
+├── README.md         # 使用说明（大多数 Skill 有）
 ```
+
+> 注：目前 Skill 目录结构为 `SKILL.md` + `README.md`（部分仅有 `SKILL.md`）。`prompts/` 和 `resources/` 子目录为未来规划，尚未实现。
 
 ---
 
@@ -175,6 +173,7 @@ AI 识别：使用 wps-ppt skill
 
 - OpenCode Skills 文档：https://opencode.ai/docs/skills/
 - 本项目 Skills：`skills/` 目录
+- Skills 维护说明：`skills/README.md`（修改 Skills 前必读）
 
 ---
 

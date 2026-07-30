@@ -293,7 +293,7 @@ if (!ALLOWED.some(p => abs.startsWith(p))) {
 #### 轮换机制
 
 - **周轮值**：每周一 09:00（北京时间）在团队群同步主/次审查
-- **轮值表维护**：写在 [`docs/CODE_REVIEW_GUIDE.md` 的 GitHub 仓库 Wiki 页面](https://github.com/lnxsun/opencode-wps/wiki)（不在仓库内，避免 PR 噪音）
+- **轮值表维护**：写在团队内部文档中（不在仓库内，避免 PR 噪音）
 - **轮换规则**：
   - 同一人不能连续 ≥3 周担任主审查
   - 改自己写的代码时必须由**他人**审查
@@ -373,7 +373,7 @@ Draft ──push──> Open ──> Changes Requested ──> Open ──> Appr
 
 #### ADR 模板
 
-存放在 `docs/adr/0001-<short-title>.md`，文件名递增：
+存放在 `docs/adr/0001-<short-title>.md`（目录按需创建），文件名递增：
 
 ```markdown
 # ADR-0001: <一句话标题>

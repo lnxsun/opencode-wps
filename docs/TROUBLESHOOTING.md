@@ -258,7 +258,7 @@ User-Agent: Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like
 
 3. **兼容写法**
    - 使用 ES5 语法
-   - 避免箭头函数（可选）
+   - 避免箭头函数（强制，见 CODE_REVIEW_GUIDE.md §5.4 红线）
    - 避免 Optional Chaining (`?.`) 和 Nullish Coalescing (`??`)
    - 使用 polyfill 处理 Promise 等
 
@@ -466,7 +466,7 @@ if (result === -1) {
 
 ---
 
-## 七、macOS 特有排查
+## 十二、macOS 特有排查
 
 ### 插件不显示
 ```
