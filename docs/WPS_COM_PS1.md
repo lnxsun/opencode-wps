@@ -328,7 +328,7 @@ async function callWpsMethod(action: string, params: object): Promise<any> {
 - **操作数**: 200+ 个
 - **Excel 操作**: ~100 个
 - **Word 操作**: ~39 个
-- **PPT 操作**: ~120 个
+- **PPT 操作**: ~115 个
 
 ---
 

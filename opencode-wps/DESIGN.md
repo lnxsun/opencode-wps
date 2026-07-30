@@ -66,7 +66,7 @@
 |     serve.js (Node.js 静态文件服务)        |
 |     http://127.0.0.1:3444                |
 |                                          |
-|  服务 test-wps-addon/ 目录下的静态文件      |
+|  服务 opencode-wps/ 目录下的静态文件      |
 |  提供 CORS 头 (Access-Control-Allow-*)    |
 +------------------------------------------+
 ```
@@ -268,7 +268,7 @@ initApp():
 简单的 Node.js HTTP 服务器，无第三方依赖。
 
 - 监听 `127.0.0.1:3444`
-- 服务 `test-wps-addon/` 目录下的所有静态文件
+- 服务 `opencode-wps/` 目录下的所有静态文件
 - 返回 `Access-Control-Allow-Origin: *` 头（允许 WPS 内置浏览器跨域访问）
 - 支持 MIME 类型：`.html`, `.js`, `.xml`, `.css`, `.json`, `.png`, `.jpg`, `.svg`
 - 包含路径遍历安全检查
@@ -379,7 +379,7 @@ WPS 内置浏览器基于 **Chrome 104**，以下特性不可使用：
 
 2. 启动静态文件服务：
    ```bash
-   cd test-wps-addon
+   cd opencode-wps
    node serve.js
    # [Addon Server] Running at http://127.0.0.1:3444/
    ```
@@ -433,7 +433,7 @@ opencode-wps/
   package.json        项目元信息
   wpsjs.config.js     端口等基础配置
 
-> 注：项目早期命名为 `test-wps-addon/`，现已更名为 `opencode-wps/`。本文档中其他位置的 `test-wps-addon/` 均为历史遗留引用。
+> 注：项目早期命名为 `test-wps-addon/`，现已更名为 `opencode-wps/`。第292行 XML 注册名 `<jspluginonline name="test-wps-addon"` 是 WPS 加载项注册名，不可修改。
 
 %APPDATA%\kingsoft\wps\jsaddons\
   publish.xml         WPS 加载项注册文件
