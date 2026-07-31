@@ -200,8 +200,8 @@ function connectOpenCode() {
 }
 
 function OnAddinLoad(ribbonUI) {
-    if (typeof window.Application.ribbonUI != "object") window.Application.ribbonUI = ribbonUI
-    if (typeof window.Application.Enum != "object") window.Application.Enum = WPS_Enum
+    if (typeof window.Application.ribbonUI !== "object") window.Application.ribbonUI = ribbonUI
+    if (typeof window.Application.Enum !== "object") window.Application.Enum = WPS_Enum
     connectOpenCode()
     return true
 }

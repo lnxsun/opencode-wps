@@ -8,6 +8,33 @@ function getExcelSheet(wb, sheet) {
     return wb.Sheets.Item(sheet);
 }
 
+// 对齐常量（与 Windows wps-com.ps1 的 H_ALIGN_MAP / V_ALIGN_MAP 保持一致）
+var H_ALIGN_MAP = { left: -4131, center: -4108, right: -4152 };
+var V_ALIGN_MAP = { top: -4160, center: -4108, bottom: -4107 };
+
+// 将对齐参数解析为 Excel 常量：数字直接使用，字符串走映射，非法值返回 null
+function resolveAlignment(value, map) {
+    if (typeof value === 'number') return value;
+    if (typeof value === 'string' && map[value.toLowerCase()] !== undefined) {
+        return map[value.toLowerCase()];
+    }
+    return null;
+}
+
+// 将颜色参数解析为 Excel BGR 整数值：支持 #RRGGBB、RRGGBB、RGB 简写；数字直接返回
+function toExcelColor(color) {
+    if (typeof color === 'number') return color;
+    if (typeof color !== 'string') return null;
+    var hex = color.trim();
+    if (hex.charAt(0) === '#') hex = hex.substring(1);
+    if (hex.length === 3) {
+        hex = hex.charAt(0) + hex.charAt(0) + hex.charAt(1) + hex.charAt(1) + hex.charAt(2) + hex.charAt(2);
+    }
+    if (!/^[0-9a-fA-F]{6}$/.test(hex)) return null;
+    var rgb = parseInt(hex, 16);
+    return ((rgb & 0xFF) << 16) | (rgb & 0xFF00) | ((rgb >> 16) & 0xFF);
+}
+
 registerHandler('getActiveWorkbook', function(params) {
     try {
         var wb = Application.ActiveWorkbook;
@@ -411,9 +438,39 @@ registerHandler('setCellFormat', function(params) {
         if (!wb) return fail('没有打开的工作簿');
         var sheet = getExcelSheet(wb, params.sheet);
         var range = sheet.Range(params.range);
-        if (params.horizontalAlignment !== undefined) range.HorizontalAlignment = params.horizontalAlignment;
-        if (params.verticalAlignment !== undefined) range.VerticalAlignment = params.verticalAlignment;
-        if (params.wrapText !== undefined) range.WrapText = params.wrapText;
+        var fmt = params.format || {};
+        // 数字格式（format 对象内的优先，顶层兼容旧调用）
+        if (fmt.numberFormat) range.NumberFormat = fmt.numberFormat;
+        else if (params.numberFormat) range.NumberFormat = params.numberFormat;
+        // 视觉格式（从 format 对象读取，与 Windows wps-com.ps1 参数对齐）
+        if (typeof fmt.fontSize === 'number' && fmt.fontSize > 0) range.Font.Size = fmt.fontSize;
+        if (fmt.bold !== undefined) range.Font.Bold = !!fmt.bold;
+        if (fmt.italic !== undefined) range.Font.Italic = !!fmt.italic;
+        if (fmt.fontName) range.Font.Name = fmt.fontName;
+        // 颜色：format 对象内优先，顶层参数兼容旧调用
+        if (fmt.fontColor !== undefined || params.fontColor !== undefined) {
+            var fc = toExcelColor(fmt.fontColor !== undefined ? fmt.fontColor : params.fontColor);
+            if (fc !== null) range.Font.Color = fc;
+        }
+        if (fmt.bgColor !== undefined || params.bgColor !== undefined) {
+            var bg = toExcelColor(fmt.bgColor !== undefined ? fmt.bgColor : params.bgColor);
+            if (bg !== null) range.Interior.Color = bg;
+        }
+        if (fmt.underline !== undefined) range.Font.Underline = !!fmt.underline;
+        if (fmt.strikethrough !== undefined) range.Font.Strikethrough = !!fmt.strikethrough;
+        // 水平/垂直对齐：format 对象内优先，顶层参数兼容旧调用
+        var hAlign = fmt.horizontalAlignment !== undefined ? fmt.horizontalAlignment : params.horizontalAlignment;
+        if (hAlign !== undefined) {
+            var hv = resolveAlignment(hAlign, H_ALIGN_MAP);
+            if (hv !== null) range.HorizontalAlignment = hv;
+        }
+        var vAlign = fmt.verticalAlignment !== undefined ? fmt.verticalAlignment : params.verticalAlignment;
+        if (vAlign !== undefined) {
+            var vv = resolveAlignment(vAlign, V_ALIGN_MAP);
+            if (vv !== null) range.VerticalAlignment = vv;
+        }
+        var wrap = fmt.wrapText !== undefined ? fmt.wrapText : params.wrapText;
+        if (wrap !== undefined) range.WrapText = !!wrap;
         if (params.mergeCells !== undefined) {
             if (params.mergeCells) range.Merge(); else range.UnMerge();
         }

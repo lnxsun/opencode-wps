@@ -45,7 +45,7 @@ export const setCellFormatDefinition: ToolDefinition = {
       },
       format: {
         type: 'object',
-        description: '格式设置对象，可包含 bold(粗体)、italic(斜体)、fontSize(字号)、fontName(字体名)、fontColor(字体颜色，如#FF0000)、bgColor(背景颜色)、underline(下划线)、strikethrough(删除线)、horizontalAlignment(水平对齐: left/center/right)、verticalAlignment(垂直对齐: top/center/bottom)、wrapText(自动换行)',
+        description: '格式设置对象，可包含 bold(粗体)、italic(斜体)、fontSize(字号)、fontName(字体名)、fontColor(字体颜色，如#FF0000)、bgColor(背景颜色)、underline(下划线)、strikethrough(删除线)、horizontalAlignment(水平对齐: left/center/right)、verticalAlignment(垂直对齐: top/center/bottom)、wrapText(自动换行)、numberFormat(数字格式，如 #,##0.00、0.00%)',
         properties: {
           bold: { type: 'boolean', description: '是否粗体' },
           italic: { type: 'boolean', description: '是否斜体' },
@@ -58,30 +58,36 @@ export const setCellFormatDefinition: ToolDefinition = {
           horizontalAlignment: { type: 'string', description: '水平对齐方式', enum: ['left', 'center', 'right'] },
           verticalAlignment: { type: 'string', description: '垂直对齐方式', enum: ['top', 'center', 'bottom'] },
           wrapText: { type: 'boolean', description: '是否自动换行' },
+          numberFormat: { type: 'string', description: '数字格式，如 #,##0.00、0.00%' },
         },
+      },
+      numberFormat: {
+        type: 'string',
+        description: '数字格式（旧版兼容，建议使用 format.numberFormat）',
       },
       sheet: {
         type: 'string',
         description: '工作表名称，不填则使用当前活动工作表',
       },
     },
-    required: ['range', 'format'],
+    required: ['range'],
   },
 };
 
 export const setCellFormatHandler: ToolHandler = async (
   args: Record<string, unknown>
 ): Promise<ToolCallResult> => {
-  const { range, format, sheet } = args as {
+  const { range, format = {}, numberFormat, sheet } = args as {
     range: string;
-    format: Record<string, unknown>;
+    format?: Record<string, unknown>;
+    numberFormat?: string;
     sheet?: string;
   };
 
   try {
     const response = await wpsClient.executeMethod(
       'setCellFormat',
-      { range, format, sheet },
+      { range, format, numberFormat, sheet },
       WpsAppType.SPREADSHEET
     );
 
@@ -97,6 +103,7 @@ export const setCellFormatHandler: ToolHandler = async (
     const formatDesc = Object.entries(format)
       .map(([key, value]) => `${key}: ${value}`)
       .join(', ');
+    const numberFormatDesc = numberFormat ? `\n数字格式: ${numberFormat}` : '';
 
     return {
       id: uuidv4(),
@@ -104,7 +111,7 @@ export const setCellFormatHandler: ToolHandler = async (
       content: [
         {
           type: 'text',
-          text: `单元格格式设置成功！\n范围: ${range}\n格式: ${formatDesc}`,
+          text: `单元格格式设置成功！\n范围: ${range}\n格式: ${formatDesc}${numberFormatDesc}`,
         },
       ],
     };

@@ -369,15 +369,6 @@ function getCK(key) { try { var m = document.cookie.match(new RegExp('(^| )' + k
 function setCK(key, val) { try { document.cookie = key + '=' + encodeURIComponent(val) + ';path=/;max-age=31536000' } catch(e) {} }
 function clearCK(key) { try { document.cookie = key + '=;path=/;max-age=0' } catch(e) {} }
 
-// --- 安全函数 ---
-function safeInput(str) {
-    if (!str || typeof str !== 'string') return '';
-    return str.replace(/[<>&"']/g, function(c) {
-        var map = { '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;', "'": '&#39;' };
-        return map[c];
-    });
-}
-
 // --- 配置持久化 ---
 var PERSIST = {
     get apiUrl() { return getPS('opencode_api_url') || 'http://127.0.0.1:14096'; },
@@ -866,27 +857,17 @@ function toggleModelDropdown(e) {
     createDropdown(btn, html, 'bottom-up')
 }
 function selectModel(id) { CURRENT_MODEL = id; PERSIST.model = id; $modelName.textContent = id; closeAllDropdowns() }
-var OLLAMA_FALLBACK_MODELS = [
-    { id: 'ollama/Monica:latest', name: 'Monica', providerID: 'ollama' },
-    { id: 'ollama/R4C3R/minicpm5-1b-heretic:latest', name: 'MiniCPM5 1B Heretic', providerID: 'ollama' },
-    { id: 'ollama/huihui_ai/qwen3.5-abliterated:9b-Qwopus', name: 'Qwen3.5 9B Abliterated', providerID: 'ollama' },
-    { id: 'ollama/gemma4:e4b', name: 'Gemma 4 4B', providerID: 'ollama' },
-    { id: 'ollama/gemma4:e2b', name: 'Gemma 4 2B', providerID: 'ollama' },
-    { id: 'ollama/qwen3.5-32k:0.8b', name: 'Qwen3.5 32K 0.8B', providerID: 'ollama' },
-    { id: 'ollama/qwen3.5-32k:2b', name: 'Qwen3.5 32K 2B', providerID: 'ollama' },
-    { id: 'ollama/qwen3.5:2b', name: 'Qwen3.5 2B', providerID: 'ollama' },
-    { id: 'ollama/qwen3.5:0.8b', name: 'Qwen3.5 0.8B', providerID: 'ollama' },
-    { id: 'ollama/qianwen:latest', name: 'Qianwen', providerID: 'ollama' },
-    { id: 'ollama/lukey03/qwen3.5-9b-abliterated:latest', name: 'Qwen3.5 9B Abliterated', providerID: 'ollama' },
-    { id: 'ollama/qwen3.5:4b', name: 'Qwen3.5 4B', providerID: 'ollama' }
-]
-var FALLBACK_MODELS = [
-    { id: 'opencode/deepseek-v4-flash-free', name: 'DeepSeek V4 Flash Free', providerID: 'opencode', free: true }
-].concat(OLLAMA_FALLBACK_MODELS)
-var FALLBACK_PROVIDERS = [
-    { id: 'opencode', name: 'OpenCode', models: [{ id: 'opencode/deepseek-v4-flash-free', name: 'DeepSeek V4 Flash Free', providerID: 'opencode', free: true }] },
-    { id: 'ollama', name: 'Ollama (本地)', models: OLLAMA_FALLBACK_MODELS }
-]
+// 从 config.js 取回退模型时做一次深拷贝，避免未来对 provider.models 的
+// push/splice 等变异操作反向污染 CONFIG.fallbackModels（slice() 仅浅拷贝顶层数组）
+function applyFallbackModels() {
+    var ollamaModels = CONFIG.fallbackModels.ollama.slice()
+    var opencodeModels = CONFIG.fallbackModels.opencode.slice()
+    AVAILABLE_MODELS = opencodeModels.concat(ollamaModels)
+    AVAILABLE_PROVIDERS = [
+        { id: 'opencode', name: 'OpenCode', models: opencodeModels },
+        { id: 'ollama', name: 'Ollama (本地)', models: ollamaModels }
+    ]
+}
 function fetchAvailableModels(cb) {
     // 主数据源：从 OpenCode 服务器获取已配置的提供商和模型
     fetchJSON('GET', '/config/providers', null, function(data) {
@@ -925,15 +906,13 @@ function fetchAvailableModels(cb) {
             }
         } else {
             // 服务器不可用或未配置时使用最小后备列表
-            AVAILABLE_MODELS = FALLBACK_MODELS.slice()
-            AVAILABLE_PROVIDERS = FALLBACK_PROVIDERS.slice()
+            applyFallbackModels()
         }
         if (!CURRENT_MODEL && AVAILABLE_MODELS.length > 0) { CURRENT_MODEL = AVAILABLE_MODELS[0].id }
         if (cb) cb()
     }, function() {
         // 网络/HTTP 错误时使用后备方案
-        AVAILABLE_MODELS = FALLBACK_MODELS.slice()
-        AVAILABLE_PROVIDERS = FALLBACK_PROVIDERS.slice()
+        applyFallbackModels()
         if (!CURRENT_MODEL && AVAILABLE_MODELS.length > 0) { CURRENT_MODEL = AVAILABLE_MODELS[0].id }
         if (cb) cb()
     })
@@ -1460,19 +1439,34 @@ function renderMarkdown(text) {
     return out
 }
 /**
+ * 解码 HTML 实体为原始字符（与 escapeHtml 的 5 个基本实体 + 数字实体对应）
+ * @param {string} s - 待解码字符串
+ * @returns {string} 解码后的字符串
+ */
+function decodeHtmlEntities(s) {
+    if (!s) return ''
+    // 注意：&amp; 必须最先解码，避免二次解码
+    return s.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&#x([0-9a-fA-F]+);/g, function(m, h) { return String.fromCharCode(parseInt(h, 16)) }).replace(/&#(\d+);/g, function(m, d) { return String.fromCharCode(parseInt(d, 10)) })
+}
+/**
  * 安全处理 URL 链接，防止 XSS
- * @param {string} url - 待处理的 URL
+ * 注：入参 url 在 renderMarkdown 中已被全局 escapeHtml 转义（如 & 已为 &amp;），
+ *     此处先完整解码还原真实 URL 再校验，避免二次转义破坏带 & 参数的合法链接；
+ *     同时 `jav&#x61;script:` 之类的编码混淆绕过也能有效拦截。
+ * @param {string} url - 待处理的 URL（可为已转义文本）
  * @returns {string} 安全的 URL 或 "#"
  */
 function safeHref(url) {
     if (!url) return '#'
-    var trimmed = url.replace(/^\s+|\s+$/g, '')
-    var low = trimmed.toLowerCase()
-    if (low.indexOf('http:') === 0 || low.indexOf('https:') === 0 || low.indexOf('mailto:') === 0) return url
+    var decoded = decodeHtmlEntities(url)
+    var trimmed = decoded.replace(/^\s+|\s+$/g, '')
+    // 协议检测前去除控制字符/空白（OWASP 建议），防 `jav\nascript:` 之类混淆绕过
+    var low = trimmed.replace(/[\x00-\x20\x7f]/g, '').toLowerCase()
+    if (low.indexOf('http:') === 0 || low.indexOf('https:') === 0 || low.indexOf('mailto:') === 0) return escapeHtml(trimmed)
     if (low.indexOf('javascript:') === 0 || low.indexOf('data:') === 0 || low.indexOf('vbscript:') === 0) return '#'
     // 协议相对 URL（//evil.com）在 file:// 环境下解析为 UNC 路径，非预期行为
     if (trimmed.indexOf('//') === 0) return '#'
-    return url
+    return escapeHtml(trimmed)
 }
 /**
  * 处理行内 Markdown 格式：粗体、斜体、删除线、图片、链接

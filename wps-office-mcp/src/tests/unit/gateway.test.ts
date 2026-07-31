@@ -29,8 +29,8 @@ import { wpsClient } from '../../client/wps-client';
 const mockedWpsClient = wpsClient as jest.Mocked<typeof wpsClient>;
 
 describe('TOOLS_INDEX 完整性验证', () => {
-    it('索引数量应为 246 个', () => {
-      expect(TOOLS_INDEX.length).toBe(246);
+    it('索引数量应为 256 个', () => {
+      expect(TOOLS_INDEX.length).toBe(256);
     });
 
   it('索引名称应该唯一（无重复）', () => {
@@ -129,9 +129,15 @@ describe('searchTools 搜索功能', () => {
     const result = searchTools({ query: '字体' });
     expect(result.results.length).toBeGreaterThan(0);
     result.results.forEach(r => {
-      expect(
-        r.name.includes('字体') || r.description.includes('字体')
-      ).toBe(true);
+      // searchTools 是 name/description/keywords 三路匹配，命中任一即可
+      // （results 不返回 keywords，回溯 TOOLS_INDEX 原始条目验证）
+      const indexItem = TOOLS_INDEX.find(t => t.name === r.name);
+      expect(indexItem).toBeDefined();
+      const matched =
+        indexItem!.name.includes('字体') ||
+        indexItem!.description.includes('字体') ||
+        indexItem!.keywords.some(k => k.includes('字体'));
+      expect(matched).toBe(true);
     });
   });
 
@@ -172,6 +178,22 @@ describe('searchTools 搜索功能', () => {
   it('精确名称匹配应排在最前', () => {
     const result = searchTools({ query: 'setFont' });
     expect(result.results[0].name).toBe('setFont');
+  });
+
+  it('setCellFormat schema 应含 format 可选 + 顶层 numberFormat 兼容', () => {
+    const result = searchTools({ query: 'setCellFormat' });
+    const tool = result.results.find(r => r.name === 'setCellFormat');
+    expect(tool).toBeDefined();
+    const params = tool!.params as Record<string, { required: boolean; description?: string }>;
+    // format 应为可选（兼容仅传 numberFormat 的旧式调用）
+    expect(params.format.required).toBe(false);
+    // 顶层 numberFormat 兼容参数应存在且可选
+    expect(params.numberFormat).toBeDefined();
+    expect(params.numberFormat.required).toBe(false);
+    // range 仍为必填
+    expect(params.range.required).toBe(true);
+    // format 描述应包含 numberFormat 子属性说明
+    expect(params.format.description).toContain('numberFormat');
   });
 
   it('按分类分别搜索三个应用', () => {
@@ -234,5 +256,34 @@ describe('executeTool 执行功能', () => {
       arguments: {},
     });
     expect(result.success).toBe(false);
+  });
+
+  it('setCellFormat 仅传 range+numberFormat 应透传并成功', async () => {
+    mockedWpsClient.executeMethod.mockResolvedValue({ success: true });
+    const result = await executeTool({
+      tool_name: 'setCellFormat',
+      arguments: { range: 'A1:B2', numberFormat: '0.00%' },
+    });
+    // format 缺省时 handler 应默认 {}，顶层 numberFormat 应透传到 PS1
+    expect(mockedWpsClient.executeMethod).toHaveBeenCalledWith(
+      'setCellFormat',
+      expect.objectContaining({ range: 'A1:B2', numberFormat: '0.00%' }),
+      expect.anything()
+    );
+    expect(result.success).toBe(true);
+  });
+
+  it('setCellFormat 传 format 对象应保留透传', async () => {
+    mockedWpsClient.executeMethod.mockResolvedValue({ success: true });
+    const result = await executeTool({
+      tool_name: 'setCellFormat',
+      arguments: { range: 'A1:C3', format: { bold: true, numberFormat: '#,##0.00' } },
+    });
+    expect(mockedWpsClient.executeMethod).toHaveBeenCalledWith(
+      'setCellFormat',
+      expect.objectContaining({ range: 'A1:C3', format: { bold: true, numberFormat: '#,##0.00' } }),
+      expect.anything()
+    );
+    expect(result.success).toBe(true);
   });
 });

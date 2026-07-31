@@ -259,7 +259,7 @@ wps_office_execute({
 ### 格式设置
 | 工具名称 | 功能 | 关键参数 |
 |---------|------|---------|
-| `setCellFormat` | 设置单元格格式 | `range`, `numberFormat` |
+| `setCellFormat` | 设置单元格格式（字体/颜色/对齐/数字格式等） | `range`, `format`（对象，可含 `bold`/`italic`/`fontSize`/`fontName`/`fontColor`/`bgColor`/`underline`/`strikethrough`/`horizontalAlignment`/`verticalAlignment`/`wrapText`/`numberFormat`） |
 | `mergeCells` | 合并单元格 | `range` |
 | `unmergeCells` | 取消合并 | `range` |
 | `setBorder` | 设置边框 | `range` |

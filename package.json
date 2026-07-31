@@ -9,6 +9,7 @@
     "mcp:install": "cd wps-office-mcp && npm install",
     "mcp:clean": "cd wps-office-mcp && rm -rf dist node_modules",
     "install:addons": "node install-addons.js",
+    "validate:settings": "node scripts/validate-settings.js",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },
@@ -20,6 +21,7 @@
   ],
   "license": "SEE LICENSE IN LICENSE",
   "dependencies": {
-    "fs-extra": "^8.1.0"
+    "fs-extra": "^8.1.0",
+    "yaml": "^2.9.0"
   }
 }

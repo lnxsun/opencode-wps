@@ -1,0 +1,38 @@
+# ============================================================
+# OpenCode WPS — CNB NPC Agent CI/CD 配置
+# 5 个 NPC 角色（产品经理 / 架构师 / 全栈开发工程师 / 代码评审员 / 测试工程师）
+# 角色定义见 .cnb/settings.yml
+# ============================================================
+
+# 构建 NPC 运行镜像并推送到 CNB 制品库
+main:
+  push:
+    - services:
+        - docker
+      stages:
+        - name: Validate NPC settings
+          image: node:22
+          script: |
+            npm ci
+            node scripts/validate-settings.js
+        - name: Docker build
+          script: |
+            docker build -t ${CNB_DOCKER_REGISTRY}/${CNB_REPO_SLUG_LOWERCASE}:latest .
+            docker tag ${CNB_DOCKER_REGISTRY}/${CNB_REPO_SLUG_LOWERCASE}:latest ${CNB_DOCKER_REGISTRY}/${CNB_REPO_SLUG_LOWERCASE}:${CNB_COMMIT_SHORT}
+        - name: Docker push
+          script: |
+            docker push ${CNB_DOCKER_REGISTRY}/${CNB_REPO_SLUG_LOWERCASE}:latest
+            docker push ${CNB_DOCKER_REGISTRY}/${CNB_REPO_SLUG_LOWERCASE}:${CNB_COMMIT_SHORT}
+
+# NPC 任务（Issue/PR 评论触发 NPC）
+.npc_task: &npc_task
+  - docker:
+      image: ${CNB_DOCKER_REGISTRY}/${CNB_NPC_SLUG_LOWERCASE}:latest
+    stages:
+      - name: npc go
+        type: npc:go
+
+# 兜底事件（仓库级别事件在此处理）
+$:
+  issue.comment@npc: *npc_task
+  pull_request.comment@npc: *npc_task
