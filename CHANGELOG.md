@@ -56,6 +56,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - GetUrlPath 简化为 URL API
+- **Mac 侧 `setCellFormat` 支持视觉格式**：补齐 `format` 对象内 bold/italic/fontSize/fontName/fontColor/bgColor/underline/strikethrough/对齐/wrapText/numberFormat 处理，与 Windows `wps-com.ps1` 行为对齐（此前仅处理 4 个顶层参数，其余被静默丢弃）
+  - 颜色支持 `format` 内优先、顶层 `fontColor`/`bgColor` 兼容旧调用
+  - `fontSize` 仅接受正数（忽略 0/负数，避免边界值被静默处理或抛错）
+  - 新增 22 个单元测试（tests/setcellformat-mac.test.js），路径改为 `__dirname` 固化，并接入 CI 测试步骤
 - 网络请求重试：fetchWithRetry
 - SSE 自动重连：connectSSE 增强
 - WPS 就绪检查：checkWpsReady, checkDocument

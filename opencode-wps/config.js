@@ -95,6 +95,27 @@ var CONFIG = {
         maxRetries: 3,
         // SSE 重连延迟（毫秒）
         sseReconnectDelay: 3000
+    },
+
+    // 回退模型配置（当 OpenCode 服务器未返回 provider 列表时使用）
+    fallbackModels: {
+        ollama: [
+            { id: 'ollama/Monica:latest', name: 'Monica', providerID: 'ollama' },
+            { id: 'ollama/R4C3R/minicpm5-1b-heretic:latest', name: 'MiniCPM5 1B Heretic', providerID: 'ollama' },
+            { id: 'ollama/huihui_ai/qwen3.5-abliterated:9b-Qwopus', name: 'Qwen3.5 9B Abliterated', providerID: 'ollama' },
+            { id: 'ollama/gemma4:e4b', name: 'Gemma 4 4B', providerID: 'ollama' },
+            { id: 'ollama/gemma4:e2b', name: 'Gemma 4 2B', providerID: 'ollama' },
+            { id: 'ollama/qwen3.5-32k:0.8b', name: 'Qwen3.5 32K 0.8B', providerID: 'ollama' },
+            { id: 'ollama/qwen3.5-32k:2b', name: 'Qwen3.5 32K 2B', providerID: 'ollama' },
+            { id: 'ollama/qwen3.5:2b', name: 'Qwen3.5 2B', providerID: 'ollama' },
+            { id: 'ollama/qwen3.5:0.8b', name: 'Qwen3.5 0.8B', providerID: 'ollama' },
+            { id: 'ollama/qianwen:latest', name: 'Qianwen', providerID: 'ollama' },
+            { id: 'ollama/lukey03/qwen3.5-9b-abliterated:latest', name: 'Qwen3.5 9B Abliterated', providerID: 'ollama' },
+            { id: 'ollama/qwen3.5:4b', name: 'Qwen3.5 4B', providerID: 'ollama' }
+        ],
+        opencode: [
+            { id: 'opencode/deepseek-v4-flash-free', name: 'DeepSeek V4 Flash Free', providerID: 'opencode', free: true }
+        ]
     }
 };
 

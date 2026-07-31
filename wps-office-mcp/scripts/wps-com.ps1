@@ -1,6 +1,6 @@
 ﻿# Input: Action 名称与 JSON 参数
 # Output: WPS COM 调用结果 JSON
-# Pos: Windows COM 桥接脚本。一旦我被修改，请更新我的头部注释（Updated: 2026-05-24 15:30:00 CST），以及所属文件夹的md。
+# Pos: Windows COM 桥接脚本。一旦我被修改，请更新我的头部注释（Updated: 2026-07-31 17:30:00 CST），以及所属文件夹的md。
 # WPS COM Bridge - PowerShell script for WPS COM operations
 # Full implementation for Excel, Word, PPT, and common conversions
 # Usage: powershell -File wps-com.ps1 -Action <action> -Params <json>
@@ -68,6 +68,42 @@ function Convert-HexColorToRgbInt([string]$hex) {
     $g = [Convert]::ToInt32($hex.Substring(2, 2), 16)
     $b = [Convert]::ToInt32($hex.Substring(4, 2), 16)
     return $r + ($g * 256) + ($b * 65536)
+}
+
+# 对齐常量（XlHAlign / XlVAlign 枚举），由 setCellFormat / setCellStyle / updateChart(legend) 共享
+$script:H_ALIGN_MAP = @{ left = -4131; center = -4108; right = -4152 }
+$script:V_ALIGN_MAP = @{ top = -4160; center = -4108; bottom = -4107 }
+
+# 统一应用视觉格式到 Range：fontSize/bold/italic/fontName/fontColor/bgColor/underline/strikethrough/
+# horizontalAlignment/verticalAlignment/wrapText。
+# 由 setCellFormat（传入 format 对象）与 setCellStyle（传入顶层参数对象）共用。
+# 兼容字段别名：setCellStyle 使用 backgroundColor 表示背景色，此处同时接受 bgColor。
+function Set-VisualFormat($range, $fmt) {
+    if ($fmt.fontSize) { $range.Font.Size = $fmt.fontSize }
+    if ($null -ne $fmt.bold) { $range.Font.Bold = [bool]$fmt.bold }
+    if ($null -ne $fmt.italic) { $range.Font.Italic = [bool]$fmt.italic }
+    if ($fmt.fontName) { $range.Font.Name = $fmt.fontName }
+    if ($fmt.fontColor) {
+        $fc = Convert-HexColorToRgbInt([string]$fmt.fontColor)
+        if ($null -ne $fc) { $range.Font.Color = $fc }
+    }
+    $bgVal = $fmt.bgColor
+    if ($null -eq $bgVal) { $bgVal = $fmt.backgroundColor }
+    if ($bgVal) {
+        $bg = Convert-HexColorToRgbInt([string]$bgVal)
+        if ($null -ne $bg) { $range.Interior.Color = $bg }
+    }
+    if ($null -ne $fmt.underline) { $range.Font.Underline = [bool]$fmt.underline }
+    if ($null -ne $fmt.strikethrough) { $range.Font.Strikethrough = [bool]$fmt.strikethrough }
+    if ($fmt.horizontalAlignment) {
+        $hAlign = $script:H_ALIGN_MAP[$fmt.horizontalAlignment]
+        if ($null -ne $hAlign) { $range.HorizontalAlignment = $hAlign }
+    }
+    if ($fmt.verticalAlignment) {
+        $vAlign = $script:V_ALIGN_MAP[$fmt.verticalAlignment]
+        if ($null -ne $vAlign) { $range.VerticalAlignment = $vAlign }
+    }
+    if ($null -ne $fmt.wrapText) { $range.WrapText = [bool]$fmt.wrapText }
 }
 
 function Get-RangeFromAddress($workbook, [string]$address) {
@@ -729,36 +765,11 @@ switch ($Action) {
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; exit }
         $sheet = if ($p.sheet) { $excel.ActiveWorkbook.Sheets.Item($p.sheet) } else { $excel.ActiveSheet }
         $range = $sheet.Range($p.range)
-        # 数字格式（format 对象内的优先，顶层兼容旧调用）
+        # 数字格式：format.numberFormat 优先（新调用），顶层 numberFormat 作为旧版兼容回退
         if ($p.format -and $p.format.numberFormat) { $range.NumberFormat = $p.format.numberFormat }
         elseif ($p.numberFormat) { $range.NumberFormat = $p.numberFormat }
-        # 视觉格式（从 format 对象读取，与 setCellStyle 参数对齐）
-        if ($p.format) {
-            $fmt = $p.format
-            if ($fmt.fontSize) { $range.Font.Size = $fmt.fontSize }
-            if ($null -ne $fmt.bold) { $range.Font.Bold = [bool]$fmt.bold }
-            if ($null -ne $fmt.italic) { $range.Font.Italic = [bool]$fmt.italic }
-            if ($fmt.fontName) { $range.Font.Name = $fmt.fontName }
-            if ($fmt.fontColor) {
-                $fc = Convert-HexColorToRgbInt([string]$fmt.fontColor)
-                if ($null -ne $fc) { $range.Font.Color = $fc }
-            }
-            if ($fmt.bgColor) {
-                $bg = Convert-HexColorToRgbInt([string]$fmt.bgColor)
-                if ($null -ne $bg) { $range.Interior.Color = $bg }
-            }
-            if ($null -ne $fmt.underline) { $range.Font.Underline = [bool]$fmt.underline }
-            if ($null -ne $fmt.strikethrough) { $range.Font.Strikethrough = [bool]$fmt.strikethrough }
-            if ($fmt.horizontalAlignment) {
-                $hAlign = $script:H_ALIGN_MAP[$fmt.horizontalAlignment]
-                if ($null -ne $hAlign) { $range.HorizontalAlignment = $hAlign }
-            }
-            if ($fmt.verticalAlignment) {
-                $vAlign = $script:V_ALIGN_MAP[$fmt.verticalAlignment]
-                if ($null -ne $vAlign) { $range.VerticalAlignment = $vAlign }
-            }
-            if ($null -ne $fmt.wrapText) { $range.WrapText = [bool]$fmt.wrapText }
-        }
+        # 视觉格式（从 format 对象读取，与 setCellStyle 共用 Set-VisualFormat）
+        if ($p.format) { Set-VisualFormat $range $p.format }
         $applied = @{ range = $p.range }
         if ($p.format) { $applied.format = $p.format }
         if ($p.numberFormat) { $applied.numberFormat = $p.numberFormat }
@@ -770,26 +781,7 @@ switch ($Action) {
         if ($null -eq $excel) { Output-Json @{ success = $false; error = "WPS Excel not running" }; exit }
         $sheet = $excel.ActiveSheet
         $range = $sheet.Range($p.range)
-        if ($p.fontSize) { $range.Font.Size = $p.fontSize }
-        if ($null -ne $p.bold) { $range.Font.Bold = [bool]$p.bold }
-        if ($null -ne $p.italic) { $range.Font.Italic = [bool]$p.italic }
-        if ($p.fontName) { $range.Font.Name = $p.fontName }
-        if ($p.backgroundColor) {
-            $bg = Convert-HexColorToRgbInt([string]$p.backgroundColor)
-            if ($null -ne $bg) { $range.Interior.Color = $bg }
-        }
-        if ($p.fontColor) {
-            $fc = Convert-HexColorToRgbInt([string]$p.fontColor)
-            if ($null -ne $fc) { $range.Font.Color = $fc }
-        }
-        if ($p.horizontalAlignment) {
-            $hAlign = $script:H_ALIGN_MAP[$p.horizontalAlignment]
-            if ($null -ne $hAlign) { $range.HorizontalAlignment = $hAlign }
-        }
-        if ($p.verticalAlignment) {
-            $vAlign = $script:V_ALIGN_MAP[$p.verticalAlignment]
-            if ($null -ne $vAlign) { $range.VerticalAlignment = $vAlign }
-        }
+        Set-VisualFormat $range $p
         if ($null -ne $p.border -and $p.border) {
             $range.Borders.LineStyle = 1
             if ($p.borderColor) {
@@ -1156,9 +1148,10 @@ switch ($Action) {
             $updated += "showLegend"
         }
         if ($null -ne $p.legendPosition) {
-            $legendMap = @{ bottom = -4107; top = -4160; left = -4131; right = -4152 }
+            # 图例位置常量与单元格对齐常量数值一致，复用共享常量表（保持原 bottom/top/left/right 键集合不变）
+            $legendMap = @{ bottom = $script:V_ALIGN_MAP.bottom; top = $script:V_ALIGN_MAP.top; left = $script:H_ALIGN_MAP.left; right = $script:H_ALIGN_MAP.right }
             $pos = $legendMap[$p.legendPosition]
-            if ($pos) { $chartObj.Chart.Legend.Position = $pos; $updated += "legendPosition" }
+            if ($null -ne $pos) { $chartObj.Chart.Legend.Position = $pos; $updated += "legendPosition" }
         }
         if ($null -ne $p.showDataLabels) {
             if ($p.showDataLabels) {
