@@ -28,6 +28,22 @@ import {
 const logger = createChildLogger('ToolRegistry');
 
 /**
+ * 网关专用工具（GATEWAY_ONLY）
+ *
+ * 这些工具只应通过 `wps_office_execute` 网关调用（治理规则 G1），
+ * **禁止注册为直接 MCP 工具**。即使未来误调用 `registerAll(allTools)`，
+ * 也会被 `register()` 拦截跳过——这是「不直连注册」的结构性防护，
+ * 而非仅依赖调用方注释约定。
+ *
+ * 现状：五维评分校对报告工具（#25 TC-13）唯一入口为网关索引中的
+ * `proofreadAccumulate` / `generateProofreadReport`。
+ */
+const GATEWAY_ONLY_TOOLS = new Set([
+  'wps_word_proofread_accumulate',
+  'wps_word_generate_proofread_report',
+]);
+
+/**
  * Tool注册表 - 单例模式，全局唯一
  */
 export class ToolRegistry {
@@ -63,6 +79,12 @@ export class ToolRegistry {
    */
   register(definition: ToolDefinition, handler: ToolHandler): void {
     const { name, category } = definition;
+
+    // 网关专用工具禁止直连注册（G1 规则的结构性兜底）
+    if (GATEWAY_ONLY_TOOLS.has(name)) {
+      logger.warn(`Gateway-only tool skipped, direct registration prohibited: ${name}`);
+      return;
+    }
 
     // 检查是否已注册 - 跳过重复注册而非崩溃，防止过期编译产物导致启动失败
     if (this.tools.has(name)) {

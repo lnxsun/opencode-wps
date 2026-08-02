@@ -25,12 +25,18 @@ jest.mock('../../client/wps-client', () => ({
 }));
 
 import { wpsClient } from '../../client/wps-client';
+import { sessionIssues } from '../../tools/word/proofread-report';
 
 const mockedWpsClient = wpsClient as jest.Mocked<typeof wpsClient>;
 
+// 模块级 sessionIssues Map 在用例间会残留，隔离避免顺序/状态耦合（评审建议）
+afterEach(() => {
+  sessionIssues.clear();
+});
+
 describe('TOOLS_INDEX 完整性验证', () => {
-    it('索引数量应为 256 个', () => {
-      expect(TOOLS_INDEX.length).toBe(256);
+    it('索引数量应为 258 个', () => {
+      expect(TOOLS_INDEX.length).toBe(258);
     });
 
   it('索引名称应该唯一（无重复）', () => {
@@ -85,6 +91,20 @@ describe('TOOLS_INDEX 完整性验证', () => {
     required.forEach(name => {
       expect(names).toContain(name);
     });
+  });
+
+  it('五维评分校对报告工具必须存在于索引（网关兜底）', () => {
+    const names = TOOLS_INDEX.map(t => t.name);
+    expect(names).toContain('proofreadAccumulate');
+    expect(names).toContain('generateProofreadReport');
+    const acc = TOOLS_INDEX.find(t => t.name === 'proofreadAccumulate');
+    const rep = TOOLS_INDEX.find(t => t.name === 'generateProofreadReport');
+    expect(acc!.category).toBe('word');
+    expect(rep!.category).toBe('word');
+    expect(acc!.appType).toBe('wps');
+    expect(rep!.appType).toBe('wps');
+    expect(acc!.paramsSchema.session_id.required).toBe(true);
+    expect(rep!.paramsSchema.session_id.required).toBe(true);
   });
 
   it('关键 PPT 工具必须存在', () => {
@@ -285,5 +305,51 @@ describe('executeTool 执行功能', () => {
       expect.anything()
     );
     expect(result.success).toBe(true);
+  });
+});
+
+describe('网关路由 proofread 报告工具（#25 验收 TC-13）', () => {
+  it('search 搜"报告"能返回 generateProofreadReport', () => {
+    const r = searchTools({ query: '报告' });
+    expect(r.results.some((x) => x.name === 'generateProofreadReport')).toBe(true);
+    const r2 = searchTools({ query: 'accumulate' });
+    expect(r2.results.some((x) => x.name === 'proofreadAccumulate')).toBe(true);
+  });
+
+  it('executeTool 走 handler 路径而非 PS1 透传（累加器）', async () => {
+    const result = await executeTool({
+      tool_name: 'proofreadAccumulate',
+      arguments: {
+        session_id: '11111111-2222-3333-4444-555555555555',
+        issues: [{ offset: 0, length: 4, original: '测试', suggestion: '测试2', type: '测试', source: 'mcp' }],
+        doc_info: { fileName: '测试.docx', filePath: 'C:/test/测试.docx', totalParagraphs: 1, totalWords: 2 },
+      },
+    });
+    const text = result.content[0].text || '';
+    expect(result.success).toBe(true);
+    // handler 路径特征：返回累加成功信息，而非 PS1 透传的 {"result":...} 包装
+    expect(text).not.toContain('"result"');
+  });
+
+  it('executeTool 走 handler 路径（报告生成，accumulate→generate 闭环）', async () => {
+    // 单用例自包含：首次累加带 doc_info，不依赖其他用例残留的会话状态
+    const acc = await executeTool({
+      tool_name: 'proofreadAccumulate',
+      arguments: {
+        session_id: '11111111-2222-3333-4444-555555555555',
+        issues: [{ offset: 0, length: 4, original: '测试', suggestion: '测试2', type: '测试', source: 'mcp' }],
+        doc_info: { fileName: '测试.docx', filePath: 'C:/test/测试.docx', totalParagraphs: 1, totalWords: 2 },
+      },
+    });
+    expect(acc.success).toBe(true);
+
+    const result = await executeTool({
+      tool_name: 'generateProofreadReport',
+      arguments: { session_id: '11111111-2222-3333-4444-555555555555' },
+    });
+    const text = result.content[0].text || '';
+    expect(result.success).toBe(true);
+    expect(text).toContain('校对报告');
+    expect(text).not.toContain('"result"');
   });
 });

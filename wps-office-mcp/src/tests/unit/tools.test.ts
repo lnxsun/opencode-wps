@@ -177,6 +177,23 @@ describe('ToolRegistry', () => {
       expect(registry.hasTool('tool2')).toBe(true);
       expect(registry.hasTool('tool3')).toBe(true);
     });
+
+    it('GATEWAY_ONLY 工具即使 registerAll 也不会直连注册（结构性防护）', () => {
+      // 模拟未来误调用 registerAll(allTools)：黑名单工具必须被 register() 拦截跳过
+      const gatewayOnly = [
+        { definition: { ...testToolDefinition, name: 'wps_word_proofread_accumulate' }, handler: testHandler },
+        { definition: { ...testToolDefinition, name: 'wps_word_generate_proofread_report' }, handler: testHandler },
+        { definition: { ...testToolDefinition, name: 'normal-tool' }, handler: testHandler },
+      ];
+
+      registry.registerAll(gatewayOnly);
+
+      // 黑名单工具不暴露为直接 MCP 工具
+      expect(registry.hasTool('wps_word_proofread_accumulate')).toBe(false);
+      expect(registry.hasTool('wps_word_generate_proofread_report')).toBe(false);
+      // 非黑名单工具正常注册
+      expect(registry.hasTool('normal-tool')).toBe(true);
+    });
   });
 
   describe('Tool注销 - unregister', () => {

@@ -7,7 +7,7 @@ description: "WPS 文档校对专家，专注于文档的错别字检测、语�
 
 你唯一的职责：**校对文档**。不做任何排版、字体、表格、模板填写等操作。
 
-## 校对专用工具（6 个，可直接用，无需 search）
+## 校对专用工具（8 个，可直接用，无需 search）
 
 | # | 工具 | 调用方式 | 功能 |
 |---|------|---------|------|
@@ -17,9 +17,12 @@ description: "WPS 文档校对专家，专注于文档的错别字检测、语�
 | 4 | `confirmBatchAiProofread` | `wps_office_execute({ tool_name: "confirmBatchAiProofread", arguments: {} })` | **强制调用**：确认本批 AI 智能校对已完成 |
 | 5 | `replaceInParagraph` | `wps_office_execute({ tool_name: "replaceInParagraph", arguments: { paragraphIndex, findText, replaceText, replaceAll? } })` | **唯一允许的修复工具**，按段落+文本匹配替换 |
 | 6 | ~~`replaceRange`~~ | **禁止使用** | ~~按字符范围替换（偏移量在含不可见字符的文档中不可靠，已禁用）~~ |
+| 7 | `proofreadAccumulate` | `wps_office_execute({ tool_name: "proofreadAccumulate", arguments: {...} })` | 累加本批校对问题到会话 Map（走网关） |
+| 8 | `generateProofreadReport` | `wps_office_execute({ tool_name: "generateProofreadReport", arguments: {...} })` | 生成五维评分校对报告（走网关）。传 `output_file` 时写盘；写盘失败返回 `success=false`，必须重试 |
 
-> **⚠️ 校对流程中强制走网关**：以下 6 个工具在 `batchStarted=true` 后**禁止直接调用 MCP 原接口**，必须通过 `wps_office_execute({ tool_name: "...", ... })` 调用：
+> **⚠️ 校对流程中强制走网关**：以下 8 个工具在 `batchStarted=true` 后**禁止直接调用 MCP 原接口**，必须通过 `wps_office_execute({ tool_name: "...", ... })` 调用：
 > - `getActiveDocument` / `insertText` / `getActiveWorkbook` / `getCellValue` / `setCellValue` / `getActivePresentation`
+> - `proofreadAccumulate` / `generateProofreadReport`（这两个只存在于网关索引，MCP 侧未直连注册，唯一入口就是 `wps_office_execute`）
 >
 > 直接调用原接口会被插件拦截并报错。
 
@@ -78,7 +81,7 @@ description: "WPS 文档校对专家，专注于文档的错别字检测、语�
 - **方式**：正则规则匹配（错别字、重复字、冗余、格式一致性）
 - **范围**：中英文文本
 - **特点**：零 token，纯正则，极快
-- **输出**：`{ issues: [{ type, offset, length, original, suggestion, reason }] }`
+- **输出**：文本展示 + 末尾 JSON 行 `{ "issues": [{ type, offset, length, original, suggestion, context, metric? }] }`（可直接 `JSON.parse`，供治理插件 P15/P16 解析）
 
 ### Layer 2：AI 智能校对（Agent LLM）
 
@@ -97,9 +100,10 @@ description: "WPS 文档校对专家，专注于文档的错别字检测、语�
 ### 结果合并去重逻辑
 
 ```javascript
-// 合并各层结果
+// 合并各层结果（⚠️ proofreadBasic 返回 = 文本展示 + 末尾 JSON 行，提取末行 JSON.parse 取 .issues）
+const responseProofreadBasic = JSON.parse(toolResultProofreadBasic.split('\n').filter(Boolean).pop())
 const allIssues = [
-  ...proofreadBasicResult.issues,
+  ...(responseProofreadBasic.issues || []),
   ...aiProofreadIssues
 ]
 // 按 offset + original 去重（同一位置同一原文只修一次）
@@ -209,6 +213,10 @@ deduped.sort((a, b) => a.offset - b.offset)
 │ wps_get_active_document → 获取 totalParagraphs           │
 │ 输出分批计划表 → 再继续                                   │
 ├──────────────────────────────────────────────────────────┤
+│ 第0.5步：初始化校对会话                                   │
+│ 生成 session_id = UUID v4                                │
+│ 整个校对流程中保持不变                                    │
+├──────────────────────────────────────────────────────────┤
 │ 第1步：开启修订模式                                      │
 │ enableTrackChanges(true)                                 │
 │ getTrackChangesStatus → 确认已开启                        │
@@ -228,9 +236,11 @@ deduped.sort((a, b) => a.offset - b.offset)
 │ │ 2e. 按段落逐条 → replaceInParagraph 修复     │           │
 │ │ 2f. getTrackChangesStatus 确认修订数增加     │           │
 │ │ 2g. 输出 [batch/N] ✓                       │           │
+│ │ 2h. proofreadAccumulate（走网关累加）     │           │
 │ └────────────────────────────────────────────┘           │
 ├──────────────────────────────────────────────────────────┤
-│ 第3步：全部完成 → 生成校对报告（.校对报告.md）          │
+│ 第3步：全部完成 → generateProofreadReport（走网关）      │
+│ 输入 session_id，自动生成五维评分报告                     │
 ├──────────────────────────────────────────────────────────┤
 │ 第4步：提示用户 Ctrl+S 保存 + 查看修订记录               │
 └──────────────────────────────────────────────────────────┘
@@ -241,8 +251,29 @@ deduped.sort((a, b) => a.offset - b.offset)
 ```javascript
 wps_get_active_document()
 // 根据 paragraphCount 计算并输出计划表
-// 确认后再进入 Step 1
+// 确认后再进入 Step 0.5
 ```
+
+### Step 0.5: 初始化校对会话
+
+在开始分批校对前，**必须生成一个 `session_id`（UUID v4）**，整个校对流程保持不变。
+此 session_id 用于在 MCP Server 侧累加各批校对问题，最终生成五维评分报告。
+
+```javascript
+// AI 生成 UUID v4 作为 session_id
+const sessionId = crypto.randomUUID()  // 或手动生成：xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx
+
+// 获取文档信息用于首次累加
+const docInfo = await wps_office_execute({
+  tool_name: "getActiveDocument",
+  arguments: {}
+})
+
+// 注意：首次累加在第一批校对完成后执行（见 Step 2h）
+```
+
+> **⚠️ session_id 是必填参数**，由 AI 手动生成并传入 `proofreadAccumulate` 和 `generateProofreadReport`。
+> 两个工具**统一走网关**：通过 `wps_office_execute({ tool_name: "proofreadAccumulate" / "generateProofreadReport", ... })` 调用，网关会自动路由到对应的 MCP handler（见下方 Step 2h / Step 3 示例）。
 
 ### Step 1: 开启修订模式
 
@@ -335,13 +366,72 @@ wps_office_execute({
 ```
 
 **Layer 2 — AI 智能校对（你作为 LLM 直接分析）：**
+
 ```markdown
 用你的 LLM 能力分析以下文本的语义/逻辑/语病问题。
-特别注意检查：
+
+## 通顺度检测（五维评分卡）
+
+对每句逐维打分（0–2 分），总分 0–10。
+
+| 维度 | 0分（硬伤） | 1分（可优化） | 2分（规范） |
+|------|-----------|-------------|-----------|
+| ① 成分完整 | 缺主语/缺宾语/双主语（如"通过…，使得…"） | 介词短语前置但成分全 | 主谓宾清晰 |
+| ② 搭配得当 | 动宾不当（如"履行作用"应为"发挥作用"） | 搭配生僻但可接受 | 搭配自然 |
+| ③ 语序自然 | 否定词错位（如"我把作业没有做完"）、状语错位 | 稍欧化但可接受 | 语序流畅 |
+| ④ 句式干净 | 句式杂糅（如"根据调查显示"）、滥用被动 | 含框架废话但可容忍 | 句式精炼 |
+| ⑤ 衔接连贯 | 关联词失配/指代不明 | 无关联词但可推断 | 衔接自然 |
+
+## 简洁度检测（最小化测试）
+
+对候选冗余成分逐项做最小化测试：删除 → LLM 自检"语义是否完全不变"？
+- 语义不变 → 判定冗余 ✅（可删）
+- 语义变化 → 保留 ❌（不删）
+
+冗余占比 = 可删除字数 / 总字数
+
+冗余成分四类（由易到难）：
+| 类型 | 示例 |
+|------|------|
+| ① 同义反复 | 大约…左右、目的是为了、首次开创、亲眼目睹 |
+| ② 空洞填充词 | 进行研究→研究、作出决定→决定、予以解决→解决、加以完善→完善 |
+| ③ 框架废话 | "我们需要注意的是"、"众所周知"、"可以说"、"毫无疑问" |
+| ④ 可压缩从句 | "在当今…的时代背景下"、"从某种意义上来说"、"就目前而言" |
+
+## ⚠️ 铁律：通顺 > 简洁
+
+任何简洁修复必须：
+1. 通过"删除后语义不变"自检
+2. 修复后不得触发新的通顺 issue（若可能导致通顺度下降，只报告不修）
+3. 修复建议至少提供 2 个选项（保守/激进），用户可择其一
+4. 简洁修复尝试最多 1 轮（1 次修复 + 1 次通顺自检），若不通过则放弃修复，降级为「优化建议」
+
+## 特别注意检查
 - 占位/测试文本（如 "check test sample placeholder xxx" 等）
 - 明显口语化表达（正式文档中不应出现的随意用语）
 - 语病/逻辑矛盾
 - **编号连续性**：跨段落检查编号是否重复（如两个段落同为 "2.2.3"）、是否跳号、是否倒序
+
+## ⚠️ 不合理搭配强制逐句检查（F11–F15，Layer 2 凭据）
+
+以下 5 类"不合理搭配"是 Layer 1 正则**无法命中**的语义问题（验收语料 F11–F15），
+必须由 AI 层（Layer 2）逐句检出并输出**检出结论**——要么 `fix`（修复），要么 `report_only`（进优化建议），**不允许沉默漏检**：
+
+| ID | 模式 | 检出凭据（看到即检出） | 期望修复方向 | 建议 type |
+|----|------|----------------------|-------------|-----------|
+| F11 | `存在着` + 名词/数量 | "存在着"是"存在"的冗余叠加（`有`字句赘余） | 这个方案有很多不足之处 | 搭配冗余 |
+| F12 | `加强重视` | 动宾不当："加强"不能带"重视"（应直接"重视"） | 我们需要重视安全问题 | 动宾不当 |
+| F13 | `进步提高` | 语义重复："进步"与"提高"同义叠加 | 他取得了显著的进步 | 语义重复 |
+| F14 | `丰富的内容` 前接数量（"很多丰富"） | 修饰不当："很多"与"丰富"语义重复 | 会议讨论了很多内容 | 修饰不当 |
+| F15 | `具有着` | 搭配冗余："具有"不可加"着"（存现动词无进行体） | 这一发现具有深远的意义 | 搭配冗余 |
+
+**逐句输出要求**：对每个 F11–F15 模式命中，AI 层必须输出一条带 `type` 的 issue（`fix_action: "fix"`）；
+若该句同时存在其他问题导致不宜直接修复，则输出 `fix_action: "report_only"` 并写明原因，进报告"优化建议"。
+- `type` 用上表建议值（或语义等价类型），**必须携带**（报告五维评分依赖）
+- `metric` 一律 `"fluency"`（这类问题影响通顺/搭配）
+
+## 输出格式
+
 输出严格 JSON 数组（如无问题则输出空数组 []）：
 [
   {
@@ -349,9 +439,33 @@ wps_office_execute({
     "offset_in_paragraph": 0,
     "original": "有问题文本",
     "suggestion": "修正文本",
-    "reason": "语病说明"
+    "type": "句式杂糅",
+    "reason": "语病说明",
+    "metric": "fluency",
+    "type": "动宾不当",
+    "score": {
+      "fluency": { "components": 0, "collocation": 2, "order": 2, "clean": 0, "coherence": 2, "total": 6 },
+      "conciseness_ratio": null
+    },
+    "fix_action": "fix"
   }
 ]
+
+字段说明：
+- type（必填）：具体问题类型，与 Layer 1 正则规则类型对齐（如 句式杂糅/冗余词/的得混淆/重复字符/口语化/占位文本 等）。
+  **禁止省略或写成 'ai'**——报告五维评分按 type 查 TYPE_METRIC_MAP 分类，缺 type 会落入"未分类"不计分；
+  若确实无法归类，请根据 original/suggestion 内容推断（proofreadAccumulate 也会兜底推断，但尽量由 AI 层输出准确 type）。
+- metric（必填）："fluency" | "conciseness"（枚举约束，禁止编造其他值）
+- type（**必填**）：真实问题类型（如 动宾不当/语义重复/修饰不当/搭配冗余/句式杂糅/冗余词），**禁止写 "ai" 或留空**——报告五维评分按 type 分组，缺 type 会全部落入"未分类"导致评分失真
+- score.fluency：通顺问题时含五维评分（每个维度 0-2 分 + total）
+- score.conciseness_ratio：简洁问题时含冗余占比（如 0.25 = 25%）
+- fix_action（必填）："fix"（触发修复） | "report_only"（只进优化建议）
+
+修复触发条件（写死，不许编造）：
+- fluency fix: 单维 0 分 或 总分 < 6
+- fluency report_only: 6 ≤ 总分 < 8（且无 0 分）
+- conciseness fix: 冗余占比 ≥ 25%
+- conciseness report_only: 10% ≤ 冗余占比 < 25%
 
 文本内容：
 ```
@@ -372,7 +486,7 @@ documentOffset = paragraphStartOffset + offsetInParagraph
 
 **注意**：插件不再要求 `text.length` 精确等于 `[end]-[start]`。因为 WPS COM 的 `Range.Text` 在含 `\f`(分页符)、`\a`(表格分隔符)等控制字符的文档中，返回长度可能与段落偏移计算值不一致。proofreadBasic 内部会自动剥离控制字符并校正偏移量。
 
-**如果文本含控制字符导致 JSON 序列化失败**（错误：`JSON Parse error: Unterminated string`），请先用 `wps_common_write_file` 写入临时文件再传 `file_path`：
+**如果文本含控制字符导致 JSON 序列化失败**（错误：`JSON Parse error: Unterminated string`），请先用 `writeFile` 写入临时文件再传 `file_path`：
 ```javascript
 // 写法 1：直接传 text（文本不含 \f 等控制字符时）
 wps_office_execute({
@@ -392,36 +506,55 @@ wps_office_execute({
 })
 ```
 
-**2d. 结果合并去重**
+**2d. 结果合并去重 + metric 分类**
 
 ```javascript
+// ⚠️ proofreadBasic 返回 = 文本展示 + 末尾 JSON 行，提取末行 JSON.parse 取 .issues（#55 T1 结构化输出）
+const responseProofreadBasic = JSON.parse(toolResultProofreadBasic.split('\n').filter(Boolean).pop())
 // 合并两层结果
-const layer1 = responseProofreadBasic.issues || []      // { original, offset, length, suggestion, type }
-const layer2 = aiProofreadIssues || []                  // { original, offset, suggestion, reason }
+const layer1 = responseProofreadBasic.issues || []      // { original, offset, length, suggestion, type, metric?, context }
+const layer2 = aiProofreadIssues || []                  // { original, offset, suggestion, reason, metric, type, score?, fix_action }
 
 const allIssues = [
-  // Layer 1: 基础校对
-  ...layer1.map(i => ({ ...i, source: 'mcp' })),
-  // Layer 2: AI 校对
-  ...layer2.map(i => ({ ...i, type: 'ai', source: 'ai' })),
+  // Layer 1: 基础校对（metric 来自 proofread.ts Rule 定义）
+  ...layer1.map(i => ({ ...i, source: 'mcp', fix_action: 'fix' })),
+  // Layer 2: AI 校对（type 必填！禁止覆盖为 'ai'，必须输出真实类型如 动宾不当/语义重复/搭配冗余）
+  ...layer2.map(i => ({ ...i, source: 'ai' })),
 ]
 
-// 按 offset + original 去重
-const seen = new Set()
-const deduped = allIssues.filter(i => {
-  const key = `${i.offset}|${i.original}`
-  if (seen.has(key)) return false
-  seen.add(key)
-  return true
-}).sort((a, b) => a.offset - b.offset)
+// 按 offset + original 去重（优先保留含 score 的条目）
+const seen = new Map()
+for (const issue of allIssues) {
+  const key = `${issue.offset}|${issue.original}`
+  const existing = seen.get(key)
+  // Layer 2 命中同一问题 → 保留 Layer 2 的（含 score 等元数据），但必须保留 Layer 1 的 type（如 句式杂糅）
+  if (!existing || (issue.source === 'ai' && issue.score)) {
+    if (issue.source === 'ai' && existing && existing.type && (!issue.type || issue.type === 'ai')) {
+      // 保留 Layer 1 已推断的 type，避免丢失
+      issue.type = existing.type
+    }
+    seen.set(key, issue)
+  }
+}
+const deduped = [...seen.values()].sort((a, b) => a.offset - b.offset)
+
+// 按 fix_action 分流：需修复 vs 仅报告
+const toFix = deduped.filter(i => i.fix_action !== 'report_only')
+const toReport = deduped.filter(i => i.fix_action === 'report_only')
+// Layer 1（正则）的 issue 默认 fix_action = 'fix'（P16 天然放行）
+// Layer 2（AI）的 issue 按评分卡/最小化测试结果决定 fix_action
 ```
 
-**注意**：如果 AI 校对输出的 `original` 与正则发现同一问题，`key` 相同会被去重，不会重复修复。
+**注意**：如果 AI 校对输出的 `original` 与正则发现同一问题，`key` 相同会被去重，优先保留 AI 输出的条目（含 `score` 维度信息）。
 
 **2e. 修复（禁用 findReplace 和 replaceRange，仅用 replaceInParagraph）：**
 
 **⚠️ 两层返回的都是 offset 偏移量，而 replaceInParagraph 需要段落索引 + 文本匹配。**
 需要将 issue.offset 映射为段落索引 + 查找文本。
+
+**修复分类**：
+- `toFix`：需要修复的问题（Layer 1 正则发现 + Layer 2 命中修复阈值），走 `replaceInParagraph`
+- `toReport`：仅报告的问题（Layer 2 评分 6–8 通顺 / 10–25% 简洁），不进修复循环，直接进报告"优化建议"
 
 **映射方法 1：从 getDocumentParagraphs 返回的 [start-end] 中查找 offset 所在的段落。**
 ```javascript
@@ -430,21 +563,36 @@ const deduped = allIssues.filter(i => {
 // [2] (正文) [44-89]    → 第2段：44-89
 // ...
 
-// 对每个 issue，找到 offset 落在哪个段落的 [start-end] 范围内
+// 对每个 toFix issue，找到 offset 落在哪个段落的 [start-end] 范围内
 function findParagraph(ranges, offset) {
   return ranges.find(r => offset >= r.start && offset < r.end)
 }
 
-for (const issue of sortedResults) {
+for (const issue of toFix) {
   const para = findParagraph(ranges, issue.offset)
   if (para) {
+    const replaceArgs = {
+      paragraphIndex: para.index,
+      findText: issue.original,
+      replaceText: issue.suggestion
+    }
+    // Layer 2 语义性问题（source='ai' 且不在 Layer 1 issue 列表中）需走 _force_ai_fix 通道
+    const isSemanticFix = issue.source === 'ai' && issue.metric &&
+      !layer1.some(l1 => l1.original === issue.original ||
+        l1.original?.includes(issue.original) ||
+        issue.original?.includes(l1.original))
+    if (isSemanticFix) {
+      replaceArgs._force_ai_fix = true
+      replaceArgs._ai_evidence = issue.reason  // 必须附评分卡/最小化测试证据
+    }
+    // 通顺 > 简洁铁律：简洁修复前检查是否会导致通顺度下降
+    if (issue.metric === 'conciseness' && isSemanticFix) {
+      // 标记此修复需人工复核：简洁修复可能影响通顺
+      replaceArgs._needs_fluency_check = true
+    }
     wps_office_execute({
       tool_name: "replaceInParagraph",
-      arguments: {
-        paragraphIndex: para.index,
-        findText: issue.original,
-        replaceText: issue.suggestion
-      }
+      arguments: replaceArgs
     })
     // 每修一条建议调用 getTrackChangesStatus 确认修订数增加
     wps_office_execute({
@@ -482,61 +630,123 @@ wps_office_execute({
 // 确认 XX 相比本批开始时增加，且与本批修复条数一致
 ```
 
-### Step 3: 生成校对报告
+> **⚠️ TC-12 口径（修订数一致性）**：WPS 修订模式下，每次 `replaceInParagraph` 替换 = 1 次删除 + 1 次插入，即产生 **2 条修订记录**。因此：
+> `问题数 = 修订记录数 ÷ 2`（整除）
+> 报告中的「发现问题」按 issue 条数计；当 `total_revisions`（`getTrackChangesStatus` 的修订数量）传入报告时，报告会自动换算并标注口径，避免"修订 60 条 vs 问题 30 处"的困惑。
+> 若修订数 ≠ 问题数 × 2，请检查是否有：未开启修订模式的替换、`replace_all` 多次命中、或人工修改。
 
-报告写入文档同目录的 `{文档名}.校对报告.md`。**必须使用 `wps_common_write_file`（短名 `writeFile`）工具写入文件**。
+**2h. 累加本批问题到会话（proofreadAccumulate）：**
 
-调用方式（在 `wps_office_search` 找到后或直接用短名）：
+本批修复完成后，将合并去重后的 issues 累加到 MCP Server 的会话 Map。
+**统一走 `wps_office_execute` 网关**（网关自动路由到 `proofreadAccumulate` handler）：
 
 ```javascript
-// 1. 先搜索找到工具
-const searchResult = await wps_office_execute({
-  tool_name: "wps_office_search",
-  arguments: { query: "writeFile" }
-});
-// → 返回 name: "writeFile"
+// 首次调用需要 doc_info，后续只需 session_id + issues
+// 首次（batch=1）:
+await wps_office_execute({
+  tool_name: "proofreadAccumulate",
+  arguments: {
+    session_id: sessionId,
+    issues: allIssues,  // 2d 中合并去重后的结果
+    doc_info: {
+      fileName: "文档.docx",
+      filePath: "C:\\Users\\...\\文档.docx",
+      totalParagraphs: totalParagraphs,
+      totalWords: totalWords
+    },
+    total_revisions: currentRevisionCount
+  }
+})
 
-// 2. 获取文档路径
+// 后续批次（batch≥2）:
+await wps_office_execute({
+  tool_name: "proofreadAccumulate",
+  arguments: {
+    session_id: sessionId,
+    issues: allIssues,  // 本批合并去重后的 issues（不含前几批）
+    total_revisions: currentRevisionCount
+  }
+})
+```
+
+> **⚠️ 每项 issue 必须携带 type**（Layer 1 来自 proofreadBasic 返回，Layer 2 由你输出真实类型）。
+> **每项 issue 必须携带 source**（Layer 1 标 `source: 'mcp'`，Layer 2 标 `source: 'ai'`）；
+> 若个别 issue 缺 type，MCP 会按原文/建议文本自动兜底推断（T2，#55）；
+> 缺 source 时 MCP 也会兜底推断（TC-13：按 Layer 1 规则命中判定 mcp，F11–F15 等 AI 专属模式判定 ai），
+> 但人工标注的 type/source 更准确，建议每项都显式携带。
+
+### Step 3: 生成五维校对报告
+
+所有批次完成后，调用 `generateProofreadReport` 生成五维评分报告。
+**统一走 `wps_office_execute` 网关**（网关自动路由到 `generateProofreadReport` handler）：
+
+```javascript
+// 方案 A（推荐）：直接传 output_file 让报告写入文件
+// ⚠️ 若写入失败（路径非法/无权限/磁盘满等），返回 success=false 并携带失败原因，
+//    会话保留供重试——落盘失败不视为报告已生成，必须修复后重试
+const report = await wps_office_execute({
+  tool_name: "generateProofreadReport",
+  arguments: {
+    session_id: sessionId,
+    output_file: "C:\\Users\\...\\文档.校对报告.md"
+  }
+})
+if (report.success !== true) {
+  // 落盘失败：本次校对未完成，修正路径后重新调用，禁止进入 Step 4 收尾
+  throw new Error("报告落盘失败：" + (report.error || JSON.stringify(report)))
+}
+const reportText = report.content[0].text
+```
+
+```javascript
+// 方案 B：先获取报告文本，再用 writeFile 写盘
+const report = await wps_office_execute({
+  tool_name: "generateProofreadReport",
+  arguments: { session_id: sessionId }
+})
+// report.content[0].text 包含完整的 Markdown 格式五维报告
+
+// 获取文档路径：getActiveDocument 返回文本，从中解析出路径（如 "C:\\Users\\...\\文档.docx"）
 const docInfo = await wps_office_execute({
   tool_name: "getActiveDocument",
   arguments: {}
-});
-// 解析出文档路径，如 "C:\\Users\\...\\文档.docx"
+})
+// 解析 docInfo.content[0].text 中的 "路径: ..." 行得到文档路径
+const docText = docInfo.content[0].text
+const docPath = /路径:\s*(.+)/.exec(docText)?.[1]
+if (!docPath) throw new Error("未能从 getActiveDocument 返回中解析出文档路径")
+// 通用去扩展名（评审修正）：不再只替换 .docx，.doc/.wps/.rtf 或无扩展名均正确拼接，
+// 避免生成 "文档.doc.校对报告.md" 或在无扩展名时覆盖原路径
+const reportPath = docPath.replace(/\.[^./\\]+$/, '') + '.校对报告.md'
 
-// 3. 构造报告内容
-const reportContent = `# 校对报告
-
-- **文档**：文档.docx
-- **校对时间**：2026-06-23 15:30
-- **总字数**：12,345
-- **修订总数**：28
-
-## 发现的问题
-
-| # | 位置 | 原文 | 修改为 | 问题类型 | 检测方式 |
-|---|------|------|--------|---------|---------|
-| 1 | 段落3 | 发明了很多 | 发明了很多 | 重复字符 | MCP |
-| 2 | 段落8 | 这个方案非常好 | 这个方案非常好 | "的"多余 | MCP |
-
-## 统计摘要
-
-| 类型 | 数量 |
-|------|------|
-| 正则基础校对 | 18 处 |
-| AI 智能校对 | 10 处 |
-| **合计** | **28 处** |
-| 全部已修复 | ✅ |
-`;
-
-// 4. 写入报告文件（直接用短名）
-await wps_office_execute({
+// 写入报告文件，并确认 writeFile 返回 success=true
+const writeRes = await wps_office_execute({
   tool_name: "writeFile",
   arguments: {
-    filePath: "C:\\Users\\...\\文档.校对报告.md",
-    content: reportContent
+    filePath: reportPath,
+    content: report.content[0].text
   }
-});
+})
+if (writeRes.success !== true) {
+  throw new Error("报告落盘失败：" + (writeRes.error || JSON.stringify(writeRes)))
+}
 ```
+
+**报告包含的内容**（由 MCP Server 自动生成）：
+- **五维评分摘要**：fluency（流畅度）、conciseness（简洁度）、accuracy（准确性）、consistency（一致性）、completeness（完整度）
+- **每维度评分**：问题数、原始分（1-5）、归一化分（0-2）、展示分（X.X/10）
+- **雷达图数据**：JSON 格式，方便前端渲染
+- **按维度分类的问题详情**：位置、原文、建议修改、类型、来源
+- **统计摘要**：MCP/AI 检测数量合计
+
+> **✅ 落盘强制自检（验收遗留：第四轮报告只生成未写文件）**：
+> 无论用上面哪种方式，**最终必须保证报告文件实际存在于磁盘**。判定标准：
+>
+> - **方案 A**：`generateProofreadReport` 返回 `success === true`（写失败时本工具会返回 `success=false` + 失败原因，AI 必须重试）；
+> - **方案 B**：`writeFile` 返回 `success === true`（返回文本含文件大小，如 `大小: 1234 字节`，可作为已落盘的旁证）；
+> - 若对落盘仍有疑虑，可用 PowerShell 校验文件存在与大小：`Get-Item "报告路径" | Select-Object Length`（非零即已落盘）。
+>
+> **如果报告没有写入任何文件（或写入失败未重试），本次校对视为未完成**——必须补齐落盘后再进入 Step 4 收尾。
 
 ### Step 4: 收尾
 

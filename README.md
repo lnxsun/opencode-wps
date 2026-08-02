@@ -15,7 +15,7 @@ OpenCode WPS 将 OpenCode AI 的能力集成到 WPS Office 中，通过侧边栏
 
 - **WPS 内嵌 AI 对话** — 侧边栏 Chat UI，支持 SSE 流式输出、Markdown 渲染
 - **多会话管理** — 创建、重命名、切换、删除对话会话
-- **MCP 工具集成** — 通过 WPS Office MCP 服务器，AI 可以直接操作文档（读/写/格式化），490 个工具覆盖三大应用
+- **MCP 工具集成** — 通过 WPS Office MCP 服务器，AI 可以直接操作文档（读/写/格式化），500+ 工具覆盖三大应用（内置 12 + 注册 ~240 + COM Actions ~256，数量以代码为准）
 - **WPS 专用 Agents** — 自定义 wps-expert/wps-word/wps-excel/wps-ppt agents，通过 Agent 选择实现功能聚焦
 - **执行治理** — `.opencode/plugins/governance.js` 使用 7 条通用规则（G1-G7）+ 16 条校对规则（P1-P16）+ 11 条模板填写规则（T1-T11），运行时拦截所有 MCP 调用（强制逐批校对、禁止 AI 编造问题、交叉校验修复内容）
 - **Agent 选择** — 底部工具栏支持切换不同 agent，消息自动传递 agent 参数
@@ -104,7 +104,7 @@ opencode-wps/
 - **第 1 层 WPS JS 插件** — 用户可见的 Chat 窗口 + 服务进程管理。Windows 使用 COM 桥接（`opencode-wps/`），Mac 使用反向轮询（`opencode-wps-assistant/`）
 - **第 2 层 Agents** — 角色定义，通过 Agent 选择实现功能聚焦（跨平台通用）
 - **第 3 层 Skills** — 领域技能，AI 调用的能力集（跨平台通用）
-- **第 4 层 MCP** — 跨平台路由：Win→PowerShell COM 桥接，Mac→HTTP 轮询（反向轮询插件）。20+ TypeScript handler + 240 个 WPS API 动作
+- **第 4 层 MCP** — 跨平台路由：Win→PowerShell COM 桥接，Mac→HTTP 轮询（反向轮询插件）。~240 TypeScript handler + ~256 个 WPS API 动作
 
 **横向机制：**
 - **config.js 全局配置** — 所有配置的统一来源（OpenCode/Launcher 端口、网络超时、插件元数据），注入为全局 `CONFIG` 对象供各层读取
@@ -117,10 +117,10 @@ MCP 服务器采用三层工具体系，AI 通过不同的方式发现和调用�
 | 层级 | 数量 | 命名约定 | 调用方式 | 说明 |
 |------|------|----------|----------|------|
 | **内置工具** | 12 | `wps_xxx` | 直接 MCP 调用 | 启动即注册，始终可用。含 10 个基础工具 + 2 个 Gateway 工具（`wps_office_search`/`wps_office_execute`） |
-| **注册工具** | 238 | `wps_xxx_xxx`（Excel 82 / Word 35 / PPT 112 / Common 9） | → Gateway 路由 | 通过 `tools/index.ts` 注册，有完整的 TypeScript handler（参数校验+类型安全）。**不注册到 MCP**，而是由 Gateway 优先调用 |
-| **COM_ACTIONS** | 240 | 短名称（`getCellValue`, `setFont`, `addSlide`） | `wps_office_search` → `wps_office_execute` → PS1 兜底 | Gateway 索引，按需发现。**执行流程：有 TS handler → 走 handler（自动转换 camelCase→snake_case），无 handler → 透传 PS1 脚本** |
+| **注册工具** | ~240 | `wps_xxx_xxx`（Excel ~82 / Word ~37 / PPT ~112 / Common ~10） | → Gateway 路由 | 通过 `tools/index.ts` 注册，有完整的 TypeScript handler（参数校验+类型安全）。**不注册到 MCP**，而是由 Gateway 优先调用。数量以代码为准（见 `scripts/validate-tool-counts.js`） |
+| **COM_ACTIONS** | ~256 | 短名称（`getCellValue`, `setFont`, `addSlide`） | `wps_office_search` → `wps_office_execute` → PS1 兜底 | Gateway 索引，按需发现。**执行流程：有 TS handler → 走 handler（自动转换 camelCase→snake_case），无 handler → 透传 PS1 脚本** |
 
-**三层分工**：内置工具处理基础操作，注册工具提供类型安全的深度控制，COM_ACTIONS 覆盖 240 个 WPS API 作为兜底。总计 490 个可用工具。
+**三层分工**：内置工具处理基础操作，注册工具提供类型安全的深度控制，COM_ACTIONS 覆盖 WPS API 作为兜底。各层数量随开发持续演进，**以代码为准**（内置工具见 `mcp-server.ts`，注册工具见 `tools/index.ts`，COM_ACTIONS 见 `gateway/index.ts`）。
 
 
 ### 组件说明
@@ -249,7 +249,7 @@ before 钩子拦截违规 → 工具执行 → after 钩子更新状态 → befo
 6. **功能整合** — 将两个独立的旧插件（`wps-claude-addon` 和 `wps-claude-assistant`）合并到统一的 `opencode-wps` 加载项中
 7. **迁移到 OpenCode 架构** — 从 Claude Desktop 架构完全迁移到 OpenCode 架构（MCP 配置格式、Skills 目录、插件机制等）
 8. **Markdown 渲染** — 重写 `renderMarkdown()` 函数，支持代码块、表格、列表、引用等完整 Markdown 语法
-9. **Gateway 按需加载** — 将全部 254 个工具一次性注册改为 Gateway 模式（启动时仅注册 12 内置 + 2 Gateway 工具，240 COM Actions 按需发现），大幅减少 MCP 启动耗时、节省 token
+9. **Gateway 按需加载** — 将全部工具一次性注册改为 Gateway 模式（启动时仅注册 12 内置 + 2 Gateway 工具，COM Actions 按需发现），大幅减少 MCP 启动耗时、节省 token
 10. **特色功能落地** — 根据实际工作需要增加了文档批量填写（模板自动填值 + 修订追踪）和长文档分批校对（铁律 3.0 严格逐批闭环）功能
 11. **Hooks 执行治理** — 在实际使用中逐步增加 governance.js hooks 拦截（G1-G7 + P1-P16 + T1-T11 共 34 条规则），解决 AI 随机执行、跳过基础校对、编造修复等运行问题，形成 before 拦截 + after 状态追踪的防作弊闭环
 
@@ -425,8 +425,8 @@ OpenCode 服务通过 Launcher 进程管理（监听 `127.0.0.1:14097`），无�
                 ┌───────────▼───────────┐
                 │  wps-office-mcp       │
                 │  ├─ 12 内置工具       │
-                │  ├─ 238 注册工具      │
-                │  └─ 240 COM Actions  │
+                │  ├─ ~240 注册工具      │
+                │  └─ ~256 COM Actions  │
                 └───────────┬───────────┘
                             │ PowerShell COM
                 ┌───────────▼───────────┐
@@ -479,12 +479,13 @@ OpenCode 服务通过 Launcher 进程管理（监听 `127.0.0.1:14097`），无�
 
 所有 11 个原 darwin 守卫的 MCP 工具已移除平台限制，skills/agents/plugins 配置跨平台一致。
 
-## NPC 研发助手（5 角色团队）
+## NPC 研发助手（6 角色团队）
 
-本仓库内置 5 个专业 NPC 角色，覆盖软件研发全生命周期：需求分析 → 架构设计 → 代码开发 → 代码评审 → 测试验证。角色定义见 `.cnb/settings.yml`，由 `.cnb.yml` + `Dockerfile` 驱动（源自 `mustang-code-ai/trip` 的 NPC 配置）。
+本仓库内置 6 个专业 NPC 角色，覆盖软件研发全生命周期：统筹管理 → 需求分析 → 架构设计 → 代码开发 → 代码评审 → 测试验证。角色定义见 `.cnb/settings.yml`，由 `.cnb.yml` + `Dockerfile` 驱动（源自 `mustang-code-ai/trip` 的 NPC 配置，新增「项目经理」源自 `zhengms-team/npc-team`）。
 
 | 角色 | Slogan | 职责 |
 |------|--------|------|
+| **项目经理** | 全局统筹，进度可控，使命必达！ | 项目规划/进度管控/资源协调/风险管理/跨角色协同/交付把控 |
 | **产品经理** | 需求澄清与拆分助手 — 先问清楚再动手 | 多轮追问澄清需求，拆分为可执行的 Issues |
 | **架构师** | 技术方案设计与架构选型 — 从全局视角把控技术方向 | 技术方案设计、架构规划、技术选型、风险评估 |
 | **全栈开发工程师** | 需求驱动开发 — 从代码实现到测试全覆盖 | 前端/后端开发、单元/接口/冒烟测试、代码交付 |
@@ -493,13 +494,13 @@ OpenCode 服务通过 Launcher 进程管理（监听 `127.0.0.1:14097`），无�
 
 ### 触发方式
 
-在 Issue 或 PR 评论中 @NPC（或点击「召唤 NPC」按钮），从 5 个角色中选择最合适的即可，默认角色为「产品经理」。
+在 Issue 或 PR 评论中 @NPC（或点击「召唤 NPC」按钮），从 6 个角色中选择最合适的即可，默认角色为「项目经理」。
 
 ### 研发流程覆盖
 
 ```
-需求分析 ──→ 架构设计 ──→ 代码开发 ──→ 代码评审 ──→ 测试验证
-(产品经理)   (架构师)    (全栈开发)   (代码评审员)  (测试工程师)
+统筹管理 ──→ 需求分析 ──→ 架构设计 ──→ 代码开发 ──→ 代码评审 ──→ 测试验证
+(项目经理)   (产品经理)   (架构师)    (全栈开发)   (代码评审员)  (测试工程师)
 ```
 
 ### 自定义

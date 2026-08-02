@@ -1,6 +1,6 @@
 {
   "name": "opencode-wps",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "OpenCode AI WPS Office Plugin",
   "scripts": {
     "build": "echo 'Build completed'"

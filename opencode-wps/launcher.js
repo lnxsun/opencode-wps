@@ -55,13 +55,38 @@ function parseBody(req, callback) {
  * @param {number} statusCode - HTTP 状态码
  * @param {object} data - 响应数据
  */
-function sendJSON(res, statusCode, data) {
-    res.writeHead(statusCode, {
+// launcher 仅绑定 127.0.0.1，CORS 收敛为白名单（与 opencode-proxy.js 一致）：
+//  - OpenCode serve 来源（http://127.0.0.1:14096）
+//  - WPS 插件面板：本地 file:// 或 WPS 内部扩展（无 Origin / null / file://）
+//  - 其余任意 http(s) Origin 一律拒绝，防本地恶意网页跨站读取
+var CORS_ORIGINS = [
+    'http://127.0.0.1:14096',
+    'http://localhost:14096'
+];
+
+function getAllowedOrigin(req) {
+    var origin = req.headers.origin;
+    if (!origin || origin === 'null' || origin.indexOf('file://') === 0) {
+        // 无 Origin 头：同源请求 / curl 等；null / file://：WPS 插件面板等本地受限上下文
+        return '*';
+    }
+    if (CORS_ORIGINS.indexOf(origin) !== -1) {
+        return origin;
+    }
+    return null; // 白名单外的 Origin 一律拒绝
+}
+
+function sendJSON(req, res, statusCode, data) {
+    var allowOrigin = getAllowedOrigin(req);
+    var headers = {
         'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',  // launcher 仅绑定 127.0.0.1，无外部访问风险
         'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
         'Access-Control-Allow-Headers': 'Content-Type'
-    });
+    };
+    if (allowOrigin) {
+        headers['Access-Control-Allow-Origin'] = allowOrigin;
+    }
+    res.writeHead(statusCode, headers);
     res.end(JSON.stringify(data));
 }
 
@@ -405,7 +430,7 @@ process.on('unhandledRejection', function(reason) {
 
 var server = http.createServer(function(req, res) {
     if (req.method === 'OPTIONS') {
-        sendJSON(res, 200, {});
+        sendJSON(req, res, 200, {});
         return;
     }
 
@@ -413,17 +438,17 @@ var server = http.createServer(function(req, res) {
 
     if (req.method === 'POST' && url === '/start') {
         if (stateLock) {
-            sendJSON(res, 409, { error: 'Another start request is in progress' });
+            sendJSON(req, res, 409, { error: 'Another start request is in progress' });
             return;
         }
         stateLock = true;
         parseBody(req, function(body) {
             try {
                 var result = startOpenCode(body.cwd, body.port);
-                sendJSON(res, result.success ? 200 : 400, result);
+                sendJSON(req, res, result.success ? 200 : 400, result);
             } catch(e) {
                 console.error('[launcher] startOpenCode failed:', e);
-                sendJSON(res, 500, { error: 'Internal error: ' + e.message });
+                sendJSON(req, res, 500, { error: 'Internal error: ' + e.message });
             } finally {
                 stateLock = false;
             }
@@ -433,12 +458,12 @@ var server = http.createServer(function(req, res) {
 
     if (req.method === 'POST' && url === '/stop') {
         var result = stopOpenCode();
-        sendJSON(res, 200, result);
+        sendJSON(req, res, 200, result);
         return;
     }
 
     if (req.method === 'GET' && url === '/status') {
-        sendJSON(res, 200, {
+        sendJSON(req, res, 200, {
             running: opencodeProcess !== null,
             cwd: opencodeCwd,
             pid: opencodeProcess ? opencodeProcess.pid : null
@@ -447,14 +472,14 @@ var server = http.createServer(function(req, res) {
     }
 
     if (req.method === 'GET' && url === '/health') {
-        sendJSON(res, 200, { healthy: true, uptime: process.uptime() });
+        sendJSON(req, res, 200, { healthy: true, uptime: process.uptime() });
         return;
     }
 
     if (req.method === 'POST' && url === '/dock') {
         parseBody(req, function(body) {
             dockWindow(function(result) {
-                sendJSON(res, result.success ? 200 : 400, result);
+                sendJSON(req, res, result.success ? 200 : 400, result);
             }, body);
         });
         return;
@@ -465,15 +490,15 @@ var server = http.createServer(function(req, res) {
             var docInfoPath = path.join(__dirname, 'docinfo.cache.json');
             if (body && body.closed === true) {
                 try { fs.unlinkSync(docInfoPath); } catch(e) { /* 文件不存在也视为清除成功 */ }
-                sendJSON(res, 200, { success: true });
+                sendJSON(req, res, 200, { success: true });
                 return;
             }
             try {
                 fs.writeFileSync(docInfoPath, JSON.stringify(body), 'utf8');
-                sendJSON(res, 200, { success: true });
+                sendJSON(req, res, 200, { success: true });
             } catch(e) {
                 console.error('[launcher] Failed to write docinfo cache: ' + e.message);
-                sendJSON(res, 500, { success: false, error: 'Write failed: ' + e.message });
+                sendJSON(req, res, 500, { success: false, error: 'Write failed: ' + e.message });
             }
         });
         return;
@@ -483,14 +508,14 @@ var server = http.createServer(function(req, res) {
         var docInfoPath = path.join(__dirname, 'docinfo.cache.json');
         try {
             var data = fs.readFileSync(docInfoPath, 'utf8');
-            sendJSON(res, 200, JSON.parse(data));
+            sendJSON(req, res, 200, JSON.parse(data));
         } catch(e) {
-            sendJSON(res, 404, { error: 'No document info available' });
+            sendJSON(req, res, 404, { error: 'No document info available' });
         }
         return;
     }
 
-    sendJSON(res, 404, { error: 'Not found' });
+    sendJSON(req, res, 404, { error: 'Not found' });
 });
 
 server.listen(PORT, '127.0.0.1', function() {

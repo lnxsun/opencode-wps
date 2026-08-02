@@ -39,7 +39,7 @@ npm run format:check            # Check formatting
 ```
 opencode-wps/              # WPS JS add-in (main.js, taskpane.html, ribbon.xml, config.js, launcher.js)
   opencode-proxy.js        # CORS proxy (port 14098, strips CSP headers)
-wps-office-mcp/            # MCP server (TypeScript, ~240 COM Actions + 12 built-in tools)
+wps-office-mcp/            # MCP server (TypeScript, ~256 COM Actions + 12 built-in tools)
   src/                     # Server, client, tools, types, utils
     utils/path-safety.ts   # Path validation (validateFilePath/validateImagePath/isAllowedUrl)
 skills/                    # 5 OpenCode Skills (wps-excel/word/ppt/office/proofread)
@@ -63,8 +63,8 @@ cd wps-office-mcp && npm run dev                     # Dev mode (ts-node)
 
 Three-tier tool system:
 - **12 built-in tools** (`wps_xxx`) — always registered via MCP
-- **~238 registered tools** (`wps_xxx_xxx`) — TypeScript handlers, routed via Gateway (5 deprecated, prefer modern alternatives)
-- **240 COM Actions** — discovered on-demand via `wps_office_search`/`wps_office_execute` Gateway tools
+- **~240 registered tools** (`wps_xxx_xxx`) — TypeScript handlers, routed via Gateway (数量以 `wps-office-mcp/src/tools/gateway/index.ts` 的 `COM_ACTIONS` / `wps-office-mcp/src/tools/index.ts` 的 `allTools` 为准，持续演进；校验见 `scripts/validate-tool-counts.js`)
+- **~256 COM Actions** — discovered on-demand via `wps_office_search`/`wps_office_execute` Gateway tools
 
 WPS must be running for any MCP operation.
 

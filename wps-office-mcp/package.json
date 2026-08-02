@@ -1,6 +1,6 @@
 {
   "name": "wps-office-mcp",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "MCP Server for WPS Office - 让AI操控WPS就像老王操控键盘一样丝滑",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

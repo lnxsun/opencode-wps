@@ -20,19 +20,25 @@ import { pptTools } from './ppt';
 import { commonTools } from './common';
 
 /**
- * 所有MCP Tools集合（共238个注册工具，另有12个内置工具 + 240个 Gateway COM Actions）
- * 注意：实际注册工具数 = excelTools + wordTools + pptTools + commonTools，新增子模块工具时需同步更新此注释
+ * 所有MCP Tools集合（注册工具数 = excelTools + wordTools + pptTools + commonTools，见下方分类；另含 12 个内置工具 + ~256 个 Gateway COM Actions）
+ * 注意：实际注册工具数随开发持续演进，数量以代码为准（运行时可用 allTools.length 计算）
  *
  * 三层工具体系：
  *   1. 内置工具（12个，在 mcp-server.ts 中注册）：wps_check_connection, wps_get_cell_value 等
  *   2. Gateway 工具（2个）：wps_office_search（搜索）、wps_office_execute（执行）
- *   3. COM Actions（240个，在 gateway/index.ts 索引，通过 Gateway 按需加载）
+ *   3. COM Actions（~256个，在 gateway/index.ts 索引，通过 Gateway 按需加载）
  *
  * 直接注册工具分类：
  *   Excel (82个):   公式/数据/图表/透视表/工作表/格式化/工作簿/高级数据
- *   Word   (35个):  格式化(5)/内容(14)/文档管理(9)/校对(4)/其他(3)
+ *   Word   (37个):  格式化(5)/内容(14)/文档管理(9)/校对(6+2报告)/其他(3)
  *   PPT   (112个):  幻灯片/幻灯片操作/演示文稿管理/文本框/动画/背景/图片/表格/形状
  *   Common (9个):   转换/通用
+ *
+ * ⚠️ 注意：wordTools 含 proofreadReportTools（2 个报告工具），但它们只存在于 allTools 中
+ *   用于 gateway/index.ts 的 HANDLER_MAP 路由映射（executeTool 按短名+appType 索引到 handler），
+ *   并不直连注册为 MCP 工具——ToolRegistry.register() 的 GATEWAY_ONLY_TOOLS 黑名单会拦截，
+ *   即使 registerAll(allTools) 也不会暴露直连；唯一入口是 wps_office_execute 网关
+ *   （COM_ACTIONS 索引：proofreadAccumulate / generateProofreadReport）。
  */
 export const allTools: RegisteredTool[] = [
   ...excelTools,

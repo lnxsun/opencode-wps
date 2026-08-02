@@ -27,7 +27,10 @@ jest.mock('@modelcontextprotocol/sdk/types.js', () => ({
   ListToolsRequestSchema: { method: 'tools/list' },
   ErrorCode: { InternalError: -32603, InvalidParams: -32602 },
   McpError: class MockMcpError extends Error {
-    constructor(public code: number, message: string) {
+    constructor(
+      public code: number,
+      message: string
+    ) {
       super(message);
     }
   },
@@ -37,7 +40,10 @@ jest.mock('@modelcontextprotocol/sdk/types.js', () => ({
 jest.mock('../../utils/logger', () => ({
   log: { info: jest.fn(), debug: jest.fn(), warn: jest.fn(), error: jest.fn() },
   createChildLogger: jest.fn(() => ({
-    info: jest.fn(), debug: jest.fn(), warn: jest.fn(), error: jest.fn(),
+    info: jest.fn(),
+    debug: jest.fn(),
+    warn: jest.fn(),
+    error: jest.fn(),
   })),
 }));
 
@@ -59,7 +65,11 @@ jest.mock('../../client/wps-client', () => ({
 // Mock错误类
 jest.mock('../../utils/error', () => ({
   McpError: class McpError extends Error {
-    constructor(message: string, public code: string, public details?: unknown) {
+    constructor(
+      message: string,
+      public code: string,
+      public details?: unknown
+    ) {
       super(message);
       this.name = 'McpError';
     }
@@ -124,6 +134,20 @@ describe('MCP Server 内置工具注册', () => {
     });
   });
 
+  describe('五维评分校对报告工具不直连注册（统一走网关）', () => {
+    it('wps_word_proofread_accumulate / wps_word_generate_proofread_report 不应作为直接 MCP 工具暴露', () => {
+      expect(registry.hasTool('wps_word_proofread_accumulate')).toBe(false);
+      expect(registry.hasTool('wps_word_generate_proofread_report')).toBe(false);
+    });
+
+    it('listTools 不应包含这两个直连工具（唯一入口为 wps_office_execute 网关）', () => {
+      const { tools } = registry.listTools();
+      const names = tools.map(t => t.name);
+      expect(names).not.toContain('wps_word_proofread_accumulate');
+      expect(names).not.toContain('wps_word_generate_proofread_report');
+    });
+  });
+
   describe('listTools 应返回 14 个工具', () => {
     it('listTools 返回数量应为 14', () => {
       const { tools } = registry.listTools();
@@ -185,6 +209,30 @@ describe('MCP Server 内置工具注册', () => {
       const result = await registry.callTool(request);
       expect(result.success).toBe(false);
     });
+
+    it('wps_office_execute 经网关可执行五维评分校对报告工具（proofreadAccumulate / generateProofreadReport）', async () => {
+      // 先累加（首次调用带 doc_info）
+      const accRequest = ToolRegistry.createRequest('wps_office_execute', {
+        tool_name: 'proofreadAccumulate',
+        arguments: {
+          session_id: '11111111-2222-3333-4444-555555555555',
+          issues: [{ offset: 0, length: 4, original: '测试', suggestion: '测试2', type: '测试', source: 'mcp' }],
+          doc_info: { fileName: '测试.docx', filePath: 'C:/test/测试.docx', totalParagraphs: 1, totalWords: 2 },
+        },
+      });
+      const accResult = await registry.callTool(accRequest);
+      expect(accResult.success).toBe(true);
+
+      // 生成报告
+      const repRequest = ToolRegistry.createRequest('wps_office_execute', {
+        tool_name: 'generateProofreadReport',
+        arguments: { session_id: '11111111-2222-3333-4444-555555555555' },
+      });
+      const repResult = await registry.callTool(repRequest);
+      expect(repResult.success).toBe(true);
+      const text = repResult.content[0].text ?? '';
+      expect(text).toContain('校对报告');
+    });
   });
 
   describe('其他内置工具调用验证', () => {
@@ -215,9 +263,24 @@ describe('MCP Server 内置工具注册', () => {
       expect(result.success).toBe(true);
     });
 
-    it('wps_execute_method 应执行方法', async () => {
+    it('wps_execute_method 非法方法应被安全拦截', async () => {
+      // wps_execute_method 有安全白名单：方法必须以 Application.ActiveDocument / ActiveWorkbook / ActivePresentation 开头。
+      // ping 不在白名单内，应被拦截返回 success:false 且含拒绝原因，不依赖真实 WPS。
       const request = ToolRegistry.createRequest('wps_execute_method', {
         method: 'ping',
+        params: {},
+        appType: 'wps',
+      });
+      const result = await registry.callTool(request);
+      expect(result.success).toBe(false);
+      const text = result.content[0]?.text ?? '';
+      expect(text).toContain('not allowed');
+    });
+
+    it('wps_execute_method 白名单内方法应透传给 wpsClient.executeMethod', async () => {
+      // 白名单内方法（Application.ActiveDocument 前缀）应通过校验并透传，mock 的 wpsClient 不依赖真实 WPS。
+      const request = ToolRegistry.createRequest('wps_execute_method', {
+        method: 'Application.ActiveDocument.Name',
         params: {},
         appType: 'wps',
       });
@@ -238,10 +301,12 @@ describe('MCP Server 内置工具注册', () => {
 
     it('wps_get_cached_data 应获取缓存数据', async () => {
       // 先缓存
-      await registry.callTool(ToolRegistry.createRequest('wps_cache_data', {
-        key: 'test_key',
-        data: { foo: 'bar' },
-      }));
+      await registry.callTool(
+        ToolRegistry.createRequest('wps_cache_data', {
+          key: 'test_key',
+          data: { foo: 'bar' },
+        })
+      );
       // 再获取
       const request = ToolRegistry.createRequest('wps_get_cached_data', {
         key: 'test_key',

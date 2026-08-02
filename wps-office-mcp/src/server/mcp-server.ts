@@ -885,6 +885,12 @@ export class WpsMcpServer {
     // 所有功能通过 wps_office_search + wps_office_execute 调用
     // wps_execute_method 作为兜底
 
+    // 五维评分校对报告工具（wps_word_proofread_accumulate / wps_word_generate_proofread_report）
+    // 不在此直连注册：按治理规则 G1，所有双路径工具一律走 wps_office_execute 网关，
+    // 由网关路由到对应 handler（gateway COM_ACTIONS 索引：proofreadAccumulate / generateProofreadReport）
+    // 结构性防护：ToolRegistry.register() 内置 GATEWAY_ONLY_TOOLS 黑名单，
+    // 即使未来误调用 registerAll(allTools) 也会被拦截，不会意外暴露为直接 MCP 工具。
+
     // 创建stdio传输层
     const transport = new StdioServerTransport();
 

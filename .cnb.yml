@@ -10,11 +10,14 @@ main:
     - services:
         - docker
       stages:
-        - name: Validate NPC settings
+        - name: Validate NPC settings & unit tests
           image: node:22
           script: |
             npm ci
             node scripts/validate-settings.js
+            node scripts/validate-versions.js
+            node scripts/validate-tool-counts.js
+            cd wps-office-mcp && npm ci && npm run test:unit
         - name: Docker build
           script: |
             docker build -t ${CNB_DOCKER_REGISTRY}/${CNB_REPO_SLUG_LOWERCASE}:latest .
@@ -25,12 +28,20 @@ main:
             docker push ${CNB_DOCKER_REGISTRY}/${CNB_REPO_SLUG_LOWERCASE}:${CNB_COMMIT_SHORT}
 
 # NPC 任务（Issue/PR 评论触发 NPC）
+# 可通过 options.model 指定模型 ID（如 GLM/Kimi/混元等国内模型，不指定则用平台默认）
+# 模型 ID 可在 NPC 选择器或云原生开发 Agent 设置中查看可选列表
 .npc_task: &npc_task
   - docker:
       image: ${CNB_DOCKER_REGISTRY}/${CNB_NPC_SLUG_LOWERCASE}:latest
     stages:
       - name: npc go
         type: npc:go
+        options:
+          # 指定模型 ID（取消注释并填入实际模型 ID 即可生效）
+          # model: hy3    # ✅ 免费模型（混元 3），不消耗 AI Credits 账单
+          # model: glm-5  # GLM 模型
+          # model: kimi   # Kimi 模型
+          # model: hunyuan # 混元模型
 
 # 兜底事件（仓库级别事件在此处理）
 $:

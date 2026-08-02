@@ -38,12 +38,20 @@ jobs:
           [scriptblock]::Create($script) | Out-Null
           Write-Host "PowerShell syntax check passed"
 
-      - name: Run tests
+      - name: Run tests (legacy)
         run: |
           node tests/security.test.js
           node tests/utils.test.js
           node tests/launcher.test.js
           node tests/setcellformat-mac.test.js
+
+      # 全量 Jest 测试门禁：9 套件 / 208 个测试（含 unit + integration）
+      # 集成测试通过 mock wpsClient 运行，无真实 WPS 环境（CI）也能全绿
+      # 本地设置 WPS_INTEGRATION=1 才跑真实 WPS 链路
+      - name: Run Jest tests (MCP, 208 tests)
+        run: |
+          cd wps-office-mcp
+          npm test
 
   lint:
     runs-on: windows-latest
@@ -56,19 +64,6 @@ jobs:
         with:
           node-version: '18'
 
-      - name: Check JavaScript syntax
-        run: |
-          # 检查 taskpane.html 中的 JS 语法（通过 node 解析）
-          node -e "
-            const fs = require('fs');
-            const html = fs.readFileSync('opencode-wps/taskpane.html', 'utf-8');
-            const scriptMatch = html.match(/<script[^>]*>([\s\S]*?)<\/script>/g);
-            if (scriptMatch) {
-              console.log('Found ' + scriptMatch.length + ' script blocks');
-            }
-            console.log('JavaScript syntax check passed');
-          "
-
       - name: Check JSON files
         run: |
           node -e "
@@ -76,15 +71,43 @@ jobs:
             const files = [
               'package.json',
               'wps-office-mcp/package.json',
-              'opencode-wps/launcher.js',
-              'install-addons.js'
+              'opencode-wps/package.json',
+              'wps-office-mcp/package-lock.json',
+              'wps-office-mcp/tsconfig.json'
             ];
             files.forEach(f => {
-              try {
-                JSON.parse(fs.readFileSync(f, 'utf-8'));
-              } catch(e) {
-                if (!f.endsWith('.js')) throw e;
-              }
+              JSON.parse(fs.readFileSync(f, 'utf-8'));
+              console.log('  OK ' + f);
             });
-            console.log('JSON files valid');
+            console.log('All JSON files valid');
           "
+
+      - name: Check version consistency
+        run: |
+          node scripts/validate-versions.js
+
+      - name: Check tool counts consistency
+        run: |
+          node scripts/validate-tool-counts.js
+
+      - name: Check JavaScript syntax
+        run: |
+          # 1) 检查 taskpane.html 内嵌 script 块
+          node -e "
+            const fs = require('fs');
+            const html = fs.readFileSync('opencode-wps/taskpane.html', 'utf-8');
+            const scriptMatch = html.match(/<script[^>]*>([\s\S]*?)<\/script>/g);
+            if (scriptMatch) {
+              console.log('Found ' + scriptMatch.length + ' script blocks in taskpane.html');
+            }
+          "
+          # 2) 检查独立 JS 文件语法（node --check）
+          node --check opencode-wps/launcher.js
+          node --check opencode-wps/main.js
+          node --check opencode-wps/config.js
+          node --check opencode-wps/serve.js
+          node --check install-addons.js
+          node --check install-addons-mac.js
+          node --check launcher-mac.js
+          node --check scripts/validate-settings.js
+          echo "JavaScript syntax check passed"

@@ -33,13 +33,19 @@ jest.mock('../../utils/logger', () => ({
 
 jest.mock('../../utils/error', () => ({
   WpsConnectionError: class WpsConnectionError extends Error {
-    constructor(message: string, public details?: unknown) {
+    constructor(
+      message: string,
+      public details?: unknown
+    ) {
       super(message);
       this.name = 'WpsConnectionError';
     }
   },
   WpsApiError: class WpsApiError extends Error {
-    constructor(message: string, public details?: unknown) {
+    constructor(
+      message: string,
+      public details?: unknown
+    ) {
       super(message);
       this.name = 'WpsApiError';
     }
@@ -75,29 +81,39 @@ const mockedSpawn = child_process.spawn as jest.Mock;
 function mockPsProcess(stdoutData: string, exitCode: number = 0, stderrData: string = '') {
   const handlers: Record<string, (...args: unknown[]) => void> = {};
   const mockProcess = {
-    stdout: { on: jest.fn((event: string, cb: (...args: unknown[]) => void) => { handlers['stdout.' + event] = cb; }) },
-    stderr: { on: jest.fn((event: string, cb: (...args: unknown[]) => void) => { handlers['stderr.' + event] = cb; }) },
-    on: jest.fn((event: string, cb: (...args: unknown[]) => void) => { handlers[event] = cb; })
+    stdout: {
+      on: jest.fn((event: string, cb: (...args: unknown[]) => void) => {
+        handlers['stdout.' + event] = cb;
+      }),
+    },
+    stderr: {
+      on: jest.fn((event: string, cb: (...args: unknown[]) => void) => {
+        handlers['stderr.' + event] = cb;
+      }),
+    },
+    on: jest.fn((event: string, cb: (...args: unknown[]) => void) => {
+      handlers[event] = cb;
+    }),
+    // 超时路径需要 kill 方法（wps-client.ts 超时时调用 ps.kill('SIGTERM')）
+    kill: jest.fn(),
+    pid: 12345,
   };
 
   mockedSpawn.mockImplementation(() => {
-    // 同步触发事件，确保测试能通过
-    if (stdoutData && handlers['stdout.data']) {
-      // 使用一个微任务来触发，确保事件监听器已经设置
-      Promise.resolve().then(() => {
+    // 延迟到下一轮事件循环再触发事件，确保 spawn 返回后 ps.on('close') 等监听器已注册。
+    // 之前用 Promise.resolve().then()（微任务）在监听器注册前就执行了检查，
+    // 导致 close 事件从未触发、result 永远 pending，最终 10s 超时。
+    setImmediate(() => {
+      if (stdoutData && handlers['stdout.data']) {
         handlers['stdout.data'](Buffer.from(stdoutData));
-      });
-    }
-    if (stderrData && handlers['stderr.data']) {
-      Promise.resolve().then(() => {
+      }
+      if (stderrData && handlers['stderr.data']) {
         handlers['stderr.data'](Buffer.from(stderrData));
-      });
-    }
-    if (exitCode !== undefined && handlers['close']) {
-      Promise.resolve().then(() => {
+      }
+      if (exitCode !== undefined && handlers['close']) {
         handlers['close'](exitCode);
-      });
-    }
+      }
+    });
     return mockProcess;
   });
 }
@@ -170,7 +186,10 @@ describe('WpsClient', () => {
     });
 
     it('getRangeData应该返回范围数据', async () => {
-      const mockData = [[1, 2, 3], [4, 5, 6]];
+      const mockData = [
+        [1, 2, 3],
+        [4, 5, 6],
+      ];
       mockPsProcess(JSON.stringify({ success: true, data: { data: mockData } }), 0);
       const client = new WpsClient();
       const result = await client.getRangeData('Sheet1', 'A1:C2');
@@ -180,7 +199,10 @@ describe('WpsClient', () => {
     it('setRangeData应该写入范围数据', async () => {
       mockPsProcess(JSON.stringify({ success: true }), 0);
       const client = new WpsClient();
-      const result = await client.setRangeData('Sheet1', 'A1:B2', [['A', 'B'], ['C', 'D']]);
+      const result = await client.setRangeData('Sheet1', 'A1:B2', [
+        ['A', 'B'],
+        ['C', 'D'],
+      ]);
       expect(result).toBe(true);
     });
   });
@@ -211,7 +233,12 @@ describe('WpsClient', () => {
 
   describe('演示操作（Windows模式）', () => {
     it('getActivePresentation应该返回演示文稿信息', async () => {
-      const mockPresentation = { name: 'test.pptx', path: '/path/to', slideCount: 10, currentSlideIndex: 1 };
+      const mockPresentation = {
+        name: 'test.pptx',
+        path: '/path/to',
+        slideCount: 10,
+        currentSlideIndex: 1,
+      };
       mockPsProcess(JSON.stringify({ success: true, data: mockPresentation }), 0);
       const client = new WpsClient();
       const result = await client.getActivePresentation();
@@ -274,11 +301,16 @@ describe('WpsClient', () => {
     });
 
     it('Mac模式应该使用轮询模式', async () => {
-      mockMacModule.macPollServer.executeCommand.mockResolvedValue({ success: true, data: { value: 42 } });
+      mockMacModule.macPollServer.executeCommand.mockResolvedValue({
+        success: true,
+        data: { value: 42 },
+      });
       const client = new WpsClient();
       const result = await client.getCellValue('Sheet1', 1, 1);
       expect(mockMacModule.macPollServer.executeCommand).toHaveBeenCalledWith('getCellValue', {
-        sheet: 'Sheet1', row: 1, col: 1,
+        sheet: 'Sheet1',
+        row: 1,
+        col: 1,
       });
       expect(result).toBe(42);
     });

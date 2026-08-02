@@ -13,6 +13,7 @@ import { formatTools } from './format';
 import { contentTools } from './content';
 import { documentTools } from './document';
 import { proofreadTools } from './proofread';
+import { proofreadReportTools } from './proofread-report';
 
 /**
  * 所有Word相关的Tools
@@ -26,6 +27,7 @@ export const wordTools: RegisteredTool[] = [
   ...contentTools,
   ...documentTools,
   ...proofreadTools,
+  ...proofreadReportTools,
 ];
 
 // 分别导出，方便按需使用
@@ -33,6 +35,7 @@ export { formatTools } from './format';
 export { contentTools } from './content';
 export { documentTools } from './document';
 export { proofreadTools } from './proofread';
+export { proofreadReportTools } from './proofread-report';
 
 // 导出单独的定义和处理器，方便测试
 export {

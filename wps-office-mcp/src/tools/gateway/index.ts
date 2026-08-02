@@ -1,6 +1,6 @@
 /**
  * WPS Office COM Actions 索引
- * 共 238 个 COM Actions（afterColon/afterLabel 已移除，改用 smartFillField fillMode）
+ * 共 ~256 个 COM Actions（数量随开发持续演进，以 COM_ACTIONS 数组长度为准）
  *
  * 工具名称映射说明：
  * - Gateway 使用短名称（如 setFont、addSlide）进行索引和搜索
@@ -266,6 +266,9 @@ const COM_ACTIONS: ToolIndexItem[] = [
   { name: 'replaceInParagraph', description: '按段落+文本匹配替换（修订跟踪，支持全部替换）', keywords: ['替换', '段落', '校对', '文本匹配'], category: 'word', appType: WpsAppType.WRITER, paramsSchema: { paragraphIndex: { type: 'number', description: '段落索引（从1开始）', required: true }, findText: { type: 'string', description: '查找文本', required: true }, replaceText: { type: 'string', description: '替换文本', required: true }, matchCase: { type: 'boolean', description: '区分大小写', required: false }, matchWholeWord: { type: 'boolean', description: '全词匹配', required: false }, replaceAll: { type: 'boolean', description: '替换全部匹配项', required: false } } },
   { name: 'proofreadBasic', description: '基础文本校对（零token）', keywords: ['校对', '错别字', '检查'], category: 'word', appType: WpsAppType.WRITER, paramsSchema: { text: { type: 'string', description: '要校对的文本', required: false }, startOffset: { type: 'number', description: '偏移位置', required: false }, file_path: { type: 'string', description: '文本文件路径（含\\f等控制字符时替代text参数）', required: false } } },
   { name: 'confirmBatchAiProofread', description: '确认本批AI智能校对已完成（强制插件规则10）', keywords: ['校对', '确认', 'AI'], category: 'word', appType: WpsAppType.WRITER, paramsSchema: {} },
+  // Word: 五维评分校对报告 (2，GATEWAY_ONLY：仅存在于此索引，唯一入口是 wps_office_execute)
+  { name: 'proofreadAccumulate', description: '累加本批校对问题到会话 Map（五维评分报告用）', keywords: ['校对', '报告', '累加', '会话', 'accumulate'], category: 'word', appType: WpsAppType.WRITER, paramsSchema: { session_id: { type: 'string', description: '校对会话ID（UUID v4），整个流程保持一致', required: true }, issues: { type: 'array', description: '本批校对发现的问题列表', required: true }, doc_info: { type: 'object', description: '文档信息（仅首次调用需要）', required: false }, total_revisions: { type: 'number', description: '当前累计修订数（可选）', required: false } } },
+  { name: 'generateProofreadReport', description: '生成五维评分校对报告', keywords: ['校对', '报告', '生成', '五维', '评分'], category: 'word', appType: WpsAppType.WRITER, paramsSchema: { session_id: { type: 'string', description: '校对会话ID', required: true }, output_file: { type: 'string', description: '报告输出文件路径（可选）', required: false } } },
 
   // Excel 操作 (~120)
   { name: 'getActiveWorkbook', description: '获取当前工作簿信息', keywords: ['工作簿', '当前'], category: 'excel', appType: WpsAppType.SPREADSHEET, paramsSchema: {} },

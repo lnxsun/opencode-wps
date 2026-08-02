@@ -4,7 +4,6 @@
 
     <id>opencode-wps</id>
     <Version>1.1.0</Version>
-    <version>1.0.0</version>
     <name>OpenCode AI</name>
     <description>WPS AI Assistant powered by OpenCode</description>
     <author>Test</author>

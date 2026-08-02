@@ -10,6 +10,8 @@
     "mcp:clean": "cd wps-office-mcp && rm -rf dist node_modules",
     "install:addons": "node install-addons.js",
     "validate:settings": "node scripts/validate-settings.js",
+    "validate:versions": "node scripts/validate-versions.js",
+    "validate:toolcounts": "node scripts/validate-tool-counts.js",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },
