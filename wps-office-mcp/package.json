@@ -27,7 +27,7 @@
   "author": "钱七 & 老王团队",
   "license": "MIT",
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.27.0",
+    "@modelcontextprotocol/sdk": "^1.30.0",
     "axios": "^1.18.0",
     "uuid": "^14.0.0",
     "winston": "^3.11.0"
