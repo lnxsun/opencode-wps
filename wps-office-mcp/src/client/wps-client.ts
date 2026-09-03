@@ -43,7 +43,7 @@ function getWpsChannel(): WpsChannel {
 const PS_SCRIPT_PATH = path.join(__dirname, '../../scripts/wps-com.ps1');
 
 // 轮询服务器端口（Mac/Linux 共用同一反向轮询协议）
-const POLL_PORT = 58891;
+const POLL_PORT = Number(process.env.WPS_POLL_PORT) || 58891;
 
 /**
  * 执行Mac轮询调用
