@@ -1,0 +1,99 @@
+/**
+ * Input: 运行环境与启动参数
+ * Output: MCP Server 导出与启动日志
+ * Pos: MCP 服务入口模块。一旦我被修改，请更新我的头部注释，以及所属文件夹的md。
+ * WPS Office MCP Server - 入口文件
+ * 老王出品，让AI能操控WPS Office
+ *
+ * 启动方式：
+ * - 开发模式：npm run dev
+ * - 生产模式：npm run build && npm start
+ */
+
+import { createMcpServer } from './server/mcp-server';
+import { log, createChildLogger } from './utils/logger';
+
+// ⚠️ Issue #401（第 4 轮评审 R4-1）：**删除 40 行 barrel 再导出**。
+//   原样把 server / client / utils / types 的全部符号从入口再导一遍，但**全仓零消费者**
+//   （`grep "from '../index'"` 仅命中 `gateway/index.ts:19` 的 `allTools`，即 `./tools/index`，
+//   与本源**无关**）。它随每次新增类型/工具而增长（本轮实测 +31 行），是把「模块边界」摊平的一道
+//   **架构性债**：它让「谁能引用谁」失去约束（任何内部模块都能从入口拿到别人的内部符号）。
+//   删除后**不改变任何运行时行为**（`main()` 仍从前述具体模块导入并启动）。
+
+/**
+ * 主函数 - 程序入口
+ */
+async function main(): Promise<void> {
+  const mainLogger = createChildLogger('Main');
+
+  mainLogger.info('='.repeat(50));
+  mainLogger.info('WPS Office MCP Server');
+  mainLogger.info('老王出品，必属精品');
+  mainLogger.info('='.repeat(50));
+
+  // 创建服务器实例
+  const server = createMcpServer({
+    name: 'wps-office-mcp',
+    version: '1.0.0',
+    debug: process.env.DEBUG === 'true',
+  });
+
+  // 优雅关闭处理
+  const gracefulShutdown = async (signal: string): Promise<void> => {
+    mainLogger.info(`Received ${signal}, shutting down gracefully...`);
+
+    try {
+      await server.stop();
+      mainLogger.info('Server stopped successfully');
+      process.exit(0);
+    } catch (error) {
+      mainLogger.error('Error during shutdown', error);
+      process.exit(1);
+    }
+  };
+
+  // 监听进程信号
+  process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+  process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+
+  // 未捕获异常处理
+  process.on('uncaughtException', error => {
+    mainLogger.error('Uncaught exception', error);
+    process.exit(1);
+  });
+
+  process.on('unhandledRejection', reason => {
+    mainLogger.error('[OpenCode] Unhandled Rejection:', reason);
+    // Graceful shutdown - the server will restart via launcher
+    server
+      .stop()
+      .then(() => mainLogger.info('Server stopped after unhandled rejection'))
+      .catch(err => mainLogger.error('Error during shutdown after unhandled rejection', err))
+      .finally(() => process.exit(1));
+  });
+
+  try {
+    // 启动服务器
+    await server.start();
+
+    const status = server.getStatus();
+    mainLogger.info('Server is running', status);
+    mainLogger.info('Waiting for MCP client connection...');
+
+    // 服务器会一直运行，等待MCP客户端连接
+    // stdio传输层会保持进程活跃
+  } catch (error) {
+    mainLogger.error('Failed to start server', error);
+    process.exit(1);
+  }
+}
+
+// 如果是直接运行而不是被导入，则启动服务器
+if (process.argv[1] && require.main === module) {
+  main().catch(error => {
+    log.error('Fatal error', error);
+    process.exit(1);
+  });
+}
+
+export default main;

@@ -1,0 +1,10 @@
+# Auto detect text files and perform LF normalization
+* text=auto
+
+# 发布产物 tarball 排除自身形态（Issue #417）
+# `git archive` 打包全部 git 跟踪文件，而历史产物 opencode-wps-v*.tar.gz 均被提交
+# ⇒ 每个新产物递归包含全部历史产物，体积逐版本翻倍（1.14.1 2.9M → 1.14.7 186M）。
+# 排除口径由 scripts/lib/release-connectivity-manifest.js 的 ARTIFACT_EXPORT_IGNORE_PATTERN
+# 唯一声明，守卫判据⑦ 断言本文件该行与命名口径 artifactName() 同源（改一处漏一处即报红）。
+# ⚠️ 仅匹配产物命名形态（与 ARTIFACT_NAME_PATTERN 同源），不用 `*.tar.gz`（会误伤未来其它归档）。
+opencode-wps-v*.tar.gz export-ignore

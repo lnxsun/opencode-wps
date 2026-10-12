@@ -1,0 +1,52 @@
+{
+  "name": "opencode-wps",
+  "version": "1.14.10",
+  "description": "OpenCode AI WPS Office 插件 - AI助手WPS插件",
+  "scripts": {
+    "build": "cd wps-office-mcp && npm run build",
+    "mcp:test": "cd wps-office-mcp && npm test",
+    "mcp:start": "cd wps-office-mcp && npm start",
+    "mcp:install": "cd wps-office-mcp && npm install",
+    "mcp:clean": "cd wps-office-mcp && rm -rf dist node_modules",
+    "install:addons": "node install-addons.js",
+    "validate:agent-no-tools": "node scripts/validate-agent-no-tools.js",
+    "validate:settings": "node scripts/validate-settings.js",
+    "validate:npc-team": "node scripts/validate-npc-team-prompt.js",
+    "validate:versions": "node scripts/validate-versions.js",
+    "validate:toolcounts": "node scripts/validate-tool-counts.js",
+    "validate:skill-docs": "node scripts/validate-skill-docs.js",
+    "validate:wikilinks": "node scripts/rewrite-wiki-links.js --check",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "node scripts/run-root-tests.js",
+    "test:e2e": "node tests/e2e.test.js",
+    "lint": "node scripts/lint-js.js",
+    "preflight": "npm run validate:settings && npm run validate:agent-no-tools && npm run validate:versions && npm run validate:toolcounts && npm run validate:npc-team && npm run validate:npc-team-bloat && npm run validate:skill-docs && npm run validate:semantic-anchor-scope && npm run validate:gateway-membership && npm run validate:removed-mechanisms && npm run validate:hook-contract && npm run validate:proofread-report-size && npm run validate:release-connectivity && npm run validate:wikilinks && npm run validate:com-action-app && npm run validate:proofread-p2-invariant && npm run validate:payload-envelope && npm run format:check && npm run lint && (cd wps-office-mcp && npm run lint) && (cd wps-office-mcp && npm test) && npm run test && npm run test:e2e",
+    "validate:npc-team-bloat": "node scripts/validate-npc-team-bloat.js",
+    "validate:semantic-anchor-scope": "node scripts/validate-semantic-anchor-scope.js",
+    "validate:removed-mechanisms": "node scripts/validate-removed-mechanisms.js",
+    "validate:gateway-membership": "node scripts/validate-gateway-membership.js",
+    "validate:proofread-report-size": "node scripts/validate-proofread-report-size.js",
+    "validate:release-connectivity": "node scripts/validate-release-connectivity.js",
+    "validate:payload-envelope": "node scripts/validate-tool-result-payload.js",
+    "validate:proofread-p2-invariant": "node scripts/validate-proofread-p2-invariant.js",
+    "validate:com-action-app": "node scripts/validate-com-action-app.js",
+    "gen:com-action-app": "node scripts/gen-com-action-app.js",
+    "validate:hook-contract": "node scripts/validate-hook-contract.js",
+    "ratchet:rechain": "node scripts/ratchet-rechain.js"
+  },
+  "keywords": [
+    "opencode",
+    "wps",
+    "ai",
+    "mcp"
+  ],
+  "license": "SEE LICENSE IN LICENSE",
+  "dependencies": {
+    "fs-extra": "^8.1.0",
+    "yaml": "^2.9.0"
+  },
+  "devDependencies": {
+    "prettier": "3.9.6"
+  }
+}

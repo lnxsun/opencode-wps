@@ -1,0 +1,2273 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' http://127.0.0.1:*; img-src 'self' data: http: https:">
+<title>OpenCode</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:100%;height:100%;overflow:hidden;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft YaHei",sans-serif;font-size:14px;color:#1a1a1a;background:#fff}
+
+/* CSS-only icons for WPS Chromium 104 compatibility */
+.icon-play{display:inline-block;width:0;height:0;border-style:solid;border-width:7px 0 7px 12px;border-color:transparent transparent transparent #fff;margin-right:6px;vertical-align:middle}
+.icon-plus{display:inline-block;width:14px;height:14px;position:relative;vertical-align:middle;flex-shrink:0}
+.icon-plus::before{content:'';position:absolute;left:6px;top:1px;width:2px;height:12px;background:#666;border-radius:1px}
+.icon-plus::after{content:'';position:absolute;left:1px;top:6px;width:12px;height:2px;background:#666;border-radius:1px}
+.icon-stop{display:inline-block;width:10px;height:10px;background:#999;border-radius:2px;vertical-align:middle}
+.btn-stop:hover .icon-stop{background:#e53935}
+.icon-hamburger{display:inline-flex;flex-direction:column;justify-content:center;gap:3px;width:16px;height:16px}
+.icon-hamburger span{display:block;height:2px;background:#666;border-radius:1px}
+.icon-send{display:inline-block;width:0;height:0;border-style:solid;border-width:7px 0 7px 12px;border-color:transparent transparent transparent #fff;vertical-align:middle;margin-left:2px}
+.icon-model{display:inline-block;width:14px;height:14px;border:2px solid #666;border-radius:7px 7px 3px 3px;position:relative;vertical-align:middle}
+.icon-model::after{content:'';position:absolute;top:9px;left:2px;width:6px;height:2px;background:#666;border-radius:1px}
+.icon-pen{display:inline-block;width:14px;height:14px;position:relative;vertical-align:middle;flex-shrink:0}
+.icon-pen::before{content:'';position:absolute;right:1px;top:1px;width:8px;height:2px;background:#666;transform:rotate(-45deg);transform-origin:right top;border-radius:1px}
+.icon-pen::after{content:'';position:absolute;left:3px;bottom:1px;width:2px;height:4px;background:#666;transform:rotate(-45deg);transform-origin:left bottom;border-radius:1px}
+.icon-trash{display:inline-block;width:14px;height:14px;position:relative;vertical-align:middle;flex-shrink:0}
+.icon-trash::before{content:'';position:absolute;top:2px;left:3px;width:8px;height:10px;border:2px solid #666;border-top:none;border-radius:0 0 2px 2px}
+.icon-trash::after{content:'';position:absolute;top:1px;left:2px;width:10px;height:2px;background:#666;border-radius:1px}
+.icon-logo{display:inline-block;width:18px;height:18px;border:2px solid #1a1a1a;border-radius:4px;position:relative;flex-shrink:0}
+.icon-logo::before{content:'';position:absolute;top:4px;left:3px;width:8px;height:2px;background:#1a1a1a;border-radius:1px}
+.icon-logo::after{content:'';position:absolute;top:8px;left:3px;width:6px;height:2px;background:#1a1a1a;border-radius:1px}
+
+/* ===== Layout ===== */
+.app{display:flex;flex-direction:column;height:100%}
+
+/* ===== Setup View ===== */
+.view-setup{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;gap:16px}
+.view-setup .setup-icon{width:48px;height:48px;color:#1a1a1a;margin-bottom:4px}
+.view-setup h3{font-size:17px;font-weight:600}
+.view-setup p{color:#999;font-size:13px;text-align:center;max-width:260px;line-height:1.6}
+.setup-cwd-row{width:100%;max-width:300px;display:flex;gap:6px;margin-top:4px}
+.setup-cwd-row input{flex:1;border:1px solid #e5e5e5;border-radius:8px;padding:10px 12px;font-size:13px;outline:none;font-family:Consolas,"Microsoft YaHei",monospace;color:#1a1a1a}
+.setup-cwd-row input:focus{border-color:#999}
+.setup-cwd-row input::placeholder{color:#bbb}
+.btn-primary{padding:10px 32px;border:none;border-radius:8px;cursor:pointer;font-size:14px;font-weight:500;background:#1a1a1a;color:#fff;transition:background 0.15s}
+.btn-primary:hover{background:#333}
+.btn-primary:disabled{background:#e0e0e0;color:#999;cursor:default}
+.setup-status{font-size:12px;color:#999;min-height:18px}
+
+/* ===== Top bar ===== */
+.topbar{display:flex;align-items:center;padding:8px 12px;border-bottom:1px solid #f0f0f0;flex-shrink:0;background:#fff;gap:8px}
+.topbar-logo{display:flex;align-items:center;gap:6px}
+.topbar-logo svg{width:18px;height:18px;flex-shrink:0}
+.topbar-logo .icon-logo{width:18px;height:18px}
+.topbar-logo span{font-weight:700;font-size:14px;letter-spacing:-0.3px}
+.topbar-cwd{flex:1;font-size:11px;color:#6b7280;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:Consolas,monospace;background:#f3f4f6;padding:4px 10px;border-radius:6px;border:1px solid #e5e7eb;min-width:100px}
+.topbar-cwd.clickable{cursor:pointer}
+.topbar-cwd.clickable:hover{background:#e5e7eb;border-color:#d1d5db;color:#374151}
+.topbar-status{display:flex;align-items:center;gap:4px;flex-shrink:0}
+.status-dot{width:8px;height:8px;border-radius:50%;background:#ccc;flex-shrink:0}
+.status-dot.running{background:#4caf50}
+.status-dot.busy{background:#f5a623;animation:pulse-dot 1.2s ease-in-out infinite}
+@keyframes pulse-dot{0%,100%{opacity:1}50%{opacity:0.4}}
+.status-label{font-size:11px;color:#999}
+.status-label.running{color:#4caf50}
+.btn-stop{width:24px;height:24px;border:1px solid #e0e0e0;border-radius:6px;background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#999;flex-shrink:0;padding:0}
+.btn-stop:hover{background:#fef2f2;border-color:#e53935;color:#e53935}
+.btn-stop span{vertical-align:middle}
+
+/* ===== Sub header: hamburger ===== */
+.subheader{padding:8px 12px;border-bottom:1px solid #f0f0f0;flex-shrink:0;background:#fff}
+.hamburger-btn{width:28px;height:28px;border:none;background:none;cursor:pointer;border-radius:6px;display:flex;align-items:center;justify-content:center;color:#666}
+.hamburger-btn:hover{background:#f5f5f5}
+.hamburger-btn .icon-hamburger{width:16px;height:16px}
+
+/* ===== Session header ===== */
+.session-header{display:flex;align-items:center;padding:12px 16px;flex-shrink:0;background:#fff;border-bottom:1px solid #f0f0f0;gap:8px}
+.session-title{flex:1;font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#1a1a1a}
+.session-status{width:16px;height:16px;display:flex;align-items:center;justify-content:center;margin:0 6px;flex-shrink:0}
+.session-status .dot{width:8px;height:8px;border-radius:50%;background:#9ca3af}
+.session-status .dot.busy{background:#f5a623;animation:pulse-dot 1.2s ease-in-out infinite}
+.session-status .dot.idle{background:#9ca3af}
+.session-menu{width:28px;height:28px;border:none;background:none;cursor:pointer;border-radius:6px;display:flex;align-items:center;justify-content:center;color:#9ca3af;font-size:16px;letter-spacing:1px}
+.session-menu:hover{background:#f5f5f5;color:#666}
+
+/* ===== Messages ===== */
+.messages{flex:1;overflow-y:auto;padding:16px 12px 12px 12px;display:flex;flex-direction:column;gap:12px;background:#f8f9fa}
+.messages::-webkit-scrollbar{width:4px}
+.messages::-webkit-scrollbar-thumb{background:#ddd;border-radius:2px}
+
+.msg-user{align-self:flex-end;max-width:85%;background:#2563eb;color:#fff;padding:10px 16px;border-radius:20px;border-bottom-right-radius:6px;font-size:14px;line-height:1.5;word-wrap:break-word;overflow-wrap:break-word;box-shadow:0 1px 2px rgba(0,0,0,0.08)}
+.msg-user code{background:rgba(255,255,255,0.2);padding:1px 5px;border-radius:4px;font-size:13px}
+.msg-user pre{background:rgba(255,255,255,0.15);padding:10px 12px;border-radius:10px;overflow-x:auto;margin:8px 0;font-size:12.5px;line-height:1.5}
+.msg-user pre code{background:none;padding:0}
+
+.msg-assistant{align-self:flex-start;max-width:100%;color:#1a1a1a;font-size:14px;line-height:1.7;word-wrap:break-word;overflow-wrap:break-word;padding:4px 0}
+.msg-assistant .msg-bubble{background:#fff;padding:12px 16px;border-radius:16px;border-bottom-left-radius:4px;box-shadow:0 1px 3px rgba(0,0,0,0.06),0 1px 2px rgba(0,0,0,0.04)}
+.msg-system{align-self:center;font-size:12px;color:#999;padding:4px 12px;white-space:pre-wrap;word-wrap:break-word;line-height:1.5;max-width:90%}
+
+/* Markdown in assistant */
+.msg-assistant p{margin:0 0 10px 0}
+.msg-assistant p:last-child{margin-bottom:0}
+.msg-assistant code{background:#f5f5f5;padding:2px 6px;border-radius:4px;font-family:Consolas,"Courier New",monospace;font-size:13px}
+.msg-assistant pre{background:#1e1e1e;color:#d4d4d4;padding:12px 14px;border-radius:8px;overflow-x:auto;margin:10px 0;font-size:12.5px;line-height:1.55}
+.msg-assistant pre code{background:none;padding:0;color:inherit}
+.msg-assistant strong{font-weight:600}
+.msg-assistant em{font-style:italic}
+.msg-assistant ul,.msg-assistant ol{margin:6px 0;padding-left:22px}
+.msg-assistant li{margin:3px 0}
+.msg-assistant h1,.msg-assistant h2,.msg-assistant h3,.msg-assistant h4{margin:14px 0 8px 0;font-weight:600}
+.msg-assistant h1{font-size:17px}.msg-assistant h2{font-size:16px}.msg-assistant h3{font-size:15px}
+.msg-assistant blockquote{border-left:3px solid #e0e0e0;padding-left:12px;margin:8px 0;color:#666}
+.msg-assistant a{color:#2563eb;text-decoration:none}
+.msg-assistant a:hover{text-decoration:underline}
+
+/* Thinking */
+.thinking-toggle{font-size:12px;color:#aaa;cursor:pointer;padding:4px 0;display:flex;align-items:center;gap:4px;user-select:none}
+.thinking-toggle:hover{color:#666}
+.thinking-content{font-size:12px;color:#999;margin:4px 0 8px 0;padding:8px 12px;background:#fafafa;border-radius:6px;border-left:2px solid #e0e0e0;display:none;max-height:200px;overflow-y:auto;white-space:pre-wrap;word-wrap:break-word;line-height:1.5}
+.thinking-content.show{display:block}
+
+/* Streaming cursor */
+.streaming-cursor::after{content:"";display:inline-block;width:7px;height:15px;background:#1a1a1a;margin-left:2px;vertical-align:text-bottom;animation:cursor-blink 0.8s step-end infinite}
+@keyframes cursor-blink{0%,100%{opacity:1}50%{opacity:0}}
+
+/* ===== Input area ===== */
+.input-area{padding:12px 16px 10px 16px;flex-shrink:0;background:#fff;border-top:1px solid #f0f0f0}
+.input-wrapper{border:1px solid #e5e5e5;border-radius:16px;padding:0;overflow:hidden;transition:border-color 0.15s,box-shadow 0.15s;background:#fafafa}
+.input-wrapper:focus-within{border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,0.1);background:#fff}
+.input-box{width:100%;border:none;outline:none;padding:12px 16px 6px 16px;font-family:inherit;font-size:14px;line-height:1.5;resize:none;min-height:44px;max-height:200px;color:#1a1a1a;background:transparent} /* 同步 MAX_INPUT_HEIGHT */
+.input-box::placeholder{color:#bbb}
+.input-toolbar{display:flex;align-items:center;justify-content:space-between;padding:2px 8px 6px 8px}
+.input-toolbar-left{display:flex;align-items:center;gap:4px}
+.plus-btn{width:28px;height:28px;border:none;background:none;cursor:pointer;border-radius:6px;display:flex;align-items:center;justify-content:center;color:#9ca3af;font-size:18px}
+.plus-btn:hover{background:#f5f5f5;color:#666}
+#file-input{display:none}
+.send-btn{width:36px;height:36px;border:none;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all 0.2s;margin-right:2px}
+.send-btn.ready{background:#2563eb;color:#fff;box-shadow:0 2px 4px rgba(37,99,235,0.3)}
+.send-btn.ready:hover{background:#1d4ed8;transform:scale(1.05)}
+.send-btn.disabled{background:#e5e7eb;color:#9ca3af;cursor:default}
+.send-btn span{vertical-align:middle;border-style:solid;border-width:5px 0 5px 8px;border-color:transparent transparent transparent currentColor;margin-left:2px}
+.stop-btn{width:32px;height:32px;border:1px solid #e0e0e0;border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;background:#fff;flex-shrink:0}
+.stop-btn:hover{background:#f5f5f5;border-color:#ccc}
+.stop-btn .stop-icon{width:12px;height:12px;background:#1a1a1a;border-radius:2px}
+
+/* ===== Bottom bar ===== */
+.bottombar{display:flex;align-items:center;padding:8px 16px 10px 16px;gap:6px;flex-shrink:0;border-top:1px solid #f0f0f0;position:relative;background:#fff}
+.bb-btn{display:flex;align-items:center;gap:4px;font-size:12px;color:#6b7280;cursor:pointer;padding:5px 10px;border:1px solid #e5e7eb;border-radius:20px;background:#fff;white-space:nowrap;position:relative;transition:all 0.15s}
+.bb-btn:hover{border-color:#d1d5db;background:#f9fafb;color:#374151}
+.bb-btn.active{background:#f3f4f6;border-color:#d1d5db}
+.bb-btn .icon-model,.bb-btn svg{width:14px;height:14px;flex-shrink:0}
+.bb-btn .chevron{font-size:9px;color:#9ca3af;margin-left:1px}
+#bb-level{min-width:80px}
+
+/* ===== Dropdown ===== */
+.dropdown-backdrop{position:fixed;top:0;left:0;right:0;bottom:0;z-index:50}
+.dropdown{position:absolute;background:#fff;border:1px solid #e5e7eb;border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,0.1),0 1px 3px rgba(0,0,0,0.05);z-index:51;min-width:180px;padding:6px 0;max-height:400px;overflow-y:auto}
+.dropdown.bottom-up{bottom:100%;margin-bottom:8px}
+.dropdown.top-down{top:100%;margin-top:8px}
+.dd-header{padding:10px 16px 6px 16px;font-size:13px;font-weight:600;color:#1a1a1a}
+.dd-group{padding:6px 16px 2px 16px;font-size:11px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:0.5px}
+.dd-divider{height:1px;background:#f0f0f0;margin:6px 0}
+.dd-item{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;font-size:13px;color:#374151;cursor:pointer;gap:8px;transition:background 0.1s}
+.dd-item:hover{background:#f3f4f6}
+.dd-item.selected{font-weight:500;color:#1a1a1a}
+.dd-item .dd-check{color:#2563eb;font-size:14px;flex-shrink:0}
+.dd-item .dd-desc{display:block;font-size:11px;color:#9ca3af;font-weight:normal;margin-top:2px}
+.dd-item .dd-badge{font-size:10px;padding:2px 8px;border-radius:12px;background:#f3f4f6;color:#6b7280;flex-shrink:0}
+.dd-item .dd-badge.free{background:#dcfce7;color:#16a34a}
+.dd-item-danger{color:#dc2626}
+.dd-item-danger:hover{background:#fef2f2}
+
+/* Sidebar */
+.sidebar-backdrop{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.3);z-index:60}
+.sidebar{position:fixed;top:0;left:0;bottom:0;width:260px;background:#fff;z-index:61;box-shadow:2px 0 16px rgba(0,0,0,0.1);display:flex;flex-direction:column}
+.sidebar-header{padding:16px;font-weight:700;font-size:15px;border-bottom:1px solid #f0f0f0;display:flex;align-items:center;justify-content:space-between}
+.sidebar-close{background:none;border:none;font-size:18px;cursor:pointer;color:#999;padding:4px}
+.sidebar-close:hover{color:#333}
+.sidebar-list{flex:1;overflow-y:auto;padding:8px 0}
+.sidebar-item{padding:10px 16px;font-size:13px;cursor:pointer;display:flex;align-items:center;gap:8px;color:#333}
+.sidebar-item:hover{background:#f5f5f5}
+.sidebar-item.active{background:#f0f0f0;font-weight:500}
+.sidebar-item .sl-slug{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sidebar-item .sl-time{font-size:11px;color:#bbb;flex-shrink:0}
+
+.hidden{display:none!important}
+.spinner{width:20px;height:20px;border:2.5px solid #e8e8e8;border-top-color:#1a1a1a;border-radius:50%;animation:spin 0.6s linear infinite;display:inline-block;vertical-align:middle}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ===== Setup View ===== -->
+  <div id="view-setup" class="view-setup">
+    <div class="icon-logo"></div>
+    <h3>OpenCode</h3>
+    <p>设置工作目录并启动服务</p>
+    <div class="setup-cwd-row">
+      <input id="setup-cwd" type="text" placeholder="点击选择工作目录" spellcheck="false" onclick="selectFolderViaFile()">
+    </div>
+    <button class="btn-primary" id="btn-start" onclick="startOpenCode()"><span class="icon-play"></span>启动服务</button>
+    <div class="setup-status" id="setup-status"></div>
+  </div>
+
+  <!-- ===== Chat View ===== -->
+  <div id="view-chat" class="hidden" style="display:flex;flex-direction:column;height:100%">
+    <div class="topbar">
+      <button class="hamburger-btn" title="菜单" onclick="openSidebar()">
+        <div class="icon-hamburger"><span></span><span></span><span></span></div>
+      </button>
+      <div class="topbar-logo">
+        <span>OpenCode</span>
+      </div>
+      <div class="topbar-cwd clickable" id="topbar-cwd" title="点击切换工作目录" onclick="openCwdModal()"></div>
+      <div class="topbar-actions" style="display:flex;gap:4px;align-items:center">
+        <button class="topbar-btn" title="新会话" onclick="newSession()" style="width:24px;height:24px;border:1px solid #e0e0e0;border-radius:6px;background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0"><span class="icon-plus"></span></button>
+        <div class="topbar-status">
+          <div class="status-dot running" id="server-dot"></div>
+          <span class="status-label running" id="server-label">运行中</span>
+          <button class="btn-stop" title="停止服务" onclick="stopOpenCode()"><span class="icon-stop"></span></button>
+        </div>
+      </div>
+    </div>
+    <div class="session-header" id="session-header-area">
+      <span class="session-title" id="session-title">WPS Office</span>
+      <div class="session-status"><div class="dot idle" id="status-dot"></div></div>
+      <button class="session-menu" title="更多" onclick="toggleSessionMenu(event)">...</button>
+    </div>
+    <div class="messages" id="messages"></div>
+    <div class="input-area">
+      <div class="input-wrapper">
+        <textarea class="input-box" id="input-box" placeholder="请输入您的问题..." rows="1" onkeydown="onInputKey(event)" oninput="autoGrow(this)"></textarea>
+        <div class="input-toolbar">
+          <div class="input-toolbar-left">
+            <button class="plus-btn" title="上传文件" onclick="document.getElementById('file-input').click()">+</button>
+            <input type="file" id="file-input" accept=".png,.jpg,.jpeg,.gif,.webp,.pdf,.xls,.xlsx,.vtt,.text,.xlt,.htm,.html,.ics,.tpl,.xql,.css,.csv,.asp,.py,.jhtml,.java,.js,.json,.jsx,.log,.md,.mdx,.mts,.rb,.rs,.sass,.scss,.sql,.toml,.ts,.tsx,.xml,.yaml,.yml,.zsh" onchange="handleFileUpload(event)" />
+          </div>
+          <div id="send-area">
+<button class="send-btn disabled" id="send-btn" onclick="sendMessage()" title="发送">
+              <span class="icon-send"></span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="bottombar" id="bottombar">
+      <button class="bb-btn" id="bb-agent" onclick="toggleAgentDropdown(event)">
+        <span id="agent-name">智能体</span><span class="chevron">&#9662;</span>
+      </button>
+      <button class="bb-btn" id="bb-mode" onclick="toggleModeDropdown(event)">
+        <span id="mode-label">构建</span><span class="chevron">&#9662;</span>
+      </button>
+      <button class="bb-btn" id="bb-provider" onclick="toggleProviderDropdown(event)">
+        <span id="provider-name">OpenCode</span><span class="chevron">&#9662;</span>
+      </button>
+      <button class="bb-btn" id="bb-model" onclick="toggleModelDropdown(event)">
+        <span class="icon-model"></span>
+        <span id="model-name">AI 模型</span><span class="chevron">&#9662;</span>
+      </button>
+      <button class="bb-btn" id="bb-level" onclick="toggleLevelDropdown(event)">
+        <span id="level-label"> 中</span><span class="chevron">&#9662;</span>
+      </button>
+    </div>
+    <!-- 上下文用量条（#116 问题三 + session_ffa9 假修复）：SSE 事件更新，信息默认可见（不再需点击 3px 细条） -->
+    <div class="ctx-meter" id="ctx-meter" title="上下文用量" onclick="toggleCtxTooltip(event)">
+      <div class="ctx-meter-fill" id="ctx-meter-fill" style="width:0%"></div>
+      <span class="ctx-meter-info" id="ctx-meter-info"></span>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 权限确认模态框（#116 问题二）===== -->
+<div id="permission-modal" class="permission-modal" style="display:none">
+  <div class="permission-box">
+    <div class="permission-header">
+      <span class="perm-icon">!</span>
+      <span class="permission-title">工具调用权限确认</span>
+    </div>
+    <div class="permission-tool">
+      <div class="permission-tool-name" id="perm-tool-name"></div>
+      <div class="permission-tool-args" id="perm-tool-args"></div>
+      <div class="permission-tool-desc" id="perm-tool-desc"></div>
+    </div>
+    <label class="permission-remember"><input type="checkbox" id="perm-remember" /> 记住选择，下次不再询问</label>
+    <div class="permission-actions">
+      <button class="btn-perm-deny" onclick="respondPermission('deny')">拒绝</button>
+      <button class="btn-perm-allow" onclick="respondPermission('allow')">允许</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== CWD Modal ===== -->
+<div id="cwd-modal" class="modal hidden">
+  <div class="modal-content">
+    <div class="modal-header">
+      <span>切换工作目录</span>
+      <button class="modal-close" onclick="closeCwdModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <p class="cwd-tip">当前目录: <span id="modal-cwd-current"></span></p>
+      <input type="text" id="cwd-input" class="cwd-input" placeholder="点击选择工作目录" spellcheck="false" onclick="selectFolderViaFile()">
+      <div id="cwd-history" style="margin-top:8px;max-height:120px;overflow-y:auto"></div>
+      <p class="cwd-hint">提示: 切换目录将重启服务</p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeCwdModal()">取消</button>
+      <button class="btn-primary" onclick="confirmCwdChange()">确定</button>
+    </div>
+  </div>
+</div>
+
+<style>
+.modal{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:1000}
+.modal-content{background:#fff;border-radius:12px;width:90%;max-width:400px;box-shadow:0 4px 20px rgba(0,0,0,0.15)}
+.modal-header{display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid #eee;font-weight:600}
+.modal-close{background:none;border:none;font-size:24px;cursor:pointer;color:#999;padding:0;line-height:1}
+.modal-close:hover{color:#333}
+.modal-body{padding:20px}
+.cwd-tip{font-size:13px;color:#666;margin-bottom:12px}
+.cwd-input{width:100%;border:1px solid #ddd;border-radius:8px;padding:10px 12px;font-size:13px;font-family:Consolas,monospace;box-sizing:border-box}
+.cwd-input:focus{border-color:#999;outline:none}
+.cwd-hint{font-size:11px;color:#999;margin-top:8px}
+.cwd-history-item{padding:8px 12px;border-radius:6px;font-size:12px;font-family:Consolas,monospace;cursor:pointer;margin-bottom:4px;background:#f5f5f5}
+.cwd-history-item:hover{background:#e8e8e8}
+.cwd-history-item.active{background:#e3f2fd;border:1px solid #2196f3}
+.modal-footer{display:flex;justify-content:flex-end;gap:8px;padding:16px 20px;border-top:1px solid #eee}
+.btn-cancel{padding:8px 16px;border:1px solid #ddd;border-radius:6px;background:#fff;cursor:pointer;font-size:13px}
+.btn-cancel:hover{background:#f5f5f5}
+
+/* ===== 权限确认模态框（#116 问题二）===== */
+.permission-modal{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.55);display:flex;align-items:center;justify-content:center;z-index:1100}
+.permission-box{background:#fff;border-radius:14px;width:92%;max-width:420px;box-shadow:0 8px 32px rgba(0,0,0,0.25);overflow:hidden}
+.permission-header{display:flex;align-items:center;gap:8px;padding:16px 20px;border-bottom:1px solid #eee;font-weight:600;font-size:14px;color:#1a1a1a}
+.permission-header .perm-icon{width:22px;height:22px;border-radius:50%;background:#fff7ed;color:#ea580c;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0}
+.permission-title{flex:1}
+.permission-tool{background:#f8fafc;border:1px solid #e5e7eb;border-radius:8px;margin:14px 20px;padding:12px 14px}
+.permission-tool-name{font-size:13px;font-weight:600;color:#1a1a1a;font-family:Consolas,monospace;margin-bottom:6px;word-break:break-all}
+.permission-tool-args{font-size:12px;color:#6b7280;font-family:Consolas,monospace;max-height:120px;overflow-y:auto;word-break:break-all;white-space:pre-wrap;line-height:1.5}
+.permission-tool-desc{font-size:12px;color:#9ca3af;margin-top:6px}
+.permission-remember{display:flex;align-items:center;gap:6px;padding:0 20px;font-size:12px;color:#6b7280}
+.permission-remember input{width:14px;height:14px;accent-color:#2563eb}
+.permission-actions{display:flex;justify-content:flex-end;gap:8px;padding:16px 20px;border-top:1px solid #f0f0f0;margin-top:14px}
+.btn-perm-deny{padding:8px 18px;border:1px solid #e5e5e5;border-radius:8px;background:#fff;cursor:pointer;font-size:13px;color:#6b7280}
+.btn-perm-deny:hover{background:#f5f5f5}
+.btn-perm-allow{padding:8px 18px;border:none;border-radius:8px;background:#2563eb;color:#fff;cursor:pointer;font-size:13px;font-weight:500}
+.btn-perm-allow:hover{background:#1d4ed8}
+
+/* ===== 上下文用量条（#116 问题三 + session_ffa9 假修复）=====
+ * 修复：信息文本默认可见（不再需点击 3px 细条才显示），加大可视性；
+ * 数据源改为多路径防御性探测（见 extractCtxUsage），数据未到/无用量数据时降级展示。 */
+.ctx-meter{height:6px;background:#f0f0f0;position:relative;flex-shrink:0;cursor:pointer;border-bottom:1px solid #eee}
+.ctx-meter-fill{height:100%;background:#2563eb;transition:width 0.3s ease}
+.ctx-meter.warn .ctx-meter-fill{background:#f59e0b}
+.ctx-meter.danger .ctx-meter-fill{background:#ef4444}
+.ctx-meter.nodata .ctx-meter-fill{background:#e5e7eb}
+.ctx-meter-info{position:absolute;top:100%;right:12px;margin-top:1px;font-size:10px;color:#6b7280;background:rgba(255,255,255,0.95);padding:1px 6px;border-radius:4px;pointer-events:none;white-space:nowrap;font-family:Consolas,monospace;z-index:5}
+
+/* ===== 等待权限确认状态 ===== */
+.session-status .dot.waiting{background:#ea580c;animation:pulse-dot 0.8s ease-in-out infinite}
+.bottombar.waiting{background:#fff7ed}
+</style>
+
+<script src="config.js"></script>
+<script>
+// ============================================================
+// OpenCode Chat - Custom UI for WPS sidebar (Chrome 104 compatible)
+// Flow: Setup (choose CWD + start) → Chat (with status bar)
+// ============================================================
+
+var API_BASE = CONFIG.opencode.apiBase
+var NETWORK_TIMEOUT = CONFIG.network.timeout
+var UPLOAD_TIMEOUT = CONFIG.network.uploadTimeout
+var SESSION_ID = ''
+var PROJECT_DIR = ''
+var IS_BUSY = false
+var SSE = null
+var PART_TYPES = {}
+var STREAMING_MSG_ID = ''
+var STREAMING_TEXT = ''
+var STREAMING_REASONING = ''
+var STREAMING_TEXT_PART_ID = ''
+var STREAMING_REASONING_PART_ID = ''
+var CONNECTED = false
+var LAST_INJECTED_CONTEXT = ''
+var CURRENT_MODEL = ''
+var CURRENT_MODE = 'build'
+var CURRENT_LEVEL = 'balanced'
+var AVAILABLE_MODELS = []
+var AVAILABLE_AGENTS = []
+var AVAILABLE_PROVIDERS = []
+var CURRENT_AGENT = 'wps-expert'
+var DEFAULT_AGENT = 'wps-expert'
+var SERVER_RUNNING = false
+var IN_SETUP_VIEW = false
+var HEALTH_CHECK_TIMER = null
+var HEALTH_CHECK_IN_FLIGHT = false
+var STOPPING = false   // 显式停止标记：防止在途健康检查在显式停止后错误触发自动重连（评审 R2-1）
+var STOPPED_AT = 0     // 显式停止时间戳：仅在 stopOpenCode() 中更新，不在启动/连接时重置，
+                        // 用于时间戳过滤丢弃停止前发起的旧请求结果（评审 P3/P1）
+var HEALTH_CHECK_ACTIVE_TS = 0  // 当前在途健康检查请求的唯一标识（评审 P1）
+var START_POLL_TIMER = null   // 手动启动服务时的 1s 就绪轮询定时器（提升为模块级，供显式停止时清理，评审 R3-1）
+var INPUT_HISTORY = []
+var INPUT_HISTORY_INDEX = -1
+// #116 权限确认 & 上下文用量
+var PENDING_PERMISSION = null       // 待响应的权限请求 { permissionID, tool }
+var PERMISSION_MODAL_VISIBLE = false
+var CONTROL_POLLING = false         // 是否正在 /tui/control/next 长轮询（Issue #116 权限确认兜底）
+var CONTROL_POLL_XHR = null         // 当前长轮询的 XHR 句柄（用于停止时 abort）
+var CONTROL_POLL_RETRY = null       // 长轮询断开后的重连定时器
+var CTX_PERCENT = 0                 // 当前上下文用量百分比（0-100）
+var CTX_TOOLTIP_VISIBLE = false
+var CTX_DATA_SEEN = false           // 是否已获取到真实上下文用量数据（session_ff63 问题二）
+
+var $messages = document.getElementById('messages')
+var $input = document.getElementById('input-box')
+var $sendBtn = document.getElementById('send-btn')
+var $sendArea = document.getElementById('send-area')
+var $sessionTitle = document.getElementById('session-title')
+var $statusDot = document.getElementById('status-dot')
+var $modelName = document.getElementById('model-name')
+var $viewSetup = document.getElementById('view-setup')
+var $viewChat = document.getElementById('view-chat')
+var $setupCwd = document.getElementById('setup-cwd')
+var $btnStart = document.getElementById('btn-start')
+var $setupStatus = document.getElementById('setup-status')
+var $topbarCwd = document.getElementById('topbar-cwd')
+var $serverDot = document.getElementById('server-dot')
+var $serverLabel = document.getElementById('server-label')
+var $providerName = document.getElementById('provider-name')
+var $agentName = document.getElementById('agent-name')
+// #116 权限确认 & 上下文用量 DOM 引用
+var $permModal = document.getElementById('permission-modal')
+var $permToolName = document.getElementById('perm-tool-name')
+var $permToolArgs = document.getElementById('perm-tool-args')
+var $permToolDesc = document.getElementById('perm-tool-desc')
+var $permRemember = document.getElementById('perm-remember')
+var $ctxMeter = document.getElementById('ctx-meter')
+var $ctxMeterFill = document.getElementById('ctx-meter-fill')
+var $ctxMeterInfo = document.getElementById('ctx-meter-info')
+var CURRENT_PROVIDER = 'opencode'
+
+// --- Storage ---
+function getPS(key) { try { return window.Application.PluginStorage.getItem(key) || '' } catch(e) { return '' } }
+function setPS(key, val) { try { window.Application.PluginStorage.setItem(key, val) } catch(e) {} }
+// localStorage 备用（某些 WPS 版本 PluginStorage 跨重启不持久）
+function getLS(key) { try { return localStorage.getItem(key) || '' } catch(e) { return '' } }
+function setLS(key, val) { try { localStorage.setItem(key, val) } catch(e) {} }
+// cookie 备用（WPS 内嵌浏览器普遍支持）
+function getCK(key) { try { var m = document.cookie.match(new RegExp('(^| )' + key + '=([^;]+)')); return m ? decodeURIComponent(m[2]) : '' } catch(e) { return '' } }
+function setCK(key, val) { try { document.cookie = key + '=' + encodeURIComponent(val) + ';path=/;max-age=31536000' } catch(e) {} }
+function clearCK(key) { try { document.cookie = key + '=;path=/;max-age=0' } catch(e) {} }
+
+// --- 配置持久化 ---
+var PERSIST = {
+    get apiUrl() { return getPS('opencode_api_url') || 'http://127.0.0.1:14096'; },
+    set apiUrl(val) { setPS('opencode_api_url', val); },
+    get cwd() { return getPS('opencode_cwd') || ''; },
+    set cwd(val) { setPS('opencode_cwd', val); },
+    get agent() { return getPS('opencode_agent') || 'wps-expert'; },
+    set agent(val) { setPS('opencode_agent', val); },
+    get model() { return getCK('opencode_model') || getLS('opencode_model') || getPS('opencode_model') || ''; },
+    set model(val) { setCK('opencode_model', val); setLS('opencode_model', val); setPS('opencode_model', val); }
+};
+
+// --- 常量定义 ---
+var CONSTANTS = {
+    API_DEFAULT_URL: 'http://127.0.0.1:14096',
+    API_TIMEOUT: 30000,
+    MAX_RETRIES: 3,
+    SSE_RECONNECT_DELAY: 3000,
+    MAX_MESSAGE_LENGTH: 10000,
+    MAX_HISTORY: 100,
+    HEALTH_CHECK_INTERVAL: 10000,
+    TOAST_DURATION: 3000,
+    DEFAULT_SESSION_NAME: '新对话'
+};
+
+// --- 初始化配置 ---
+(function() {
+    API_BASE = PERSIST.apiUrl;
+    PROJECT_DIR = PERSIST.cwd;
+    CURRENT_AGENT = PERSIST.agent;
+    CURRENT_MODEL = PERSIST.model;
+
+    // 开发者模式：直接从源目录读取 Skills/Agents
+    var devMode = getPS('opencode_dev_mode') === 'true';
+    if (devMode) {
+        console.log('[DevMode] 开发者模式已启用，将从源目录读取 Skills/Agents');
+    }
+})();
+
+// --- 全局异常捕获 ---
+var ERROR_LOGS = [];
+function logError(context, data) {
+    var log = { time: new Date().toISOString(), context: context, data: data };
+    console.error('[ERROR]', log);
+    ERROR_LOGS.unshift(log);
+    if (ERROR_LOGS.length > 50) ERROR_LOGS.pop();
+}
+window.onerror = function(msg, url, line, col, error) {
+    logError('Global', { msg: msg, url: url, line: line, col: col, error: error ? error.message : '' });
+    return true;
+};
+window.onunhandledrejection = function(event) {
+    logError('UnhandledPromise', { reason: event.reason ? event.reason.message : String(event.reason) });
+};
+
+// --- View switching ---
+function showSetup() {
+    $viewSetup.classList.remove('hidden')
+    $viewChat.classList.add('hidden')
+    IN_SETUP_VIEW = true
+    // 不再 stopHealthCheck() —— 健康检测改为全局常驻，不随视图切换停止；
+    // setup 视图下仍持续探测服务状态，一旦恢复即自动切回 chat（见 startHealthCheck）
+    // 恢复上次 CWD
+    var lastCwd = getPS('opencode_cwd')
+    if (lastCwd) $setupCwd.value = lastCwd
+    $setupStatus.textContent = ''
+    $btnStart.disabled = false
+    $btnStart.textContent = '启动服务'
+}
+
+function openCwdModalFromSetup() {
+    var currentCwd = $setupCwd.value || getPS('opencode_cwd') || ''
+    var cwdInput = document.getElementById('cwd-input')
+    var modal = document.getElementById('cwd-modal')
+    document.getElementById('modal-cwd-current').textContent = currentCwd || '未设置'
+    cwdInput.value = currentCwd
+    renderCwdHistory()
+    modal.classList.remove('hidden')
+    setTimeout(function() { cwdInput.focus(); cwdInput.select() }, 100)
+}
+
+// 通过选择文件夹
+function selectFolderViaFile() {
+    try {
+        // 优先用当前打开的文档所在目录
+        var doc = window.Application.ActiveDocument || window.Application.ActiveWorkbook || window.Application.ActivePresentation
+        var defaultPath = ''
+        if (doc) {
+            try { defaultPath = doc.Path || doc.FullName } catch(e) {}
+        }
+        if (!defaultPath) {
+            defaultPath = getPS('opencode_cwd') || ''
+        }
+        
+        // 用文件夹选择对话框
+        var fd = window.Application.FileDialog(window.Application.Enum.msoFileDialogFolderPicker)
+        fd.Title = '选择工作目录'
+        fd.InitialFileName = defaultPath || 'C:\\'
+        var result = fd.Show()
+        var setupCwd = document.getElementById('setup-cwd')
+        var cwdInput = document.getElementById('cwd-input')
+        if (result === -1) {
+            var folderPath = ''
+            try { folderPath = fd.SelectedItems.Item(1) } catch(e) {}
+            if (folderPath) {
+                if (setupCwd) setupCwd.value = folderPath
+                if (cwdInput) cwdInput.value = folderPath
+            }
+        } else if (result === 0) {
+            // 用户取消，不修改已有输入
+        }
+    } catch(e) {
+        alert('选择失败: ' + e.message + '\n请手动输入工作目录')
+    }
+}
+
+function showChat() {
+    $viewSetup.classList.add('hidden')
+    $viewChat.classList.remove('hidden')
+    IN_SETUP_VIEW = false
+    // 更新 topbar cwd 显示
+    var cwd = PROJECT_DIR || getPS('opencode_cwd') || ''
+    $topbarCwd.textContent = cwd || '点击选择工作目录'
+}
+
+// --- CWD Modal ---
+function openCwdModal() {
+    // 不再提前停止服务：仅浏览/选择目录不应中断正在运行的服务（评审 P4）
+    // 停止延迟到 confirmCwdChange() 确认新 CWD 时执行
+    var modal = document.getElementById('cwd-modal')
+    var currentCwd = document.getElementById('modal-cwd-current')
+    var cwdInput = document.getElementById('cwd-input')
+    currentCwd.textContent = PROJECT_DIR || '未设置'
+    cwdInput.value = PROJECT_DIR || ''
+    renderCwdHistory()
+    modal.classList.remove('hidden')
+    setTimeout(function() { cwdInput.focus(); cwdInput.select() }, 100)
+}
+
+var CWD_HISTORY = []
+function getCwdHistory() {
+    try {
+        var s = getPS('opencode_cwd_history')
+        if (s) CWD_HISTORY = JSON.parse(s)
+    } catch(e) {}
+    return CWD_HISTORY
+}
+function addCwdHistory(cwd) {
+    if (!cwd) return
+    getCwdHistory()
+    var arr = CWD_HISTORY.filter(function(x) { return x !== cwd })
+    arr.unshift(cwd)
+    if (arr.length > 10) arr = arr.slice(0, 10)
+    CWD_HISTORY = arr
+    try { setPS('opencode_cwd_history', JSON.stringify(arr)) } catch(e) {}
+}
+function renderCwdHistory() {
+    var container = document.getElementById('cwd-history')
+    if (!container) return
+    getCwdHistory()
+    if (CWD_HISTORY.length === 0) {
+        container.innerHTML = '<div style="color:#999;font-size:12px">暂无历史记录</div>'
+        return
+    }
+    var html = ''
+    for (var i = 0; i < CWD_HISTORY.length; i++) {
+        var c = CWD_HISTORY[i]
+        var sel = (c === PROJECT_DIR)
+        // 先翻倍反斜杠（JS 字符串字面量），再 escapeAttr（& < > " '）；
+        // 顺序不能反：若先 escapeAttr 会把 ' 转成 \'，后翻倍反斜杠会把 \' 误翻成 \\' 破坏转义
+        var escC = c.replace(/\\/g, '\\\\')
+        html += '<div class="cwd-history-item' + (sel ? ' active' : '') + '" onclick="selectCwdHistory(\'' + escapeAttr(escC) + '\')">' + escapeHtml(c) + '</div>'
+    }
+    container.innerHTML = html
+}
+function selectCwdHistory(cwd) {
+    document.getElementById('cwd-input').value = cwd
+}
+
+function closeCwdModal() {
+    document.getElementById('cwd-modal').classList.add('hidden')
+}
+
+function confirmCwdChange() {
+    var newCwd = document.getElementById('cwd-input').value.trim()
+    if (!newCwd) { alert('请输入工作目录'); return }
+    
+    // 保存到历史
+    addCwdHistory(newCwd)
+    
+    closeCwdModal()
+
+    // 如果当前有运行的服务器，先停止
+    if (SERVER_RUNNING) {
+        stopOpenCode()
+    }
+
+    // 用户主动启动新 CWD 服务：清除旧停止标记，避免残留 STOPPING 阻断自动恢复（评审 P2）
+    // 注意：不重置 STOPPED_AT，保留停止时刻以维持时间戳过滤语义（评审 P1）
+    if (STOPPING) STOPPING = false
+
+    // 设置新的 CWD 并启动（PERSIST.cwd setter 自动调用 setPS）
+    PROJECT_DIR = newCwd
+    PERSIST.cwd = newCwd
+    $topbarCwd.textContent = newCwd
+    $topbarCwd.title = newCwd
+    $setupCwd.value = newCwd
+
+    // 直接启动服务
+    $btnStart.disabled = true
+    $btnStart.innerHTML = '<span class="spinner"></span> 正在启动...'
+    $setupStatus.textContent = '正在启动 OpenCode 服务...'
+    setPS('opencode_command', JSON.stringify({cmd: 'start:' + newCwd, ts: Date.now()}))
+
+    // 轮询等待服务就绪
+    var retries = 0
+    var maxRetries = 30
+    var pollTimerId = setInterval(function() {
+        fetchJSON('GET', '/global/health', null, function(data) {
+            // 在途回调防泄漏：若用户在轮询期间显式停止，不再恢复（评审 P1）
+            if (STOPPING) { clearInterval(pollTimerId); if (START_POLL_TIMER === pollTimerId) START_POLL_TIMER = null; return }
+            if (data && data.healthy) {
+                clearInterval(pollTimerId)
+                if (START_POLL_TIMER === pollTimerId) START_POLL_TIMER = null
+                onServerConnected()
+            }
+        }, function() {
+            retries++
+            if (retries >= maxRetries) {
+                clearInterval(pollTimerId)
+                if (START_POLL_TIMER === pollTimerId) START_POLL_TIMER = null
+                $btnStart.disabled = false
+                $btnStart.innerHTML = '<span class="icon-play"></span>启动服务'
+                $setupStatus.textContent = '启动失败，请检查 OpenCode 是否已安装。'
+                // 启动失败后恢复全局健康检测，服务可能延迟自愈/外部恢复（评审 P2）
+                startHealthCheck()
+            }
+        })
+    }, 1000)
+    START_POLL_TIMER = pollTimerId
+}
+
+// --- Server start / stop ---
+function startOpenCode() {
+    // 如果用户输入了目录就用用户输入的，否则用用户目录
+    var userInput = $setupCwd.value.trim()
+    var cwd = userInput || CONFIG.plugin.userHome
+
+    // 保存 CWD 到历史
+    addCwdHistory(cwd)
+
+    // 保存 CWD 到 PluginStorage
+    PERSIST.cwd = cwd
+    PROJECT_DIR = cwd
+    $topbarCwd.textContent = cwd
+    $topbarCwd.title = cwd
+
+    $btnStart.disabled = true
+    $btnStart.innerHTML = '<span class="spinner"></span> 正在启动...'
+    $setupStatus.textContent = '正在启动 OpenCode 服务...'
+
+    setPS('opencode_command', JSON.stringify({cmd: 'start:' + cwd, ts: Date.now()}))
+
+    // 用户主动启动：清除旧停止标记，避免残留 STOPPING 阻断自动恢复（评审 P2）
+    // 注意：不重置 STOPPED_AT，保留停止时刻以维持时间戳过滤语义（评审 P1）
+    if (STOPPING) STOPPING = false
+
+    var launcherUrl = 'http://127.0.0.1:14097'
+    var launcherOk = false
+    var xhrLauncher = new XMLHttpRequest()
+    xhrLauncher.timeout = 3000
+    xhrLauncher.open('GET', launcherUrl + '/status', true)
+    xhrLauncher.onreadystatechange = function() {
+        if (xhrLauncher.readyState === 4 && xhrLauncher.status === 200) launcherOk = true
+    }
+    xhrLauncher.onerror = function() {}
+    xhrLauncher.ontimeout = function() {}
+    try { xhrLauncher.send() } catch(e) {}
+
+    var retries = 0
+    var maxRetries = 30
+    var pollTimerId = setInterval(function() {
+        fetchJSON('GET', '/global/health', null, function(data) {
+            // 在途回调防泄漏：若用户在轮询期间显式停止，不再恢复（评审 P1）
+            if (STOPPING) { clearInterval(pollTimerId); if (START_POLL_TIMER === pollTimerId) START_POLL_TIMER = null; return }
+            if (data && data.healthy) {
+                clearInterval(pollTimerId)
+                if (START_POLL_TIMER === pollTimerId) START_POLL_TIMER = null
+                onServerConnected()
+            }
+        }, function() {
+            retries++
+            if (retries >= maxRetries) {
+                clearInterval(pollTimerId)
+                if (START_POLL_TIMER === pollTimerId) START_POLL_TIMER = null
+                $btnStart.disabled = false
+                $btnStart.innerHTML = '<span class="icon-play"></span>启动服务'
+                if (!launcherOk) $setupStatus.textContent = 'Launcher 未运行'
+                else $setupStatus.textContent = '启动失败，请检查 OpenCode 是否已安装。'
+                // 启动失败后恢复全局健康检测，服务可能延迟自愈/外部恢复（评审 P2）
+                startHealthCheck()
+            }
+        })
+    }, 1000)
+    START_POLL_TIMER = pollTimerId
+}
+
+function stopOpenCode() {
+    // 通过 main.js 命令通道停止
+    setPS('opencode_command', JSON.stringify({cmd: 'stop', ts: Date.now()}))
+    // 显式停止：置停止标记 + 记录停止时刻 + 放弃在途健康检查结果 + 停检测（评审 P1/R2-1/P3）
+    STOPPING = true
+    STOPPED_AT = Date.now()   // 记录停止时刻，用于丢弃停止前置位前的在途请求结果（评审 P3）
+    HEALTH_CHECK_IN_FLIGHT = false   // 复位防重入标记，避免显式停止后重启检测时被旧在途请求卡住；注意：此操作不能真正取消在途 XHR（重试由独立 setTimeout 驱动），故同时置 STOPPING 由回调分支拦截其结果（评审 P3）
+    stopHealthCheck()
+    // 清理手动启动的 1s 就绪轮询：避免停止后轮询仍运行，最终服务就绪时误把刚显式停止的服务自动重连（评审 R3-1）
+    if (START_POLL_TIMER) { clearInterval(START_POLL_TIMER); START_POLL_TIMER = null }
+    SERVER_RUNNING = false
+    CONNECTED = false
+    // Issue #116 权限确认：停止 /tui/control/next 长轮询（服务已停止不再轮询）
+    stopControlNextPoll()
+    if (SSE) { SSE.close(); SSE = null }
+    // 清理 SSE 自动重连定时器：服务已停止时若仍有排程中的重连回调，
+    // 会继续向已停止的服务发起连接（浪费资源 + 触发错误日志）
+    if (sseReconnectTimer) { clearTimeout(sseReconnectTimer); sseReconnectTimer = null; sseReconnectDelay = 1000; }
+    updateServerStatus(false)
+    showSetup()
+}
+
+function onServerConnected() {
+    // 幂等守卫：手动启动轮询与全局健康检测可能并发触发 onServerConnected，避免重复建会话/重连 SSE（评审 P2）
+    if (SERVER_RUNNING && CONNECTED) return
+    // 服务已连接：清除显式停止标记，恢复自动探测（评审 R2-1）
+    // 注意：不重置 STOPPED_AT——该字段仅在 stopOpenCode() 中更新，
+    // 保留旧值可维持时间戳过滤语义，阻止停止前发起的旧请求结果泄漏（评审 P1）
+    STOPPING = false
+    SERVER_RUNNING = true
+    CONNECTED = true
+    updateServerStatus(true)
+    showChat()
+    refreshModelAgentLabels()
+    var sid = getPS('opencode_session_id')
+    if (sid) { SESSION_ID = sid; loadSessionMessages(sid) } else {
+        // W4 修复：首次使用无历史会话时 createNewSession 后 return，原代码会跳过 control/next 轮询启动。
+        // 在回调中也启动轮询（连同 connectSSE），保证 control/next 兜底通道始终可用。
+        createNewSession(function() { connectSSE(); startControlNextPoll() })
+        return
+    }
+    connectSSE()
+    startHealthCheck()
+    // Issue #116 权限确认：启动 /tui/control/next 长轮询兜底（SSE 收不到权限请求时的备用通道）
+    startControlNextPoll()
+}
+
+// 第 5 轮评审：抽离「刷新模型/智能体 topbar 标签」为统一 helper，供 onServerConnected 与
+// SSE 探测恢复路径共用，消除两处重复逻辑、集中维护点（纯重构，不改行为）。
+function refreshModelAgentLabels() {
+    fetchAvailableModels(function() { $modelName.textContent = CURRENT_MODEL || 'AI 模型' })
+    fetchAvailableAgents(function() {
+        $agentName.textContent = CURRENT_AGENT || '智能体'
+    })
+}
+
+function updateServerStatus(running) {
+    $serverDot.className = 'status-dot' + (running ? ' running' : '')
+    $serverLabel.className = 'status-label' + (running ? ' running' : '')
+    $serverLabel.textContent = running ? '运行中' : '已停止'
+}
+
+/**
+ * 探测 launcher（14097）状态：/global/health 探测在 WPS Chromium 下可能因 CORS 或
+ * 环境差异失败，即使 opencode 实际运行（Issue #114 回归）。launcher /status 显式放行
+ * file:///null Origin，且会回退探测 14096 端口监听，作为可靠的第二信号源交叉验证。
+ * @param {function} cb - 回调，(launcherRunning, launcherReachable)。
+ *   launcherRunning:    true=服务在跑（launcher 确认 running 或 14096 端口在监听）
+ *   launcherReachable:  true=launcher /status 响应成功（200）；false=launcher 不可达
+ *   （XHR 网络错误/超时，无法区分「服务真停」与「launcher 未运行」）
+ */
+function probeLauncherRunning(cb) {
+    try {
+        var xhr = new XMLHttpRequest()
+        xhr.timeout = 3000
+        xhr.open('GET', 'http://127.0.0.1:14097/status', true)
+        xhr.onload = function() {
+            var running = false
+            var reachable = false
+            if (xhr.status === 200) {
+                reachable = true
+                try {
+                    var d = JSON.parse(xhr.responseText)
+                    running = !!(d && (d.running || d.portOpen))
+                } catch (e) { running = false }
+            }
+            cb(running, reachable)
+        }
+        xhr.onerror = function() { cb(false, false) }
+        xhr.ontimeout = function() { cb(false, false) }
+        xhr.send()
+    } catch (e) { cb(false, false) }
+}
+
+// 健康检查单一出口复位（评审 R2-3）：success/error 回调均经此收敛，避免分支内提前 return 遗漏复位
+// 仅复位与当前在途请求匹配的标记，避免旧请求返回时误清新请求的防重入状态（评审 P1）
+function healthCheckDone(requestTs, handler) {
+    if (requestTs === HEALTH_CHECK_ACTIVE_TS) {
+        HEALTH_CHECK_IN_FLIGHT = false
+    }
+    if (handler) handler()
+}
+
+// --- Health check (detect server crash) ---
+function startHealthCheck() {
+    stopHealthCheck()
+    HEALTH_CHECK_TIMER = setInterval(function() {
+        // 防重入：单次探测最长约 48s（15s×3 重试 + 退避）> 10s 周期，
+        // 避免慢请求叠加并发多个 /global/health 造成状态竞态（评审 R1-2）
+        if (HEALTH_CHECK_IN_FLIGHT) return
+        HEALTH_CHECK_IN_FLIGHT = true
+        // 记录本次请求发起时刻到闭包，用于丢弃 STOPPING 置位前的旧请求结果（评审 P3）
+        var requestTs = Date.now()
+        HEALTH_CHECK_ACTIVE_TS = requestTs  // 标记当前在途请求标识（评审 P1）
+        fetchJSON('GET', '/global/health', null, function(data) {
+            healthCheckDone(requestTs, function() {
+                // 丢弃在显式停止之前发起的旧请求结果：其重试由 setTimeout 驱动，无法被 clearInterval 取消（评审 P3）
+                // STOPPED_AT 仅在 stopOpenCode() 中更新，不随启动重置（评审 P1）
+                if (requestTs <= STOPPED_AT) return
+                var ok = data && data.healthy
+                if (ok) {
+                    // 服务恢复：setup 视图、未连接、且非显式停止时才自动切回 chat；
+                    // 否则仅在状态变化时更新，避免每 10s 冗余写入（评审 R1-1/R2-1）
+                    if (IN_SETUP_VIEW && !SERVER_RUNNING && !STOPPING) {
+                        onServerConnected()   // 自动切回 chat + 重启检测（内部含幂等守卫）
+                    } else if (!SERVER_RUNNING && !STOPPING) {
+                        // 非 setup 视图（或已在 chat）但服务未标记运行：仅同步状态，恢复 CONNECTED 保持一致（评审 P1/P4）
+                        SERVER_RUNNING = true; CONNECTED = true; updateServerStatus(true)
+                    }
+                } else {
+                    // 失败：标记断开 + 切 setup（若未在 setup），但【不停止检测】
+                    // 第 2 轮评审：加 !SSE 守卫——SSE.onopen 已是最强「服务在跑」证据，若 SSE 已连接
+                    // （onopen 已证明服务在跑），则信任 SSE 信号、不以 /global/health 失败拆除运行中状态，
+                    // 避免与持续 CORS 失败的 /global/health 形成每 10s 反复振荡（chat↔setup 闪烁）。
+                    // 真实崩溃时 SSE.onerror 会先关连接置 CONNECTED=false，下一周期即可正常降级。
+                    if (SERVER_RUNNING && !STOPPING && !SSE) {
+                        SERVER_RUNNING = false; CONNECTED = false
+                        if (SSE) { SSE.close(); SSE = null }
+                        updateServerStatus(false)
+                        if (!IN_SETUP_VIEW) showSetup()   // 仅切视图，不再 stopHealthCheck
+                        $setupStatus.textContent = '服务已断开，请重新启动以继续。'
+                        // 交叉验证：/global/health 失败但 launcher 确认端口在监听（服务实际在跑）时，
+                        // 视为探测抖动而非真实停止 —— 立即恢复运行状态 + 重建 SSE（覆盖 SSE 已被 close
+                        // 的场景，Issue #114 核心场景）。同步降级已先执行，故测试环境（launcher 探测
+                        // 不回调）不影响既有降级断言。
+                        probeLauncherRunning(function(launcherRunning, launcherReachable) {
+                            // 丢弃显式停止前发起的在途探测结果（与健康检查回调的 STOPPED_AT 过滤语义一致，双保险）
+                            if (requestTs <= STOPPED_AT) return
+                            // 语义说明：/global/health 失败/不健康时，launcher 确认「进程/端口在监听」作为兜底信号，
+                            // 显示运行中（进程活着）而非 stopped —— 满足用户核心诉求「进程在跑却显示停止」。
+                            // 若服务持续不健康（healthy=false）但仍被 launcher 判定 running，UI 显示运行中属进程级语义。
+                            if (launcherRunning && !STOPPING) {
+                                SERVER_RUNNING = true
+                                updateServerStatus(true)
+                                if (IN_SETUP_VIEW) showChat()
+                                if (!SSE) onServerConnected()
+                            } else if (!launcherReachable && !STOPPING && !SERVER_RUNNING && !SSE) {
+                                // launcher 不可达（XHR 失败/超时）时无法区分「服务真停」与「launcher 未运行但服务在跑」。
+                                // 用 SSE（EventSource）作第三信号源最终探测 —— EventSource 不受 XHR CORS 差异影响，
+                                // onopen 成功即证明服务在跑（覆盖 /global/health CORS 失败 + launcher 未运行场景）。
+                                // 服务真停时 SSE onerror 且不自动重连（SESSION_ID 为空），不会误报；
+                                // 加冷却守卫，避免每 10s 健康检查周期都创建一次注定失败的 EventSource（评审建议 2）。
+                                // 第 1 轮评审：标记为探测性连接（connectSSE(true)），失败时不自动重连（SSE.onerror 见上）。
+                                if (sseProbeAllowed()) connectSSE(true)
+                            }
+                        })
+                    }
+                }
+            })
+        }, function() {
+            healthCheckDone(requestTs, function() {
+                // 丢弃在显式停止之前发起的旧请求结果（评审 P3）
+                // STOPPED_AT 仅在 stopOpenCode() 中更新，不随启动重置（评审 P1）
+                if (requestTs <= STOPPED_AT) return
+                // 网络错误分支：同样保持检测，等待恢复
+                // 第 2 轮评审：加 !SSE 守卫——SSE 已连接则信任 SSE 信号，不以 /global/health 失败反复拆解刚恢复的状态。
+                if (SERVER_RUNNING && !STOPPING && !SSE) {
+                    SERVER_RUNNING = false; CONNECTED = false
+                    if (SSE) { SSE.close(); SSE = null }
+                    updateServerStatus(false)
+                    if (!IN_SETUP_VIEW) showSetup()
+                    $setupStatus.textContent = '服务已断开，请重新启动以继续。'
+                    // 与成功分支失败一致：launcher 确认服务在跑则立即恢复 + 重建 SSE
+                    probeLauncherRunning(function(launcherRunning, launcherReachable) {
+                        // 丢弃显式停止前发起的在途探测结果（与健康检查回调的 STOPPED_AT 过滤语义一致，双保险）
+                        if (requestTs <= STOPPED_AT) return
+                        // 语义说明：见上方成功分支失败处理 —— 进程/端口监听作为进程级 running 兜底
+                        if (launcherRunning && !STOPPING) {
+                            SERVER_RUNNING = true
+                            updateServerStatus(true)
+                            if (IN_SETUP_VIEW) showChat()
+                            if (!SSE) onServerConnected()
+                        } else if (!launcherReachable && !STOPPING && !SERVER_RUNNING && !SSE) {
+                            // launcher 不可达：见上方成功分支失败处理的 SSE 最终探测说明（Issue #114 回归）
+                            // 冷却守卫：避免每 10s 健康检查周期都创建注定失败的 EventSource（评审建议 2）
+                            // 第 1 轮评审：标记为探测性连接（connectSSE(true)），失败时不自动重连。
+                            if (sseProbeAllowed()) connectSSE(true)
+                        }
+                    })
+                }
+            })
+        })
+    }, CONSTANTS.HEALTH_CHECK_INTERVAL)
+}
+function stopHealthCheck() { if (HEALTH_CHECK_TIMER) { clearInterval(HEALTH_CHECK_TIMER); HEALTH_CHECK_TIMER = null } }
+
+// --- Dropdowns ---
+function closeAllDropdowns() {
+    var els = document.querySelectorAll('.dropdown,.dropdown-backdrop,.sidebar-backdrop,.sidebar')
+    for (var i = 0; i < els.length; i++) els[i].parentNode.removeChild(els[i])
+    var actives = document.querySelectorAll('.bb-btn.active')
+    for (var i = 0; i < actives.length; i++) actives[i].classList.remove('active')
+}
+function createDropdown(anchorEl, html, direction) {
+    closeAllDropdowns()
+    var backdrop = document.createElement('div')
+    backdrop.className = 'dropdown-backdrop'
+    backdrop.onclick = closeAllDropdowns
+    document.body.appendChild(backdrop)
+    var dd = document.createElement('div')
+    dd.className = 'dropdown ' + (direction || 'bottom-up')
+    dd.innerHTML = html
+    dd.onclick = function(e) { e.stopPropagation() }
+    anchorEl.style.position = 'relative'
+    anchorEl.appendChild(dd)
+    if (anchorEl.classList) anchorEl.classList.add('active')
+}
+/**
+ * HTML 转义，防止 XSS
+ * @param {string} s - 待转义字符串
+ * @returns {string} 转义后的字符串
+ */
+function escapeHtml(s) {
+    if (typeof s !== 'string') return '';
+    return s.replace(/[<>&"']/g, function(c) {
+        var map = { '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;', "'": '&#39;' };
+        return map[c];
+    });
+}
+function escapeAttr(s) {
+    if (typeof s !== 'string') return '';
+    // onclick 属性 = HTML 属性值 + JS 代码双层解析：
+    // - 单引号必须用 \'（JS 字符串转义，HTML 不解析反斜杠，安全）
+    //   不能用 &#39; —— HTML 先解码成 ' 会重新破坏 JS 字符串定界
+    // - 双引号用 &quot;（HTML 实体，防属性定界符提前结束）
+    // - & 用 &amp; 防实体注入；< > 转义防标签注入
+    return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, "\\'");
+}
+
+// Mode dropdown
+function toggleModeDropdown(e) {
+    e.stopPropagation()
+    var html = '<div class="dd-item' + (CURRENT_MODE === 'build' ? ' selected' : '') + '" onclick="selectMode(\'build\')"><span>构建</span>' + (CURRENT_MODE === 'build' ? '<span class="dd-check">&#10003;</span>' : '') + '</div>' +
+        '<div class="dd-item' + (CURRENT_MODE === 'plan' ? ' selected' : '') + '" onclick="selectMode(\'plan\')"><span>规划</span>' + (CURRENT_MODE === 'plan' ? '<span class="dd-check">&#10003;</span>' : '') + '</div>'
+    createDropdown(document.getElementById('bb-mode'), html, 'bottom-up')
+}
+function selectMode(mode) { CURRENT_MODE = mode; document.getElementById('mode-label').textContent = mode === 'build' ? '构建' : '规划'; closeAllDropdowns() }
+
+// Provider dropdown
+function toggleProviderDropdown(e) {
+    e.stopPropagation()
+    var btn = document.getElementById('bb-provider')
+    createDropdown(btn, '<div class="dd-header">加载中...</div>', 'bottom-up')
+    fetchAvailableModels(function() {
+        closeAllDropdowns()
+        var html = '<div class="dd-header">选择供应商</div>'
+        for (var i = 0; i < AVAILABLE_PROVIDERS.length; i++) {
+            var p = AVAILABLE_PROVIDERS[i]
+            var sel = (p.id === CURRENT_PROVIDER)
+            html += '<div class="dd-item' + (sel ? ' selected' : '') + '" onclick="selectProvider(\'' + escapeAttr(p.id) + '\')">'
+            html += '<span>' + escapeHtml(p.name) + '</span>'
+            if (sel) html += '<span class="dd-check">&#10003;</span>'
+            html += '</div>'
+        }
+        if (AVAILABLE_PROVIDERS.length === 0) {
+            html += '<div class="dd-item"><span style="color:#999">暂无供应商</span></div>'
+        }
+        createDropdown(btn, html, 'bottom-up')
+    })
+}
+function selectProvider(id) {
+    CURRENT_PROVIDER = id
+    var p = AVAILABLE_PROVIDERS.find(function(x) { return x.id === id })
+    $providerName.textContent = p ? p.name : id
+    closeAllDropdowns()
+    updateModelsForProvider()
+}
+function updateModelsForProvider() {
+    var p = AVAILABLE_PROVIDERS.find(function(x) { return x.id === CURRENT_PROVIDER })
+    if (p && p.models) {
+        AVAILABLE_MODELS = p.models.slice()
+        if (AVAILABLE_MODELS.length > 0) {
+            CURRENT_MODEL = AVAILABLE_MODELS[0].id
+            $modelName.textContent = AVAILABLE_MODELS[0].name
+        }
+    }
+}
+
+// Model dropdown
+var AVAILABLE_LEVELS = ['balanced', 'high', 'low']
+
+function toggleLevelDropdown(e) {
+    e.stopPropagation()
+    var btn = document.getElementById('bb-level')
+    var html = '<div class="dd-header">选择推理级别</div>'
+    var levels = [
+        { id: 'balanced', name: '中等', desc: '良好的推理和速度' },
+        { id: 'high', name: '高', desc: '最佳推理，可能较慢' },
+        { id: 'low', name: '低', desc: '响应更快，推理较少' }
+    ]
+    for (var i = 0; i < levels.length; i++) {
+        var l = levels[i]
+        var sel = (CURRENT_LEVEL === l.id)
+        html += '<div class="dd-item' + (sel ? ' selected' : '') + '" onclick="selectLevel(\'' + l.id + '\')">'
+        html += '<span>' + l.name + '</span><span class="dd-desc">' + l.desc + '</span>'
+        if (sel) html += '<span class="dd-check">&#10003;</span>'
+        html += '</div>'
+    }
+    createDropdown(btn, html, 'bottom-up')
+}
+
+function selectLevel(id) {
+    CURRENT_LEVEL = id
+    var labels = { balanced: ' 中', high: ' 高', low: ' 低' }
+    document.getElementById('level-label').textContent = labels[id] || ' 中'
+    closeAllDropdowns()
+}
+
+function toggleModelDropdown(e) {
+    e.stopPropagation()
+    var btn = document.getElementById('bb-model')
+    if (AVAILABLE_MODELS.length === 0) {
+        createDropdown(btn, '<div class="dd-header">加载模型中...</div>', 'bottom-up')
+        fetchAvailableModels(function() { closeAllDropdowns(); toggleModelDropdown(e) })
+        return
+    }
+    var html = '<div class="dd-header">选择模型</div>'
+    var sortedModels = AVAILABLE_MODELS.slice().sort(function(a, b) {
+        return (a.providerID || '').localeCompare(b.providerID || '')
+    })
+    var lastProvider = ''
+    for (var i = 0; i < sortedModels.length; i++) {
+        var m = sortedModels[i]
+        if (m.providerID && m.providerID !== lastProvider) {
+            lastProvider = m.providerID
+            var pName = lastProvider
+            for (var pi = 0; pi < AVAILABLE_PROVIDERS.length; pi++) {
+                if (AVAILABLE_PROVIDERS[pi].id === lastProvider) {
+                    pName = AVAILABLE_PROVIDERS[pi].name || lastProvider
+                    break
+                }
+            }
+            html += '<div class="dd-group">' + escapeHtml(pName) + '</div>'
+        }
+        var sel = (m.id === CURRENT_MODEL)
+        html += '<div class="dd-item' + (sel ? ' selected' : '') + '" onclick="selectModel(\'' + escapeAttr(m.id) + '\')">'
+        html += '<span>' + escapeHtml(m.name || m.id) + '</span><span style="display:flex;align-items:center;gap:4px">'
+        if (m.free) html += '<span class="dd-badge free">Free</span>'
+        if (sel) html += '<span class="dd-check">&#10003;</span>'
+        html += '</span></div>'
+    }
+    createDropdown(btn, html, 'bottom-up')
+}
+function selectModel(id) { CURRENT_MODEL = id; PERSIST.model = id; $modelName.textContent = id; closeAllDropdowns() }
+// 从 config.js 取回退模型时做一次深拷贝，避免未来对 provider.models 的
+// push/splice 等变异操作反向污染 CONFIG.fallbackModels（slice() 仅浅拷贝顶层数组）
+function applyFallbackModels() {
+    var ollamaModels = CONFIG.fallbackModels.ollama.slice()
+    var opencodeModels = CONFIG.fallbackModels.opencode.slice()
+    AVAILABLE_MODELS = opencodeModels.concat(ollamaModels)
+    AVAILABLE_PROVIDERS = [
+        { id: 'opencode', name: 'OpenCode', models: opencodeModels },
+        { id: 'ollama', name: 'Ollama (本地)', models: ollamaModels }
+    ]
+}
+function fetchAvailableModels(cb) {
+    // 主数据源：从 OpenCode 服务器获取已配置的提供商和模型
+    fetchJSON('GET', '/config/providers', null, function(data) {
+        if (data && data.providers && data.providers.length > 0) {
+            var providers = []
+            var models = []
+            for (var pi = 0; pi < data.providers.length; pi++) {
+                var p = data.providers[pi]
+                var providerModels = []
+                for (var mid in p.models) {
+                    var m = p.models[mid]
+                    var fullId = p.id + '/' + (m.id || mid)
+                    providerModels.push({ id: fullId, name: m.name || mid, providerID: p.id })
+                }
+                providers.push({ id: p.id, name: p.name || p.id, models: providerModels })
+                for (var mi = 0; mi < providerModels.length; mi++) {
+                    models.push(providerModels[mi])
+                }
+            }
+            AVAILABLE_PROVIDERS = providers
+            AVAILABLE_MODELS = models
+            // 尝试设置默认模型（用户手动选择优先于服务端默认）
+            if (!CURRENT_MODEL && data.default) {
+                var defaults = Object.keys(data.default)
+                if (defaults.length > 0) {
+                    var defProvider = defaults[0]
+                    var defModelId = data.default[defProvider]
+                    var defModel = defProvider + '/' + defModelId
+                    for (var i = 0; i < models.length; i++) {
+                        if (models[i].id === defModel) {
+                            CURRENT_MODEL = defModel
+                            break
+                        }
+                    }
+                }
+            }
+        } else {
+            // 服务器不可用或未配置时使用最小后备列表
+            applyFallbackModels()
+        }
+        if (!CURRENT_MODEL && AVAILABLE_MODELS.length > 0) { CURRENT_MODEL = AVAILABLE_MODELS[0].id }
+        if (cb) cb()
+    }, function() {
+        // 网络/HTTP 错误时使用后备方案
+        applyFallbackModels()
+        if (!CURRENT_MODEL && AVAILABLE_MODELS.length > 0) { CURRENT_MODEL = AVAILABLE_MODELS[0].id }
+        if (cb) cb()
+    })
+}
+
+function fetchAvailableAgents(cb) {
+    fetchJSON('GET', '/agent', null, function(agents) {
+        if (agents && agents.data) {
+            AVAILABLE_AGENTS = agents.data
+            console.log('[Agent] Loaded:', AVAILABLE_AGENTS.length, 'agents')
+            if (AVAILABLE_AGENTS.length > 0 && !CURRENT_AGENT) {
+                for (var i = 0; i < AVAILABLE_AGENTS.length; i++) {
+                    if (AVAILABLE_AGENTS[i].name === DEFAULT_AGENT) {
+                        CURRENT_AGENT = DEFAULT_AGENT
+                        break
+                    }
+                }
+                if (!CURRENT_AGENT) CURRENT_AGENT = AVAILABLE_AGENTS[0].name
+            }
+        } else {
+            console.log('[Agent] No data')
+        }
+        if (cb) cb()
+    }, function(s, t) {
+        console.log('[Agent] Error:', s, t)
+        if (cb) cb()
+    })
+}
+
+/**
+ * 切换智能体选择下拉菜单
+ * @param {Event} e - 点击事件
+ */
+function toggleAgentDropdown(e) {
+    e.stopPropagation()
+    var btn = document.getElementById('bb-agent')
+    createDropdown(btn, '<div class="dd-header">加载中...</div>', 'bottom-up')
+    
+    fetchJSON('GET', '/agent', null, function(resp) {
+        var agents = resp && resp.data ? resp.data : (Array.isArray(resp) ? resp : [])
+        closeAllDropdowns()
+        var html = '<div class="dd-header">选择智能体</div>'
+        if (agents.length === 0) {
+            html += '<div class="dd-item"><span style="color:#999">未找到智能体</span></div>'
+        } else {
+            for (var i = 0; i < agents.length; i++) {
+                var a = agents[i]
+                var name = a.name || a.id || 'unknown'
+                var sel = (name === CURRENT_AGENT)
+                html += '<div class="dd-item' + (sel ? ' selected' : '') + '" onclick="selectAgent(\'' + escapeAttr(name) + '\')">'
+                html += '<span>' + escapeHtml(name) + '</span>'
+                if (sel) html += '<span class="dd-check">&#10003;</span>'
+                html += '</div>'
+            }
+        }
+        createDropdown(btn, html, 'bottom-up')
+    }, function(s, t) {
+        closeAllDropdowns()
+        var errMsg = s === 0 ? (t || '网络错误') : 'HTTP ' + s
+        createDropdown(btn, '<div class="dd-header">' + escapeHtml(errMsg) + '</div>', 'bottom-up')
+    })
+}
+function selectAgent(id) { CURRENT_AGENT = id; PERSIST.agent = id; $agentName.textContent = id; closeAllDropdowns() }
+
+// Session menu
+function toggleSessionMenu(e) {
+    e.stopPropagation()
+    createDropdown(document.getElementById('session-header-area'),
+        '<div class="dd-item" onclick="renameSession()"><span class="icon-pen"></span><span>重命名</span></div><div class="dd-divider"></div><div class="dd-item dd-item-danger" onclick="deleteSession()"><span class="icon-trash"></span><span>删除</span></div>', 'top-down')
+}
+function renameSession() {
+    closeAllDropdowns()
+    if (!SESSION_ID) return
+    var backdrop = document.createElement('div'); backdrop.className = 'dropdown-backdrop'; document.body.appendChild(backdrop)
+    var renameBox = document.createElement('div')
+    renameBox.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.2);z-index:100;padding:20px;width:260px'
+    renameBox.innerHTML = '<div style="font-size:15px;font-weight:600;margin-bottom:12px">重命名会话</div>' +
+        '<input id="rename-input" type="text" value="' + escapeAttr($sessionTitle.textContent) + '" style="width:100%;border:1px solid #e5e5e5;border-radius:8px;padding:8px 12px;font-size:14px;outline:none;font-family:inherit" />'
+    var btnRow = document.createElement('div'); btnRow.style.cssText = 'display:flex;gap:8px;margin-top:14px;justify-content:flex-end'
+    var cancelBtn = document.createElement('button'); cancelBtn.textContent = '取消'; cancelBtn.style.cssText = 'padding:6px 16px;border:1px solid #e0e0e0;border-radius:8px;background:#fff;cursor:pointer;font-size:13px'
+    var confirmBtn = document.createElement('button'); confirmBtn.textContent = '重命名'; confirmBtn.style.cssText = 'padding:6px 16px;border:none;border-radius:8px;background:#1a1a1a;color:#fff;cursor:pointer;font-size:13px'
+    btnRow.appendChild(cancelBtn); btnRow.appendChild(confirmBtn); renameBox.appendChild(btnRow); document.body.appendChild(renameBox)
+    var input = document.getElementById('rename-input'); input.focus(); input.select()
+    function closeRename() { if (renameBox.parentNode) document.body.removeChild(renameBox); if (backdrop.parentNode) document.body.removeChild(backdrop) }
+    function doRename() { var n = input.value.trim(); if (!n) return; closeRename(); fetchJSON('PATCH', '/session/' + SESSION_ID, { title: n }, function(r) { var d = r && r.data ? r.data : r; if (d) $sessionTitle.textContent = d.title || d.slug || n }) }
+    backdrop.onclick = closeRename; cancelBtn.onclick = closeRename; confirmBtn.onclick = doRename
+    input.onkeydown = function(e) { if (e.key === 'Enter') doRename(); if (e.key === 'Escape') closeRename() }
+}
+function deleteSession() {
+    closeAllDropdowns()
+    if (!SESSION_ID) return
+    var backdrop = document.createElement('div'); backdrop.className = 'dropdown-backdrop'; document.body.appendChild(backdrop)
+    var confirmBox = document.createElement('div')
+    confirmBox.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.2);z-index:100;padding:20px;width:260px'
+    confirmBox.innerHTML = '<div style="font-size:15px;font-weight:600;margin-bottom:12px">删除会话</div><div style="font-size:14px;color:#666;margin-bottom:16px">确定要删除此会话吗？</div>'
+    var btnRow = document.createElement('div'); btnRow.style.cssText = 'display:flex;gap:8px;justify-content:flex-end'
+    var cancelBtn = document.createElement('button'); cancelBtn.textContent = '取消'; cancelBtn.style.cssText = 'padding:6px 16px;border:1px solid #e0e0e0;border-radius:8px;background:#fff;cursor:pointer;font-size:13px'
+    var deleteBtn = document.createElement('button'); deleteBtn.textContent = '删除'; deleteBtn.style.cssText = 'padding:6px 16px;border:none;border-radius:8px;background:#e53935;color:#fff;cursor:pointer;font-size:13px'
+    btnRow.appendChild(cancelBtn); btnRow.appendChild(deleteBtn); confirmBox.appendChild(btnRow); document.body.appendChild(confirmBox)
+    function closeConfirm() { if (confirmBox.parentNode) document.body.removeChild(confirmBox); if (backdrop.parentNode) document.body.removeChild(backdrop) }
+    backdrop.onclick = closeConfirm; cancelBtn.onclick = closeConfirm
+    deleteBtn.onclick = function() {
+        closeConfirm(); var deletedId = SESSION_ID
+        fetchJSON('DELETE', '/session/' + deletedId, null, function() {
+            fetchJSON('GET', '/session', null, function(sessions) {
+                var list = sessions && sessions.data ? sessions.data : (Array.isArray(sessions) ? sessions : [])
+                var other = null
+                for (var i = 0; i < list.length; i++) { if (list[i].id !== deletedId) { other = list[i]; break } }
+                if (other) { SESSION_ID = other.id; setPS('opencode_session_id', SESSION_ID); LAST_INJECTED_CONTEXT = ''; $sessionTitle.textContent = other.title || other.slug || '新会话'; $messages.innerHTML = ''; loadSessionMessages(SESSION_ID); if (!SSE) connectSSE() }
+                else { SESSION_ID = ''; setPS('opencode_session_id', ''); $messages.innerHTML = ''; createNewSession(function() { if (!SSE) connectSSE() }) }
+            })
+        })
+    }
+}
+
+// Sidebar
+function openSidebar() {
+    closeAllDropdowns()
+    var backdrop = document.createElement('div'); backdrop.className = 'sidebar-backdrop'; backdrop.onclick = closeSidebar; document.body.appendChild(backdrop)
+    var sb = document.createElement('div'); sb.className = 'sidebar'; sb.id = 'sidebar'
+    sb.innerHTML = '<div class="sidebar-header"><span>会话</span><button class="sidebar-close" onclick="closeSidebar()">&#10005;</button></div><div class="sidebar-list" id="sidebar-list"><div style="padding:16px;color:#999;font-size:13px">加载中...</div></div>'
+    document.body.appendChild(sb)
+    fetchJSON('GET', '/session', null, function(sessions) {
+        var list = sessions && sessions.data ? sessions.data : (Array.isArray(sessions) ? sessions : [])
+        var el = document.getElementById('sidebar-list'); if (!el) return
+        if (!list.length) { el.innerHTML = '<div style="padding:16px;color:#999;font-size:13px">暂无会话</div>'; return }
+        var html = ''
+        for (var i = 0; i < list.length; i++) { var s = list[i], active = (s.id === SESSION_ID); var date = s.time ? new Date(s.time.updated || s.time.created) : null; var ts = date ? (date.getMonth()+1)+'/'+date.getDate() : ''; html += '<div class="sidebar-item' + (active ? ' active' : '') + '" onclick="switchSession(\'' + escapeAttr(s.id) + '\')"><span class="sl-slug">' + escapeHtml(s.title || s.slug || s.id) + '</span><span class="sl-time">' + ts + '</span></div>' }
+        el.innerHTML = html
+    })
+}
+function closeSidebar() { var els = document.querySelectorAll('.sidebar-backdrop,.sidebar'); for (var i = 0; i < els.length; i++) els[i].parentNode.removeChild(els[i]) }
+function switchSession(id) { closeSidebar(); SESSION_ID = id; setPS('opencode_session_id', id); LAST_INJECTED_CONTEXT = ''; loadSessionMessages(id); clearPendingPermission() }
+
+// --- Status ---
+// s: 'busy' | 'idle' | 'waiting'（等待权限确认）
+function setStatus(s) {
+    IS_BUSY = (s === 'busy' || s === 'waiting')
+    $statusDot.className = 'dot ' + (s === 'waiting' ? 'waiting' : (IS_BUSY ? 'busy' : 'idle'))
+    // #116 问题十三：等待权限确认时底栏高亮提示，区分"正常忙"与"卡在审批"
+    var bb = document.getElementById('bottombar')
+    if (bb) { if (s === 'waiting') bb.classList.add('waiting'); else bb.classList.remove('waiting') }
+    updateInputState()
+}
+
+// --- Fetch (with retry) ---
+/**
+ * 带重试机制的 HTTP 请求
+ * @param {string} method - HTTP 方法
+ * @param {string} path - 请求路径
+ * @param {object|null} body - 请求体
+ * @param {function} onSuccess - 成功回调
+ * @param {function} [onError] - 失败回调
+ * @param {number} [timeout] - 超时时间(ms)
+ * @param {number} [maxRetries] - 最大重试次数
+ */
+function fetchWithRetry(method, path, body, onSuccess, onError, timeout, maxRetries) {
+    maxRetries = maxRetries || CONSTANTS.MAX_RETRIES || 3;
+    var attempts = 0;
+    var xhr;
+
+    function doRequest() {
+        attempts++;
+        if (xhr) xhr.abort();
+        xhr = new XMLHttpRequest();
+        xhr.timeout = timeout || 15000;
+
+        xhr.onreadystatechange = function() {
+            if (xhr.readyState === 4) {
+                if (xhr.status >= 200 && xhr.status < 300) {
+                    try { onSuccess(JSON.parse(xhr.responseText)) } catch(e) { onSuccess(null) }
+                } else if (xhr.status > 0) {
+                    if (attempts < maxRetries) {
+                        console.log('[fetch] Retry ' + attempts + '/' + maxRetries + ' for ' + path);
+                        setTimeout(doRequest, 1000 * attempts);
+                    } else if (onError) {
+                        onError(xhr.status, xhr.responseText);
+                    }
+                } else {
+                    // xhr.status === 0: 请求被中断/网络不可达，由 ontimout/onerror 处理
+                    console.log('[fetch] Status 0 for ' + path + ' (ignored, handled by timeout/error)');
+                }
+            }
+        };
+
+        xhr.onerror = function() {
+            if (attempts < maxRetries) {
+                console.log('[fetch] Network error, retry ' + attempts + '/' + maxRetries);
+                setTimeout(doRequest, 1000 * attempts);
+            } else if (onError) {
+                onError(0, '网络错误');
+            }
+        };
+
+        xhr.ontimeout = function() {
+            if (attempts < maxRetries) {
+                console.log('[fetch] Timeout, retry ' + attempts + '/' + maxRetries);
+                setTimeout(doRequest, 1000 * attempts);
+            } else if (onError) {
+                onError(0, '请求超时');
+            }
+        };
+
+        xhr.open(method, API_BASE + path, true);
+        xhr.setRequestHeader('Content-Type', 'application/json');
+        if (body) xhr.send(JSON.stringify(body)); else xhr.send();
+    }
+
+    doRequest();
+}
+
+function fetchJSON(method, path, body, onSuccess, onError, timeout) {
+    fetchWithRetry(method, path, body, onSuccess, onError, timeout, CONSTANTS.MAX_RETRIES);
+}
+
+function postMessage(path, body, onError, timeout) {
+    var xhr = new XMLHttpRequest(); xhr.timeout = timeout || UPLOAD_TIMEOUT
+    xhr.onreadystatechange = function() { if (xhr.readyState === 4 && xhr.status >= 400 && onError) onError(xhr.status, xhr.responseText) }
+    xhr.onerror = function() { if (onError) onError(0, 'Network error') }
+    xhr.ontimeout = function() { console.log('[Chat] POST timeout (SSE still active)') }
+    xhr.open('POST', API_BASE + path, true); xhr.setRequestHeader('Content-Type', 'application/json'); xhr.send(JSON.stringify(body))
+}
+
+// --- Session ---
+function createNewSession(cb) {
+    clearPendingPermission()
+    fetchJSON('POST', '/session', { title: '新会话' }, function(resp) {
+        var data = resp && resp.data ? resp.data : resp
+        if (data && data.id) { SESSION_ID = data.id; setPS('opencode_session_id', SESSION_ID); $sessionTitle.textContent = data.title || data.slug || '新会话'; $messages.innerHTML = ''; LAST_INJECTED_CONTEXT = ''; if (cb) cb() }
+    }, function(s, t) { addSystemMessage('会话错误: ' + (t || s)) })
+}
+function newSession() { if (IS_BUSY) return; createNewSession(function() { if (!SSE) connectSSE() }) }
+/**
+ * 加载指定会话的消息历史
+ * @param {string} sid - 会话 ID
+ */
+function loadSessionMessages(sid) {
+    fetchJSON('GET', '/session/' + sid + '/message', null, function(msgs) {
+        $messages.innerHTML = ''; if (!msgs) return
+        var list = msgs.data ? msgs.data : (Array.isArray(msgs) ? msgs : [msgs])
+        for (var i = 0; i < list.length; i++) renderHistoryMessage(list[i])
+        scrollToBottom()
+    })
+    fetchJSON('GET', '/session/' + sid, null, function(sess) {
+        var d = sess && sess.data ? sess.data : sess
+        if (d) {
+            $sessionTitle.textContent = d.title || d.slug || '新会话'
+            // #116 问题三 + session_ffa9 假修复：多路径防御性提取上下文用量
+            var usage = extractCtxUsage(d)
+            if (usage && typeof usage.percent === 'number') updateCtxMeter(usage.percent, usage)
+            else ctxMeterNoData()  // 无可用用量数据时诚实降级展示，不再空空白条
+        }
+    })
+}
+function renderHistoryMessage(msg) {
+    if (!msg || !msg.info) return
+    var parts = msg.parts || []
+    if (msg.info.role === 'user') {
+        var texts = []
+        for (var i = 0; i < parts.length; i++) { if (parts[i].type === 'text' && !parts[i].ignored && !(parts[i].text && parts[i].text.indexOf('<wps-context>') === 0)) texts.push(parts[i].text) } // indexOf 替代 startsWith（ES5 coding convention）
+        if (texts.length > 0) addUserMessage(texts.join('\n'))
+    } else if (msg.info.role === 'assistant') {
+        var reasoning = '', text = ''
+        for (var i = 0; i < parts.length; i++) { if (parts[i].type === 'reasoning' && parts[i].text) reasoning += parts[i].text; if (parts[i].type === 'text' && parts[i].text) text += parts[i].text }
+        if (text || reasoning) addAssistantMessage(text, reasoning)
+        if (msg.info.modelID && !CURRENT_MODEL) { CURRENT_MODEL = msg.info.modelID; $modelName.textContent = CURRENT_MODEL }
+    }
+}
+
+// --- SSE ---
+var sseReconnectTimer = null;
+var sseReconnectDelay = 1000;
+// SSE 探测冷却（评审建议 2）：服务真停 + launcher 不可达时，健康检查每 10s 周期都会走到失败分支
+// 调用 connectSSE() 作最终探测，会每 10s 创建一次注定失败的 EventSource。用时间戳冷却守卫收敛，
+// 避免无谓的周期性失败连接。仅守卫「健康检查失败分支的探测性 connectSSE」，不影响正常建连。
+var LAST_SSE_PROBE_TS = 0
+var SSE_PROBE_COOLDOWN = 30000   // 第 3 轮评审：冷却窗口需大于健康检查周期（10s）才能真正限流。
+// 设为 30s（约 3 个健康周期）：服务真停 + launcher 不可达时，最多每 30s 探一次注定失败的 EventSource，
+// 避免每 10s 刷一次无谓网络请求与 [SSE] Connection error 日志。若 /global/health 恢复正常，
+// 健康检查成功分支会立即恢复，不依赖此探测，故 30s 内恢复延迟可接受。
+// SSE 探测连接标记（第 1 轮评审）：健康检查失败分支 / init 兜底分支用 connectSSE(true) 建立的
+// 探测性 EventSource。探测连接失败时（服务真停）不应走标准指数退避自动重连——那会绕过
+// sseProbeAllowed() 冷却守卫反复向已停止服务建连。探测失败应仅靠健康检查下一周期再触发。
+var SSE_IS_PROBE = false
+/**
+ * 更新 SSE 连接状态 UI
+ */
+function updateConnectionStatus() {
+    // SSE 连接状态变化时更新 UI（目前由健康检查自动处理）
+    // 状态变量 CONNECTED 已同步，无需额外 UI 操作
+}
+/**
+ * 健康检查失败分支的探测性 connectSSE 冷却守卫（评审建议 2）：
+ * 服务真停 + launcher 不可达时，避免每 10s 健康检查周期都创建一次注定失败的 EventSource。
+ * 通过则记录探测时间戳并返回 true；冷却期内返回 false（调用方跳过本轮探测）。
+ */
+function sseProbeAllowed() {
+    var now = Date.now()
+    if (now - LAST_SSE_PROBE_TS >= SSE_PROBE_COOLDOWN) {
+        LAST_SSE_PROBE_TS = now
+        return true
+    }
+    return false
+}
+/**
+ * 连接 SSE 事件流接收服务端推送
+ */
+function connectSSE(isProbe) {
+    if (SSE) { SSE.close(); SSE = null }
+    // 第 1 轮评审：记录是否为探测性连接，onerror 时据此决定是否走自动重连（见下方 SSE.onerror）
+    SSE_IS_PROBE = !!isProbe
+    try {
+        SSE = new EventSource(API_BASE + '/global/event')
+
+        SSE.onopen = function() {
+            console.log('[SSE] Connected');
+            CONNECTED = true;
+            SSE_IS_PROBE = false;   // 连接成功即转为真实连接，后续异常应走标准重连
+            // SSE 连接成功是「服务在跑」的最强证据（EventSource 不受 XHR CORS 差异影响），
+            // 同步状态条，避免 /global/health 探测失败时 UI 误显 stopped（Issue #114 回归）
+            if (!STOPPING) {
+                SERVER_RUNNING = true;
+                updateServerStatus(true);
+                // 若处于 setup 视图则同步切回 chat，与健康检查成功分支的恢复行为保持一致
+                if (IN_SETUP_VIEW) {
+                    showChat();
+                    // 第 1 轮评审：SSE 探测恢复路径未走 onServerConnected()，补齐模型/智能体下拉框数据，
+                    // 避免与 launcher 可达时走 onServerConnected() 的完整恢复行为不一致（顶部下拉框为默认占位值）。
+                    // 第 5 轮评审：改用统一 helper refreshModelAgentLabels() 与 onServerConnected 共用刷新逻辑。
+                    refreshModelAgentLabels();
+                    // setup 探测场景（launcher 不可达 / /global/health CORS 失败）下，服务确认在跑但
+                    // 未走完整 onServerConnected 流程，可能无 SESSION_ID。补建会话，避免进入 chat 无法聊天。
+                    // 注意：createNewSession 仅建会话、不再回调 connectSSE() —— connectSSE() 开头会 close 当前
+                    // 刚建立成功的这条 SSE 再重连，造成不必要的连接拆除/重建（评审建议 1）。当前 SSE 已在
+                    // onopen 中，保留即可继续接收消息。
+                    if (!SESSION_ID && !STOPPING) {
+                        createNewSession();
+                    }
+                }
+            }
+            sseReconnectDelay = 1000;
+            updateConnectionStatus();
+            if (sseReconnectTimer) { clearTimeout(sseReconnectTimer); sseReconnectTimer = null; }
+        };
+
+        SSE.onmessage = function(ev) {
+            try { handleSSEEvent(JSON.parse(ev.data)) } catch(e) { logError('SSE message', e); }
+        };
+
+        SSE.onerror = function() {
+            console.log('[SSE] Connection error, will reconnect...');
+            CONNECTED = false;
+            updateConnectionStatus();
+            // #116 第 2 轮评审：连接断开时清理待响应的权限请求（避免过期模态框残留）
+            if (PENDING_PERMISSION) {
+                PENDING_PERMISSION = null;
+                if (PERMISSION_MODAL_VISIBLE) hidePermissionDialog();
+                setStatus('idle')
+            }
+            if (SSE) { SSE.close(); SSE = null; }
+            // 自动重连（指数退避，最大30秒）
+            // 第 1 轮评审：探测性连接（SSE_IS_PROBE=true）失败时不自动重连——服务可能真停，
+            // 应交给健康检查下一周期按 sseProbeAllowed() 冷却节奏重新探测，避免绕过冷却反复向已停止服务建连。
+            if (SSE_IS_PROBE) { SSE_IS_PROBE = false; return }
+            if (!sseReconnectTimer) {
+                sseReconnectTimer = setTimeout(function() {
+                    sseReconnectTimer = null;
+                    if (SESSION_ID) {
+                        console.log('[SSE] Reconnecting...');
+                        connectSSE();
+                    }
+                }, sseReconnectDelay);
+                sseReconnectDelay = Math.min(sseReconnectDelay * 2, 30000);
+            }
+        };
+    } catch(e) { logError('SSE init', e); }
+}
+function handleSSEEvent(data) {
+    if (!data || !data.payload) return
+    var type = data.payload.type, props = data.payload.properties || {}
+    if (props.sessionID && props.sessionID !== SESSION_ID) return
+    switch(type) {
+        case 'session.status':
+            if (props.status) {
+                // #116 问题十三：支持 waiting（等待权限确认）中间态
+                var st = props.status.type
+                if (st === 'busy') setStatus('busy')
+                else if (st === 'idle') { if (PENDING_PERMISSION) { setStatus('waiting') } else { setStatus('idle'); finalizeStreaming() } }
+                else setStatus(st === 'waiting' || st === 'waiting-for-input' ? 'waiting' : (st === 'idle' ? 'idle' : 'busy'))
+                // #116 问题三 + session_ffa9 假修复：多路径防御性提取上下文用量
+                // session_ff63 问题二：SSE 事件取不到数据时诚实降级提示（但若已展示过真实数据则不覆盖）
+                var usage = extractCtxUsage(props.status)
+                if (usage && typeof usage.percent === 'number') updateCtxMeter(usage.percent, usage)
+                else if (!CTX_DATA_SEEN) ctxMeterNoData()
+            }
+            break
+        case 'session.permission':
+        case 'session.permission.request':
+        case 'session.tool.request':
+        case 'control.request':
+            // #116 问题二：权限请求下发 → 弹出确认框
+            handlePermissionRequest(type, props)
+            break
+        case 'message.updated':
+            if (props.info && props.info.role === 'assistant' && !props.info.finish) {
+                STREAMING_MSG_ID = props.info.id; STREAMING_TEXT = ''; STREAMING_REASONING = ''; STREAMING_TEXT_PART_ID = ''; STREAMING_REASONING_PART_ID = ''
+                ensureStreamingBubble()
+                if (props.info.modelID && !CURRENT_MODEL) { CURRENT_MODEL = props.info.modelID; $modelName.textContent = CURRENT_MODEL }
+            }
+            if (props.info && props.info.role === 'assistant' && props.info.finish) finalizeStreaming()
+            // #116 问题三 + session_ffa9 假修复：消息更新时多路径提取上下文用量
+            // session_ff63 问题二：取不到数据时诚实降级提示（但若已展示过真实数据则不覆盖）
+            var msgUsage = extractCtxUsage(props)
+            if (msgUsage && typeof msgUsage.percent === 'number') updateCtxMeter(msgUsage.percent, msgUsage)
+            else if (!CTX_DATA_SEEN) ctxMeterNoData()
+            break
+        case 'message.part.updated':
+            if (props.part) {
+                PART_TYPES[props.part.id] = { type: props.part.type, messageID: props.part.messageID }
+                if (props.part.type === 'text' && props.part.messageID === STREAMING_MSG_ID) { STREAMING_TEXT_PART_ID = props.part.id; if (props.part.text && props.part.time && props.part.time.end) { STREAMING_TEXT = props.part.text; updateStreamingBubble() } }
+                if (props.part.type === 'reasoning' && props.part.messageID === STREAMING_MSG_ID) { STREAMING_REASONING_PART_ID = props.part.id; if (props.part.text && props.part.time && props.part.time.end) { STREAMING_REASONING = props.part.text; updateStreamingBubble() } }
+            }
+            break
+        case 'message.part.delta':
+            if (props.field === 'text' && props.delta) {
+                var pi = PART_TYPES[props.partID]
+                if (pi) { if (pi.type === 'text') STREAMING_TEXT += props.delta; else if (pi.type === 'reasoning') STREAMING_REASONING += props.delta }
+                else if (props.partID === STREAMING_TEXT_PART_ID) STREAMING_TEXT += props.delta
+                else if (props.partID === STREAMING_REASONING_PART_ID) STREAMING_REASONING += props.delta
+                else STREAMING_TEXT += props.delta
+                updateStreamingBubble()
+            }
+            break
+        case 'session.summary':
+        case 'message.summary':
+        case 'session.compacted':
+        case 'session.compaction':
+            // session_ffa9 补充：会话压缩事件显式提示（原「压缩无感知」体验缺口）。
+            // 压缩后上下文被摘要替代，此前已累加的关键校对数据若未落盘将不可恢复，
+            // 故这里提示用户：若在校对流程中，请确认数据已通过 proofreadAccumulate 落盘。
+            addSystemMessage('⚠️ 会话上下文已压缩（Compaction），长上下文被摘要替代。' +
+                '若正在校对，请确认各批问题已通过 proofreadAccumulate 累加（数据已落盘）；' +
+                '必要时可手动开新会话保留完整上下文。')
+            // 压缩后用量应归零重新累计，重置显示
+            $ctxMeterFill.style.width = '0%'
+            $ctxMeterInfo.textContent = '上下文已压缩'
+            $ctxMeterInfo.style.display = ''
+            break
+    }
+}
+
+// --- #116 权限确认 & 上下文用量 ---
+/**
+ * 处理权限请求事件（session.permission / control.request 等）
+ * 兼容多种事件格式：properties 可能含 permissionID、tool、request 等字段
+ */
+function handlePermissionRequest(type, props) {
+    // #116 第 2 轮评审：若已有未响应的权限请求，先隐藏旧的（防静默覆盖导致第一个请求永不响应）
+    if (PENDING_PERMISSION) {
+        console.warn('[Permission] 已有待响应的权限请求，新权限请求到来，先清理旧请求');
+        if (PERMISSION_MODAL_VISIBLE) hidePermissionDialog();
+        PENDING_PERMISSION = null;
+    }
+    // 从不同字段结构提取权限请求信息
+    // 优先取内嵌 permission.id（最可靠），其次取显式 ID 字段，最后才用 props.id 兑底
+    var permissionID = (props.permission ? props.permission.id : '') || props.permissionID || props.permission_id || props.requestID || props.id || ''
+    var toolInfo = props.tool || props.request || props.permission || null
+    var toolName = ''
+    var toolArgs = ''
+    var toolDesc = ''
+
+    if (toolInfo) {
+        toolName = toolInfo.tool || toolInfo.name || toolInfo.command || toolInfo.title || '未知工具'
+        toolArgs = toolInfo.input ? JSON.stringify(toolInfo.input, null, 2) : (toolInfo.arguments ? JSON.stringify(toolInfo.arguments, null, 2) : (toolInfo.body ? JSON.stringify(toolInfo.body, null, 2) : ''))
+        toolDesc = toolInfo.description || toolInfo.title || ''
+    } else if (props.title || props.description) {
+        toolName = props.title || '工具调用'
+        toolDesc = props.description || ''
+        toolArgs = props.message || ''
+    }
+
+    PENDING_PERMISSION = { id: permissionID, toolName: toolName, toolArgs: toolArgs }
+    // Issue #116 权限自动确认：配置为 auto 时直接自动允许，不再弹窗，避免长任务（如 97 批校对）
+    // 因权限确认而卡住（此前只能切到 serve web 会话确认，侧边栏静默等待）。
+    // manual 模式才弹窗人工确认。
+    var permCfg = CONFIG && CONFIG.permission ? CONFIG.permission : null
+    if (permCfg && permCfg.mode === 'auto') {
+        console.log('[Permission] auto-allow (config mode=auto):', toolName)
+        setStatus('busy')
+        respondPermission('allow')
+        return
+    }
+    setStatus('waiting')
+    showPermissionDialog(toolName, toolArgs, toolDesc)
+}
+
+/** 弹出权限确认对话框 */
+function showPermissionDialog(toolName, toolArgs, toolDesc) {
+    if (!toolName) toolName = '未知名工具'
+    $permToolName.textContent = toolName
+    $permToolArgs.textContent = toolArgs || '（无参数）'
+    $permToolDesc.textContent = toolDesc ? (toolDesc.length > 120 ? toolDesc.substring(0, 120) + '…' : toolDesc) : ''
+    $permRemember.checked = false
+    $permModal.style.display = 'flex'
+    PERMISSION_MODAL_VISIBLE = true
+}
+
+/** 响应权限请求（允许 / 拒绝） */
+function respondPermission(response) {
+    if (!PENDING_PERMISSION) { hidePermissionDialog(); return }
+    var permId = PENDING_PERMISSION.id
+    var remember = $permRemember.checked
+    hidePermissionDialog()
+    setStatus('busy')
+
+    // 发送响应到 OpenCode 服务（经 CORS 代理转发）
+    var payload = { response: response }
+    if (remember) payload.remember = true
+
+    if (!permId) {
+        // 无权限 ID（可能是 control 模式）：直接走 control/response 端点
+        sendControlPermissionResponse(response, remember)
+        return
+    }
+
+    fetchJSON('POST', '/session/' + SESSION_ID + '/permissions/' + encodeURIComponent(permId), payload, function(r) {
+        PENDING_PERMISSION = null
+        console.log('[Permission] responded:', response)
+    }, function(s, t) {
+        // 失败时回退：尝试 control/response 端点
+        PENDING_PERMISSION = null
+        console.error('[Permission] respond failed:', t)
+        addSystemMessage('⚠️ 权限响应失败，正在尝试通过 control 端点重试…')
+        sendControlPermissionResponse(response, remember)
+    })
+}
+
+/** 通过 /tui/control/response 端点响应权限（session 权限端点不可用时的回退） */
+function sendControlPermissionResponse(response, remember) {
+    var controlPayload = { body: { type: 'permission', response: response, remember: remember } }
+    fetchJSON('POST', '/tui/control/response', controlPayload, function(r2) {
+        // #116 第 3 轮评审：响应成功后清除 PENDING_PERMISSION，避免 stale "waiting" 状态
+        PENDING_PERMISSION = null
+    }, function(s2, t2) {
+        addSystemMessage('权限响应失败: ' + (t2 || ('status ' + s2)))
+    })
+}
+
+
+// ===== /tui/control/next 长轮询兜底（Issue #116 权限确认） =====
+// 背景：OpenCode headless serve 的权限/控制请求可能经 GET /tui/control/next 长轮询下发
+// （serve web 页面走此通道），而侧边栏此前只监听 SSE 事件，收不到 → 权限请求静默等待、任务卡住。
+// 这里实现 control/next 长轮询作为兜底通道：收到控制请求时，若配置为 auto 则自动允许，
+// manual 则弹窗。与 SSE 事件通道互为双保险。
+
+/** 启动 /tui/control/next 长轮询（幂等，同一时刻只有一个轮询在跑） */
+function startControlNextPoll() {
+    if (CONTROL_POLLING) return
+    CONTROL_POLLING = true
+    controlNextPollOnce()
+}
+
+/** 停止 /tui/control/next 长轮询（会话切换/服务停止时调用） */
+function stopControlNextPoll() {
+    CONTROL_POLLING = false
+    if (CONTROL_POLL_XHR) {
+        try { CONTROL_POLL_XHR.abort() } catch (e) { /* 忽略 abort 异常 */ }
+        CONTROL_POLL_XHR = null
+    }
+    if (CONTROL_POLL_RETRY) {
+        clearTimeout(CONTROL_POLL_RETRY)
+        CONTROL_POLL_RETRY = null
+    }
+}
+
+/** 单次长轮询：GET /tui/control/next，返回后递归下一次 */
+function controlNextPollOnce() {
+    if (!CONTROL_POLLING || STOPPING || !SERVER_RUNNING) return
+    // 用原生 XHR 做长连接（timeout=0 不超时，保持挂起直到服务端下发控制请求）
+    var xhr = new XMLHttpRequest()
+    CONTROL_POLL_XHR = xhr
+    xhr.timeout = 0
+    xhr.open('GET', API_BASE + '/tui/control/next', true)
+    xhr.onreadystatechange = function() {
+        if (xhr.readyState !== 4) return
+        CONTROL_POLL_XHR = null
+        if (xhr.status === 200) {
+            var req = null
+            try { req = JSON.parse(xhr.responseText) } catch (e) { req = null }
+            if (req) handleControlRequest(req)
+        } else if (xhr.status === 204) {
+            // 204 无内容：服务端无待处理控制请求，正常，继续下一轮
+        } else if (xhr.status === 0) {
+            // 请求被中断（stopControlNextPoll abort / 网络断开），不重连
+        } else {
+            // 其他错误状态：短暂延迟后重连（避免热循环）
+            scheduleControlNextPoll(2000)
+            return
+        }
+        // 正常完成本轮，继续下一轮
+        scheduleControlNextPoll(0)
+    }
+    xhr.onerror = function() {
+        CONTROL_POLL_XHR = null
+        // 网络错误：若仍应轮询，延迟重连
+        if (CONTROL_POLLING && SERVER_RUNNING && !STOPPING) scheduleControlNextPoll(3000)
+    }
+    xhr.ontimeout = function() {
+        CONTROL_POLL_XHR = null
+        if (CONTROL_POLLING && SERVER_RUNNING && !STOPPING) scheduleControlNextPoll(0)
+    }
+    xhr.send()
+}
+
+/** 安排下一轮长轮询（延迟 delayMs 毫秒） */
+function scheduleControlNextPoll(delayMs) {
+    if (!CONTROL_POLLING || STOPPING || !SERVER_RUNNING) return
+    if (CONTROL_POLL_RETRY) clearTimeout(CONTROL_POLL_RETRY)
+    CONTROL_POLL_RETRY = setTimeout(function() {
+        CONTROL_POLL_RETRY = null
+        controlNextPollOnce()
+    }, delayMs)
+}
+
+/** 处理 control/next 返回的控制请求（含权限请求） */
+function handleControlRequest(req) {
+    var type = req && (req.type || (req.body && req.body.type)) || ''
+    var data = req && (req.data || req.body || req) || null
+    // 识别权限请求：type 为 permission，或请求体含权限相关字段（覆盖多种字段命名）
+    // W2 加固：除 tool/permission/permissionID 外，兼容 permission_id/requestID/toolName 等命名，
+    // 避免 OpenCode 不同版本字段命名差异导致权限请求被漏过、任务静默卡住。
+    var isPermission =
+        type === 'permission' ||
+        (data && data.response === undefined &&
+            (data.tool || data.permission || data.permissionID || data.permission_id || data.requestID || data.toolName))
+    if (isPermission) {
+        // 权限类控制请求 → 按配置 auto 自动允许 / manual 弹窗
+        handlePermissionRequest(type || 'control.request', data || req)
+    } else {
+        // 非权限控制请求（如系统提示），当前侧边栏无需处理，静默忽略避免阻塞后续
+    }
+}
+
+/** 关闭权限确认对话框 */
+function hidePermissionDialog() {
+    $permModal.style.display = 'none'
+    PERMISSION_MODAL_VISIBLE = false
+}
+
+/** #116 第 4 轮评审：切换会话 / 新建会话时清理待响应的权限请求 */
+function clearPendingPermission() {
+    if (PENDING_PERMISSION || PERMISSION_MODAL_VISIBLE) {
+        PENDING_PERMISSION = null
+        if (PERMISSION_MODAL_VISIBLE) hidePermissionDialog()
+    }
+}
+
+/**
+ * 更新上下文用量条
+ * @param {number} percent 用量百分比（0-100）
+ * @param {object} usage 详细用量数据（可选）
+ */
+function updateCtxMeter(percent, usage) {
+    if (typeof percent !== 'number' || isNaN(percent)) return
+    percent = Math.max(0, Math.min(100, percent))
+    CTX_PERCENT = percent
+    CTX_DATA_SEEN = true // 已获取到真实用量数据（session_ff63 问题二：后续无数据事件不再降级覆盖）
+    $ctxMeterFill.style.width = percent + '%'
+    $ctxMeter.className = 'ctx-meter' + (percent >= 90 ? ' danger' : (percent >= 70 ? ' warn' : ''))
+    if (usage) {
+        var used = usage.used || usage.tokens || usage.usedTokens || ''
+        var max = usage.total || usage.limit || usage.totalTokens || ''
+        var label = Math.round(percent) + '%'
+        if (used && max) label += ' · ' + formatTokens(used) + '/' + formatTokens(max)
+        $ctxMeterInfo.textContent = label
+    } else {
+        $ctxMeterInfo.textContent = Math.round(percent) + '%'
+    }
+    // 信息默认可见（session_ffa9 假修复：不再需要点击 3px 细条才显示）
+    $ctxMeterInfo.style.display = ''
+}
+
+/**
+ * 从会话/消息数据中防御性提取上下文用量（session_ffa9 假修复根因）。
+ * OpenCode 服务在 headless serve 模式下实际下发的用量字段名未经真实抓包确认，
+ * 故多路径探测以下字段组合，任一命中即返回 { percent, used, total }：
+ *   - usage.percent / usage.used+total / usage.usedTokens+totalTokens
+ *   - tokens.percent / tokens.used+total
+ *   - context.percent / context.tokens.used+total / context.tokens.percent
+ *   - info.usage / info.tokens / status.usage / status.tokens（由调用方传入对应对象）
+ * 返回 null 表示未探测到可用用量数据（调用方应降级展示）。
+ */
+function extractCtxUsage(obj) {
+    if (!obj || typeof obj !== 'object') return null
+    function readTokens(node) {
+        if (!node || typeof node !== 'object') return null
+        var pct = node.percent
+        var used = node.used || node.usedTokens || node.tokensUsed
+        var total = node.total || node.limit || node.totalTokens || node.tokensTotal
+        if (typeof pct === 'number' && !isNaN(pct)) {
+            if (typeof total === 'number' && total > 0 && typeof used !== 'number') {
+                used = total * pct / 100
+            }
+            return { percent: pct, used: used, total: total }
+        }
+        if (typeof used === 'number' && typeof total === 'number' && total > 0) {
+            return { percent: (used / total) * 100, used: used, total: total }
+        }
+        return null
+    }
+    // 直接命中 usage/tokens/context 节点
+    var direct = readTokens(obj.usage) || readTokens(obj.tokens) || readTokens(obj.context && obj.context.tokens)
+    if (direct) return direct
+    // 嵌套在 info / status 下
+    var nested = readTokens(obj.info && (obj.info.usage || obj.info.tokens)) ||
+                 readTokens(obj.status && (obj.status.usage || obj.status.tokens))
+    if (nested) return nested
+    // context 顶层含 percent/used/total
+    if (obj.context && typeof obj.context === 'object') {
+        var ctx = readTokens(obj.context)
+        if (ctx) return ctx
+    }
+    return null
+}
+
+/**
+ * 上下文用量条降级展示：无可用用量数据时明确提示（session_ffa9 假修复的诚实降级）。
+ * 既不显示假的百分比，也不隐瞒「数据未到」——提示用户 OpenCode 未提供用量数据。
+ */
+function ctxMeterNoData() {
+    $ctxMeterFill.style.width = '0%'
+    $ctxMeter.className = 'ctx-meter nodata'
+    $ctxMeterInfo.textContent = '上下文用量: 等待数据…（OpenCode 未提供则不会显示百分比）'
+    $ctxMeterInfo.style.display = ''
+}
+
+/** 切换上下文用量提示显隐 */
+function toggleCtxTooltip(e) {
+    CTX_TOOLTIP_VISIBLE = !CTX_TOOLTIP_VISIBLE
+    $ctxMeterInfo.style.display = CTX_TOOLTIP_VISIBLE ? '' : 'none'
+    if (e) e.stopPropagation()
+}
+
+/** 格式化 token 数（如 42300 → 42.3K） */
+function formatTokens(n) {
+    if (typeof n !== 'number' || isNaN(n)) return String(n || '')
+    if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M'
+    if (n >= 1000) return (n / 1000).toFixed(1) + 'K'
+    return String(Math.round(n))
+}
+
+// --- Streaming UI ---
+function ensureStreamingBubble() { var el = document.getElementById('streaming-msg'); if (!el) { el = document.createElement('div'); el.id = 'streaming-msg'; el.className = 'msg-assistant'; el.innerHTML = '<span class="streaming-cursor"></span>'; $messages.appendChild(el); scrollToBottom() } }
+function updateStreamingBubble() {
+    var el = document.getElementById('streaming-msg'); if (!el) { ensureStreamingBubble(); el = document.getElementById('streaming-msg') }
+    var html = ''
+    if (STREAMING_REASONING) { html += '<div class="thinking-toggle" onclick="toggleThinking(this)">&#9654; 思考中 (' + STREAMING_REASONING.length + ' chars)</div><div class="thinking-content">' + escapeHtml(STREAMING_REASONING) + '</div>' }
+    if (STREAMING_TEXT) { try { html += renderMarkdown(STREAMING_TEXT) } catch(e) { html += escapeHtml(STREAMING_TEXT) } html += '<span class="streaming-cursor"></span>' } else if (!STREAMING_REASONING) { html += '<span class="streaming-cursor"></span>' }
+    el.innerHTML = html; scrollToBottom()
+}
+// 格式化发送消息的错误提示：识别 UnknownError 等服务端错误，给出可操作的排查引导
+function formatSendError(status, respText) {
+    var raw = respText || ('status ' + status);
+    var msg = 'Error: ' + raw;
+    try {
+        var obj = JSON.parse(respText || '');
+        if (obj && obj.name === 'UnknownError') {
+            var ref = obj.data && obj.data.ref ? obj.data.ref : '';
+            msg = 'Error: 服务端处理失败（' + (obj.data && obj.data.message ? obj.data.message : 'Unexpected server error') + '）' +
+                  (ref ? '，引用号 ' + ref + '。' : '。') +
+                  '\n\u256c OpenCode 服务端内部错误，非插件问题。请查看服务端日志定位根因（按实际用户目录查找）：\n' +
+                  '    <用户目录>\\.opencode\\logs\\opencode-serve.log（如 C:\\Users\\<你的用户名>，搜索 ' + (ref || '报错时间点') + '）\n' +
+                  '常见原因：模型 API key 失效/限流、模型不存在、provider 配置错误，或文档上下文过大。详见 docs/TROUBLESHOOTING.md「UnknownError 排查」。';
+        }
+    } catch (e) { /* 非 JSON 错误，保留原始信息 */ }
+    return msg;
+}
+function finalizeStreaming() {
+    var el = document.getElementById('streaming-msg')
+    if (el && (STREAMING_TEXT || STREAMING_REASONING)) {
+        var html = ''
+        if (STREAMING_REASONING) html += '<div class="thinking-toggle" onclick="toggleThinking(this)">&#9654; 思考中 (' + STREAMING_REASONING.length + ' chars)</div><div class="thinking-content">' + escapeHtml(STREAMING_REASONING) + '</div>'
+        if (STREAMING_TEXT) { try { html += renderMarkdown(STREAMING_TEXT) } catch(e) { html += escapeHtml(STREAMING_TEXT) } }
+        el.innerHTML = html; el.removeAttribute('id')
+    } else if (el) el.removeAttribute('id')
+    STREAMING_MSG_ID = ''; STREAMING_TEXT = ''; STREAMING_REASONING = ''; STREAMING_TEXT_PART_ID = ''; STREAMING_REASONING_PART_ID = ''
+    // #116 问题十三：若仍待权限确认，保持 waiting 状态而非 idle
+    setStatus(PENDING_PERMISSION ? 'waiting' : 'idle'); scrollToBottom()
+}
+function toggleThinking(el) { var c = el.nextElementSibling; if (c) { c.classList.toggle('show'); el.innerHTML = (c.classList.contains('show') ? '&#9660;' : '&#9654;') + ' 思考中 (' + c.textContent.length + ' 字符)' } }
+
+// --- Messages ---
+function addUserMessage(text) { var el = document.createElement('div'); el.className = 'msg-user'; el.textContent = text; $messages.appendChild(el); scrollToBottom() }
+function addAssistantMessage(text, reasoning) {
+    var el = document.createElement('div'); el.className = 'msg-assistant'; var html = ''
+    if (reasoning) html += '<div class="thinking-toggle" onclick="toggleThinking(this)">&#9654; 思考中 (' + reasoning.length + ' chars)</div><div class="thinking-content">' + escapeHtml(reasoning) + '</div>'
+    try { html += renderMarkdown(text || '') } catch(e) { html += escapeHtml(text || '') }; el.innerHTML = html; $messages.appendChild(el); scrollToBottom()
+}
+function addSystemMessage(text) { var el = document.createElement('div'); el.className = 'msg-system'; el.textContent = text; $messages.appendChild(el); scrollToBottom() }
+
+// --- Send ---
+/**
+ * 发送聊天消息
+ */
+function sendMessage() {
+    var text = $input.value.trim(); if (!text || IS_BUSY || !SESSION_ID) return
+    addUserMessage(text)
+    if (INPUT_HISTORY.indexOf(text) === -1) INPUT_HISTORY.push(text)
+    INPUT_HISTORY_INDEX = -1
+    $input.value = ''; autoGrow($input); setStatus('busy')
+    injectContext(function() {
+        var body = { parts: [{ type: 'text', text: text }] }
+        if (CURRENT_MODE && CURRENT_MODE !== 'build') body.mode = CURRENT_MODE
+        if (CURRENT_LEVEL && CURRENT_LEVEL !== 'balanced') body.level = CURRENT_LEVEL
+        if (CURRENT_AGENT) body.agent = CURRENT_AGENT
+        if (CURRENT_MODEL && CURRENT_MODEL.includes('/')) {
+            var parts = CURRENT_MODEL.split('/')
+            body.model = { providerID: parts[0], modelID: parts.slice(1).join('/') }
+        }
+        postMessage('/session/' + SESSION_ID + '/message', body, function(s, t) { addSystemMessage(formatSendError(s, t)); finalizeStreaming() })
+    })
+}
+function injectContext(cb) {
+    var ctx = gatherWpsContext(); if (!ctx || ctx === LAST_INJECTED_CONTEXT) { cb(); return }
+    LAST_INJECTED_CONTEXT = ctx
+    var xhr = new XMLHttpRequest(); xhr.timeout = NETWORK_TIMEOUT
+    xhr.onreadystatechange = function() { if (xhr.readyState === 4) cb() }
+    xhr.onerror = function() { cb() }; xhr.ontimeout = function() { cb() }
+    xhr.open('POST', API_BASE + '/session/' + SESSION_ID + '/message', true)
+    xhr.setRequestHeader('Content-Type', 'application/json')
+    xhr.send(JSON.stringify({ noReply: true, parts: [{ type: 'text', text: ctx }] }))
+}
+function handleFileUpload(e) {
+    var file = e.target.files[0];
+    if (!file) return;
+    if (!SESSION_ID) { addSystemMessage('Please start a session first'); return }
+    if (file.size > 100 * 1024 * 1024) { addSystemMessage('文件过大（最大 100MB）'); return }
+    addSystemMessage('上传中: ' + file.name);
+    var reader = new FileReader();
+    reader.onload = function(evt) {
+        var base64 = evt.target.result.split(',')[1];
+        // 文件内容以 base64 发送到服务端，可能在服务端日志/消息历史中留存
+        // 含敏感信息的文件建议使用完毕后清理服务器端会话历史
+        // filename/type 清洗换行/控制字符：避免伪造 </file-upload> 结束标记注入额外块
+        var safeName = String(file.name).replace(/[\r\n\x00-\x1f]/g, ' ');
+        var safeType = String(file.type || '').replace(/[\r\n\x00-\x1f]/g, ' ');
+        var msg = '<file-upload>\nfilename: ' + safeName + '\ntype: ' + safeType + '\ndata: ' + base64 + '\n</file-upload>';
+        postMessage('/session/' + SESSION_ID + '/message', { parts: [{ type: 'text', text: msg }] });
+    };
+    reader.readAsDataURL(file);
+    e.target.value = ''
+}
+function forceInjectContext() {
+    if (!SESSION_ID || IS_BUSY) return; LAST_INJECTED_CONTEXT = ''
+    var ctx = gatherWpsContext(); if (!ctx) { addSystemMessage('No document context available'); return }
+    LAST_INJECTED_CONTEXT = ctx; addSystemMessage('Document context injected')
+    postMessage('/session/' + SESSION_ID + '/message', { noReply: true, parts: [{ type: 'text', text: ctx }] }, null, NETWORK_TIMEOUT)
+}
+function gatherWpsContext() {
+    var lines = []
+    try { var doc = window.Application.ActiveDocument; if (doc) { if (doc.Name) lines.push('Current document: ' + doc.Name); if (doc.Path) lines.push('Path: ' + doc.Path) } } catch(e) {}
+    try { var sel = window.Application.Selection; if (sel && sel.Text && sel.Text.trim()) { var t = sel.Text; if (t.length > 3000) t = t.substring(0, 3000) + '...[truncated]'; lines.push(''); lines.push('选中文本:'); lines.push('"""'); lines.push(t); lines.push('"""') } } catch(e) {}
+    if (lines.length === 0) return null
+    return '<wps-context>\n' + lines.join('\n') + '\n</wps-context>'
+}
+function abortMessage() { if (!SESSION_ID) return; fetchJSON('POST', '/session/' + SESSION_ID + '/abort', null, function() { addSystemMessage('Aborted'); finalizeStreaming() }) }
+
+// --- Input ---
+var MAX_INPUT_HEIGHT = 200;
+function onInputKey(e) {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage() }
+    else if (e.key === 'ArrowUp') {
+        e.preventDefault()
+        if (INPUT_HISTORY.length > 0) {
+            if (INPUT_HISTORY_INDEX < INPUT_HISTORY.length - 1) INPUT_HISTORY_INDEX++
+            if (INPUT_HISTORY_INDEX >= 0) {
+                $input.value = INPUT_HISTORY[INPUT_HISTORY.length - 1 - INPUT_HISTORY_INDEX]
+                autoGrow($input)
+            }
+        }
+    }
+    else if (e.key === 'ArrowDown') {
+        e.preventDefault()
+        if (INPUT_HISTORY_INDEX > 0) {
+            INPUT_HISTORY_INDEX--
+            $input.value = INPUT_HISTORY[INPUT_HISTORY.length - 1 - INPUT_HISTORY_INDEX]
+            autoGrow($input)
+        }
+        else if (INPUT_HISTORY_INDEX === 0) {
+            INPUT_HISTORY_INDEX = -1
+            $input.value = ''
+            autoGrow($input)
+        }
+    }
+    updateSendButton()
+}
+/**
+ * 自动调整文本框高度
+ * @param {HTMLElement} el - 文本框元素
+ */
+function autoGrow(el) { el.style.height = 'auto'; el.style.height = Math.min(el.scrollHeight, MAX_INPUT_HEIGHT) + 'px'; updateSendButton() }
+function updateSendButton() { $sendBtn.className = 'send-btn ' + ($input.value.trim().length > 0 && !IS_BUSY ? 'ready' : 'disabled') }
+function updateInputState() {
+    $input.disabled = IS_BUSY
+    if (IS_BUSY) { $sendArea.innerHTML = '<button class="stop-btn" onclick="abortMessage()" title="停止"><div class="stop-icon"></div></button>' }
+    else { $sendArea.innerHTML = '<button class="send-btn disabled" id="send-btn" onclick="sendMessage()" title="Send"><span class="icon-send"></span></button>'; $sendBtn = document.getElementById('send-btn'); updateSendButton() }
+}
+
+// --- Markdown ---
+/**
+ * 将 Markdown 文本渲染为 HTML
+ * 流程：提取代码块 → 提取行内代码 → 全局 escapeHtml → 恢复占位符 → 逐行解析
+ * @param {string} text - 原始 Markdown 文本
+ * @returns {string} 渲染后的 HTML
+ */
+function renderMarkdown(text) {
+    if (!text) return ''
+    var codeBlocks = []
+    text = text.replace(/```(\w*)\n([\s\S]*?)```/g, function(m, lang, code) {
+        codeBlocks.push('<pre><code>' + escapeHtml(code) + '</code></pre>')
+        return '\x00CB' + (codeBlocks.length - 1) + '\x00'
+    })
+    var inlineCodes = []
+    text = text.replace(/`([^`\n]+)`/g, function(m, code) {
+        inlineCodes.push('<code>' + escapeHtml(code) + '</code>')
+        return '\x00IC' + (inlineCodes.length - 1) + '\x00'
+    })
+    text = escapeHtml(text)
+    text = text.replace(/\x00CB(\d+)\x00/g, function(m, i) { return codeBlocks[i] })
+    text = text.replace(/\x00IC(\d+)\x00/g, function(m, i) { return inlineCodes[i] })
+    var lines = text.split('\n')
+    var out = '', inList = false, listType = '', inPara = false, inTable = false
+    function closeList() { if (inList) { out += '</' + listType + '>'; inList = false; listType = '' } }
+    function closePara() { if (inPara) { out += '</p>'; inPara = false } }
+    function closeTable() { if (inTable) { out += '</tbody></table>'; inTable = false } }
+    for (var i = 0; i < lines.length; i++) {
+        var line = lines[i]
+        if (line.indexOf('<pre>') === 0 || line.indexOf('</pre>') !== -1) { closeList(); closePara(); closeTable(); out += line; continue }
+        if (/^\s*$/.test(line)) { closeList(); closePara(); closeTable(); continue }
+        var hm = line.match(/^(#{1,4})\s+(.+)$/)
+        if (hm) { closeList(); closePara(); closeTable(); var lv = hm[1].length; out += '<h' + lv + '>' + inlineFmt(hm[2]) + '</h' + lv + '>'; continue }
+        if (/^(-{3,}|\*{3,}|_{3,})\s*$/.test(line)) { closeList(); closePara(); closeTable(); out += '<hr>'; continue }
+        if (/^&gt;\s?/.test(line)) { closeList(); closePara(); closeTable(); out += '<blockquote>' + inlineFmt(line.replace(/^&gt;\s?/, '')) + '</blockquote>'; continue }
+        var ulm = line.match(/^[-*]\s+(.+)$/)
+        if (ulm) { closePara(); closeTable(); if (!inList || listType !== 'ul') { closeList(); out += '<ul>'; inList = true; listType = 'ul' } out += '<li>' + inlineFmt(ulm[1]) + '</li>'; continue }
+        var olm = line.match(/^\d+\.\s+(.+)$/)
+        if (olm) { closePara(); closeTable(); if (!inList || listType !== 'ol') { closeList(); out += '<ol>'; inList = true; listType = 'ol' } out += '<li>' + inlineFmt(olm[1]) + '</li>'; continue }
+        if (/^\|(.+)\|$/.test(line) && line.split('|').length > 3) {
+            closeList(); closePara()
+            if (/^\|[\s\-:|]+\|$/.test(line)) continue
+            if (!inTable) { out += '<table style="border-collapse:collapse;margin:8px 0"><tbody>'; inTable = true }
+            var cells = line.replace(/^\||\|$/g, '').split('|')
+            out += '<tr>' + cells.map(function(c) { return '<td style="border:1px solid #ddd;padding:4px 8px">' + inlineFmt(c.trim()) + '</td>' }).join('') + '</tr>'
+            continue
+        }
+        closeList(); closeTable()
+        if (inPara) { out += ' ' + inlineFmt(line) } else { out += '<p>' + inlineFmt(line); inPara = true }
+    }
+    closeList(); closePara(); closeTable()
+    return out
+}
+/**
+ * 解码 HTML 实体为原始字符（与 escapeHtml 的 5 个基本实体 + 数字实体对应）
+ * @param {string} s - 待解码字符串
+ * @returns {string} 解码后的字符串
+ */
+function decodeHtmlEntities(s) {
+    if (!s) return ''
+    // 注意：&amp; 必须最先解码，避免二次解码
+    return s.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&#x([0-9a-fA-F]+);/g, function(m, h) { return String.fromCharCode(parseInt(h, 16)) }).replace(/&#(\d+);/g, function(m, d) { return String.fromCharCode(parseInt(d, 10)) })
+}
+/**
+ * 安全处理 URL 链接，防止 XSS
+ * 注：入参 url 在 renderMarkdown 中已被全局 escapeHtml 转义（如 & 已为 &amp;），
+ *     此处先完整解码还原真实 URL 再校验，避免二次转义破坏带 & 参数的合法链接；
+ *     同时 `jav&#x61;script:` 之类的编码混淆绕过也能有效拦截。
+ * @param {string} url - 待处理的 URL（可为已转义文本）
+ * @returns {string} 安全的 URL 或 "#"
+ */
+function safeHref(url) {
+    if (!url) return '#'
+    var decoded = decodeHtmlEntities(url)
+    var trimmed = decoded.replace(/^\s+|\s+$/g, '')
+    // 协议检测前去除控制字符/空白（OWASP 建议），防 `jav\nascript:` 之类混淆绕过
+    var low = trimmed.replace(/[\x00-\x20\x7f]/g, '').toLowerCase()
+    if (low.indexOf('http:') === 0 || low.indexOf('https:') === 0 || low.indexOf('mailto:') === 0) return escapeHtml(trimmed)
+    if (low.indexOf('javascript:') === 0 || low.indexOf('data:') === 0 || low.indexOf('vbscript:') === 0) return '#'
+    // 协议相对 URL（//evil.com）在 file:// 环境下解析为 UNC 路径，非预期行为
+    if (trimmed.indexOf('//') === 0) return '#'
+    return escapeHtml(trimmed)
+}
+/**
+ * 处理行内 Markdown 格式：粗体、斜体、删除线、图片、链接
+ * 注：入参 s 已在 renderMarkdown 中经过 escapeHtml 转义
+ * @param {string} s - 已转义的行内文本
+ * @returns {string} 渲染后的 HTML
+ */
+function inlineFmt(s) {
+    if (!s) return ''
+    s = s.replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>')
+    s = s.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    s = s.replace(/\*(.+?)\*/g, '<em>$1</em>')
+    s = s.replace(/~~(.+?)~~/g, '<del>$1</del>')
+    s = s.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, function(m, alt, url) { return '<img src="' + safeHref(url) + '" alt="' + alt + '" style="max-width:100%">' })
+    s = s.replace(/\[([^\]]+)\]\(([^)]+)\)/g, function(m, text, url) { return '<a href="' + safeHref(url) + '" target="_blank" rel="noopener noreferrer">' + text + '</a>' })
+    return s
+}
+function scrollToBottom() { setTimeout(function() { if ($messages) $messages.scrollTop = $messages.scrollHeight }, 50) }
+
+// ============================================================
+// 启动流程：检查服务是否已在运行 → 是则直接进 chat；否则显示 setup
+// 同时检查 launcher 状态
+// ============================================================
+(function init() {
+    var lastCwd = getPS('opencode_cwd')
+    if (lastCwd) $setupCwd.value = lastCwd.replace(/\\\\/g, '\\')
+
+    // 进入 chat 视图：设置项目目录并走 onServerConnected（幂等）——两处探测成功共用此逻辑（评审 P3 去重）
+    var enterChat = function(cwd) {
+        PROJECT_DIR = cwd || ''
+        $topbarCwd.textContent = PROJECT_DIR.replace(/\\\\/g, '\\')
+        $topbarCwd.title = PROJECT_DIR.replace(/\\\\/g, '\\')
+        onServerConnected()
+    }
+
+    // 并行检查 launcher 和 opencode 服务
+    var checkLauncher = function(cb) {
+        var xhr = new XMLHttpRequest()
+        xhr.timeout = 3000
+        xhr.open('GET', 'http://127.0.0.1:14097/status', true)
+        xhr.onload = function() { cb(xhr.status === 200) }
+        xhr.onerror = function() { cb(false) }
+        xhr.ontimeout = function() { cb(false) }
+        try { xhr.send() } catch(e) { cb(false) }
+    }
+
+    var checkOpenCode = function(cb) {
+        fetchJSON('GET', '/global/health', null, function(data) {
+            cb(data && data.healthy)
+        }, function() { cb(false) })
+    }
+
+    // 先检查 launcher 和 opencode 状态
+    checkLauncher(function(launcherOk) {
+        checkOpenCode(function(opencodeOk) {
+            if (opencodeOk) {
+                // 服务已运行，直接进 chat
+                enterChat(lastCwd)
+            } else if (launcherOk) {
+                // /global/health 探测失败但 launcher 可达：回退看 launcher /status 是否确认服务在跑
+                probeLauncherRunning(function(launcherRunning) {
+                    if (launcherRunning) {
+                        enterChat(lastCwd)
+                    } else {
+                        updateServerStatus(false)
+                        showSetup()
+                        startHealthCheck()
+                    }
+                })
+            } else {
+                // launcher 未运行或 opencode 未启动，都显示 setup；统一启动健康检测以支持自动恢复（评审 P3 合并重复分支）
+                updateServerStatus(false)
+                showSetup()
+                startHealthCheck()   // setup 下也启动健康检测，支持自动恢复
+                // launcher 未运行 + /global/health 探测失败时，无法区分「服务真停」与
+                // 「launcher 挂了但 opencode 在跑」。用 SSE 作第三信号源最终探测：
+                // EventSource 不受 XHR CORS 差异影响，onopen 成功即证明服务在跑并自动恢复；
+                // 服务真停时 onerror 且不自动重连（SESSION_ID 为空），不会误报也不会连接风暴。
+                // 该 connectSSE 会在 SSE onopen 中经 showChat/updateServerStatus 恢复状态。
+                // 第 1 轮评审：标记为探测性连接（connectSSE(true)），失败时不自动重连（服务真停时只靠健康检查周期再探）。
+                connectSSE(true)
+            }
+        })
+    })
+
+
+    // 在线状态监听：断网时标记，恢复后重连SSE
+    window.addEventListener('online', function() {
+        console.log('[network] Back online');
+        if (CONNECTED === false && SESSION_ID) {
+            connectSSE();
+        }
+    });
+    window.addEventListener('offline', function() {
+        console.log('[network] Offline');
+        CONNECTED = false;
+        updateConnectionStatus();
+    });
+
+})()
+</script>
+</body>
+</html>

@@ -1,0 +1,80 @@
+# 依赖
+node_modules/
+
+# 构建输出
+dist/
+build/
+
+# 日志
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# 临时文件
+temp/
+*.tmp
+*.temp
+
+# 环境配置
+.env
+.env.local
+.env.*.local
+
+# IDE 配置
+.idea/
+.vscode/
+*.swp
+*.swo
+*.sublime-workspace
+*.sublime-project
+
+# 系统文件
+.DS_Store
+.DS_Store?
+._*
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# 打包文件
+*.zip
+*.7z
+*.rar
+
+# pnpm
+.pnpm-store/
+
+# 测试覆盖率
+coverage/
+
+# 缓存
+.cache/
+.parcel-cache/
+
+# WPS 调试临时文件
+.debugTemp/
+
+# 备份文件
+*.bak
+
+# 计划任务临时 XML
+_opencode_task.xml
+
+# AI session logs
+session-*.md
+
+# wpsjs 发布产物
+opencode-wps/wps-addon-build/
+opencode-wps/wps-addon-publish/
+
+# AI 审查工作产物
+.workbuddy/
+
+# CodeBuddy 本地权限配置（含本地绝对路径，不入库）
+.codebuddy/settings.local.json
+
+# 发布产物 tar.gz
+*.tar.gz

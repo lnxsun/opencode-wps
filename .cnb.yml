@@ -1,0 +1,315 @@
+# ============================================================
+# OpenCode WPS — CNB NPC Agent CI/CD 配置
+# 7 个 NPC 角色（项目经理 / 产品经理 / 架构师 / 全栈开发工程师 / 代码评审员 / 测试工程师 / 研究员）
+# 角色定义见 .cnb/settings.yml
+# ============================================================
+
+# 构建 NPC 运行镜像并推送到 CNB 制品库
+
+# ============================================================
+.local_runner_task: &local_runner_task
+  runner:
+    namespace: group          # 用当前根组织自托管节点（必需）
+    tags: windows             # 匹配本地 Windows 节点标签（与创建 Runner 时一致）
+  stages:
+      # 采集本机环境信息（云端 NPC 通过构建日志即可看到本地环境）
+      - name: collect local environment info
+        script: |
+          Write-Output "===== 本机环境信息采集 ====="
+          Write-Output "主机名: $env:COMPUTERNAME"
+          Write-Output "用户名: $env:USERNAME"
+          Write-Output "系统目录: $env:SystemRoot"
+          Write-Output "---- OS 版本 ----"
+          Get-CimInstance Win32_OperatingSystem | Select-Object Caption, Version, OSArchitecture, TotalVisibleMemorySize | Format-List
+          Write-Output "---- PowerShell 版本 ----"
+          $PSVersionTable.PSVersion
+          Write-Output "---- 本机 IPv4 ----"
+          Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.IPAddress -notlike '127.*' -and $_.IPAddress -notlike '169.254*' } | Select-Object IPAddress, InterfaceAlias | Format-Table -AutoSize
+          Write-Output "===== 本机环境信息采集结束 ====="
+      # 探测本机 WPS 部署情况（贴合本项目 opencode-wps）
+      - name: detect local WPS deployment
+        script: |
+          Write-Output "===== 探测本机 WPS 安装 ====="
+          $wpsPaths = @(
+            "$env:APPDATA\kingsoft\wps",
+            "$env:LOCALAPPDATA\kingsoft\wps",
+            "C:\Program Files\Kingsoft\WPS Office"
+          )
+          foreach ($p in $wpsPaths) {
+            if (Test-Path $p) {
+              Write-Output "[存在] $p"
+              Get-ChildItem $p -ErrorAction SilentlyContinue | Select-Object -First 10 Name | Format-Table -HideTableHeaders
+            } else {
+              Write-Output "[不存在] $p"
+            }
+          }
+          Write-Output "---- opencode-wps 插件目录 ----"
+          $addinDir = "$env:APPDATA\kingsoft\wps\jsaddons\opencode-wps_"
+          Write-Output (Test-Path $addinDir ? "存在: $addinDir" : "不存在: $addinDir")
+          Write-Output "===== WPS 探测结束 ====="
+      # 本机 Node.js 环境（opencode-wps 依赖）
+      - name: check local nodejs runtime
+        script: |
+          Write-Output "===== Node.js 环境 ====="
+          node -v 2>$null
+          if ($LASTEXITCODE -ne 0) { Write-Output "node 未安装或不在 PATH" }
+          npm -v 2>$null
+          if ($LASTEXITCODE -ne 0) { Write-Output "npm 未安装或不在 PATH" }
+          Write-Output "===== 运行环境探测结束 ====="
+      # 检查本机 opencode / node / proxy 进程与端口（Issue #242 用户诉求：云端看不到本机 opencode 进程）
+      - name: check local opencode process
+        script: |
+          Write-Output "===== 本机 opencode 相关进程检查 ====="
+          Write-Output "---- 按名称匹配进程（opencode / node / node.exe） ----"
+          Get-Process -Name opencode,node -ErrorAction SilentlyContinue | Select-Object Id, ProcessName, Path, StartTime | Format-Table -AutoSize
+          Write-Output "---- 进程 ID（如存在） ----"
+          $ps = Get-Process -Name opencode,node -ErrorAction SilentlyContinue
+          if ($ps) { $ps | Select-Object Id, ProcessName | Format-Table -AutoSize } else { Write-Output "未检测到 opencode/node 进程" }
+          Write-Output "---- 监听端口探测（14096 OpenCode / 14097 Launcher / 14098 CORS Proxy） ----"
+          $ports = 14096,14097,14098
+          foreach ($port in $ports) {
+            $conn = Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue
+            if ($conn) {
+              $owner = Get-Process -Id $conn.OwningProcess -ErrorAction SilentlyContinue
+              Write-Output "[端口 $port 已监听] PID=$($conn.OwningProcess) 进程=$($owner.ProcessName)"
+            } else {
+              Write-Output "[端口 $port 未监听]"
+            }
+          }
+          Write-Output "---- 进程命令行（opencode / opencode-proxy / launcher） ----"
+          Get-CimInstance Win32_Process -Filter "Name='node.exe' OR Name='opencode.exe' OR Name='opencode-proxy.exe'" -ErrorAction SilentlyContinue |
+            Select-Object ProcessId, Name, @{N='CommandLine';E={$_.CommandLine}} | Format-List
+          Write-Output "===== opencode 进程检查结束 ====="
+
+
+main:
+  push:
+    # 知识库入库：将仓库 docs/ 等文档切片、分词、向量化写入仓库知识库
+    # （配合 codewiki 的 knowledge_enabled: true，确保仓库被标记为知识库并激活 Wiki 展示）
+    - stages:
+        - name: build knowledge base
+          type: knowledge:update
+          options:
+            include: "**/**.md"
+    - services:
+        - docker
+      stages:
+        - name: Validate NPC settings & unit tests
+          image: node:22
+          script: |
+            npm ci
+            # 先安装 wps-office-mcp 依赖，保证 preflight 内新增的 MCP lint 可执行（Issue #185 评审 R2 修复）
+            cd wps-office-mcp && npm ci && cd ..
+            # 取回全部标签：validate:release-connectivity（Issue #380 12/12 复盘）需要校验
+            # 「发布标签 ↔ 版本号/CHANGELOG 段」连通性；默认浅克隆不带 tags ⇒ 守卫会静默跳过（假绿）。
+            git fetch --tags --depth=1 origin 2>/dev/null || git fetch --tags origin || true
+            # 统一门禁入口：validate 系列 + format:check + lint + test + test:e2e（Issue #147 十四条质量红线）
+            # preflight 已聚合：
+            #   - validate:settings/versions/toolcounts/npc-team/npc-team-bloat/wikilinks
+            #     （版本/工具数/提示词双源/提示词防腐(行数·铁律数·重复·失效引用·守卫复杂度,Issue #312)/wiki链接门禁）
+            #   - format:check（Prettier）
+            #   - lint（全仓 .js 语法门禁 node --check，覆盖各平台 handler/main/launcher/脚本）
+            #   - test（run-root-tests.js 聚合全部根单元测试：security/launcher/install-permission/mac-bridge/setcellformat/wps-bridge-shared 等）
+            #   - test:e2e
+            npm run preflight
+            # 漂移检测：sync-npc-team-skill --check 与 preflight 内 validate:npc-team 均校验
+            # NPC_TEAM 双源一致（此处为显式冗余直接校验，保留作漂移提示）；WPS bridge 单源一致仅此处
+            node scripts/sync-npc-team-skill.js --check
+            node scripts/sync-wps-bridge.js --check
+            # Shell 脚本语法门禁（lint-js.js 只查 .js，bash 需单独查）
+            bash -n opencode-wps-linux/wps-auto.sh
+            bash -n opencode-wps-assistant/wps-auto.sh
+            # MCP 依赖已在 preflight 前安装，此处直接跑 lint + 单测 + 集成测试（Issue #185 评审 R1 修复，去除重复 npm ci；Issue #186 接入集成测试）
+            cd wps-office-mcp && npm run lint && npm run test:unit && npm run test:integration
+        - name: Docker build
+          script: |
+            docker build -t ${CNB_DOCKER_REGISTRY}/${CNB_REPO_SLUG_LOWERCASE}:latest .
+            docker tag ${CNB_DOCKER_REGISTRY}/${CNB_REPO_SLUG_LOWERCASE}:latest ${CNB_DOCKER_REGISTRY}/${CNB_REPO_SLUG_LOWERCASE}:${CNB_COMMIT_SHORT}
+        - name: Docker push
+          script: |
+            docker push ${CNB_DOCKER_REGISTRY}/${CNB_REPO_SLUG_LOWERCASE}:latest
+            docker push ${CNB_DOCKER_REGISTRY}/${CNB_REPO_SLUG_LOWERCASE}:${CNB_COMMIT_SHORT}
+
+    - *local_runner_task          # 本地自托管 Windows 节点：环境/WPS/Node/opencode 检测（Issue #242）
+  # ============================================================
+  # 微信群二维码定期更新提醒（Issue #103 周期性自动执行）
+  # 每天 09:30 定时触发一次：检查当前 docs/assets/wechat-group.png 对应的二维码
+  # 是否已过期。仅在二维码过期当天（距到期 == 0 天）自动在 Issue #103 上以
+  # @lnxsun(千年一炭) 提醒维护者上传新的微信群二维码；有效期充足或未到期则静默跳过，
+  # 绝不提前逐日打扰。
+  #
+  # 提醒节奏（由 userPrompt 精确控制，cron 每天跑但逻辑上静默）：
+  #  - 第一次提醒：2026-08-30（用户明确要求 8/30 就要第一次提醒）。
+  #  - 之后每 7 日提醒一次：2026-08-30 → 09-06 → 09-13 → 09-20 → 09-27 → 10-04 …
+  #    即"今天距 2026-08-30 的天数为 7 的正整数倍（含 0，即当天）"才提醒。
+  #  - 其余日期即使 cron 触发，NPC 也应静默跳过，不提醒，避免每日打扰。
+  #
+  # 说明：
+  #  - 定时任务执行身份 = 最后修改本 crontab 配置并推送的用户（合并本 PR 的用户），
+  #    其 CNB_TOKEN 具备 Issue #103 评论权限，可正常发表提醒。
+  #  - 模型 deepseek-v4.1-flash 为免费模型，不消耗 AI Credits。
+  #    若 crontab 事件下该模型不可用，可手动触发一次本 crontab 流水线，
+  #    观察 npc:go 是否成功；失败则在构建日志查看原因并替换为其他可用模型 ID。
+  #  - NPC 每次运行都会读取 Issue #103 最新评论中的有效期判断，故用户上传新码后
+  #    会自动读到新有效期，不会重复提醒。
+  #  - cron 表达式 `30 9 * * *` 按平台 cron 时区（Asia/Shanghai）每天 09:30 触发；
+  #    实际提醒日期以容器内 `date` 输出为准，与平台 cron 时区一致（TZ=Asia/Shanghai）。
+  #  - 首次部署验证：合并本 PR 后，建议先手动触发一次本 crontab 流水线（或在构建记录
+  #    手动运行同 prompt 的 npc:go），确认其能正常读取并评论 Issue #103，再依赖 8/30 自动首次提醒。
+  #  - 维护提示：若需调整提醒节奏或首次提醒日，直接修改下方 userPrompt 中的
+  #    日期锚点 2026-08-30 与“每 7 日 / % 7”周期即可。
+  "crontab: 30 9 * * *":
+    - name: wechat-qrcode-renew-reminder
+      docker:
+        # 注意：crontab 事件下 CNB_NPC_SLUG_LOWERCASE 不可用（该变量仅 NPC 事件注入），
+        # 须改用本仓库构建的 NPC 镜像（main.push 阶段构建，含 NPC settings）。
+        image: ${CNB_DOCKER_REGISTRY}/${CNB_REPO_SLUG_LOWERCASE}:latest
+      stages:
+        - name: remind wechat qrcode renew
+          type: npc:go
+          options:
+            # DeepSeek V4.1 Flash（免费模型，不消耗 AI Credits 账单）
+            # model 为平台支持的 NPC 模型指定参数（npc:go 的 options 扩展字段，
+            # 与下方 .npc_task 锚点一致使用 deepseek-v4.1-flash），勿误删。
+            model: deepseek-v4.1-flash
+            systemPrompt: |
+              你是 OpenCode WPS 仓库（lnxsun/opencode-wps）维护微信群二维码的自动化助手。
+              你的唯一职责是：在微信群二维码过期或即将过期时，提醒仓库维护者上传新的二维码。
+              你只负责提醒，绝不修改代码、创建分支或提交 PR。
+            userPrompt: |
+              【周期性自动提醒任务】
+
+              本任务由 Issue #103（标题"微信群二维码定期更新"）演化而来，用于在
+              微信群二维码过期时自动提醒维护者上传新码。
+
+              重要执行边界（用户要求）：
+              - 第一次提醒日期：2026-08-30（用户明确要求 8/30 就要第一次提醒）。
+              - 提醒节奏：2026-08-30 第一次提醒，之后每 7 日提醒一次
+                （08-30 → 09-06 → 09-13 → 09-20 → 09-27 → 10-04 …），不要每日打扰。
+              - 判断优先级（用户最新要求：过期当天提醒就可以，不要一直提前提醒）：
+                · 仅在"过期当天"（距到期 == 0 天，即 days_to_expiry == 0）提醒一次；
+                · 若已过期（days_to_expiry < 0）也提醒，套用每 7 日节奏（days % 7 == 0 时）；
+                · 有效期充足（days_to_expiry > 0，尚未到期）绝不提醒，静默跳过。
+                即：只有二维码"刚好过期当天"或"已经过期"才提醒，绝不提前几天逐日打扰。
+
+              请按以下步骤执行：
+              1. 用命令 `date +%Y-%m-%d` 获取今天的精确日期（务必以命令输出为准，勿心算）。
+              2. 使用 cnb 命令行工具读取仓库 lnxsun/opencode-wps 的 Issue #103 的最近 10 条评论，
+                 尝试解析当前 docs/assets/wechat-group.png 二维码的有效期截止日期
+                 （历史评论中通常形如"有效期至 2026-08-29"）。
+                 可先执行示例命令查看评论列表，再从中解析有效期：
+                 cnb issues list-comments --repo lnxsun/opencode-wps --issue-id 103
+                 （若上述子命令参数不可用，以 `cnb issues list-comments --help` 输出的实际参数为准，
+                  用对应参数指定仓库 lnxsun/opencode-wps 与 Issue 103）
+                 若能从评论中解析出有效期截止日期，存为变量 expiry_date（格式 YYYY-MM-DD）；
+                 注意：按评论时间从新到旧，取**最新一条**含"有效期至 YYYY-MM-DD"的评论作为 expiry_date，
+                 避免用旧的过期有效期误判；
+                 若无法解析出任何有效期（无相关评论、评论中无日期或读取失败），
+                 则按"未能解析有效期 → 视为需提醒"处理：**直接跳至第 4 步执行提醒，
+                 不要执行第 3 步的天数计算**（此时 expiry_date 为空，`date -d ""` 会报错）；
+                 并在提醒评论中注明"未能自动解析当前二维码有效期，请上传新码并注明有效期"。
+              3. 先计算相关天数（运行环境为 Linux。为消除一天内时分差异导致的天数偏差，
+                 先把今天和锚点都归一化到当日 00:00 再算天数差）：
+                 today_mid=$(date -d "$(date +%Y-%m-%d)" +%s)
+                 expiry_mid=$(date -d "$expiry_date" +%s)
+                 days_to_expiry=$(( (expiry_mid - today_mid) / 86400 ))
+                 days=$(( (today_mid - $(date -d '2026-08-30' +%s)) / 86400 ))
+                 （days_to_expiry 为负 = 已过期；=0 = 过期当天；>0 = 尚未到期；
+                   days = 今天距 8/30 的天数，8/30 为 0、9/6 为 7、9/13 为 14…）
+                 然后按以下优先级判断是否提醒（用户要求：过期当天提醒即可，不要一直提前提醒）：
+                 - 若 days_to_expiry == 0（恰好过期当天）→ 无论今天是否为 7 倍数日，都提醒，
+                   措辞为"二维码今日到期，请上传新码"。这是唯一逐日提醒的场景（只提醒当天一次）。
+                 - 若 days_to_expiry < 0（已过期）→ 套用"每 7 日节奏"，
+                   仅当 days >= 0 且 days % 7 == 0（含 8/30 的 0）时才提醒，
+                   措辞为"二维码已过期 N 天，请尽快上传新码"。
+                 - 若 days_to_expiry > 0（尚未到期，含已过期前的所有日期）→ 静默跳过，
+                   不发表任何评论。绝不提前几天逐日提醒。
+              4. 需要提醒时，在 Issue #103 上以 "@lnxsun(千年一炭) " 开头发表一条提醒评论，
+                 若 `days_to_expiry` 未定义（即未能解析有效期，走了上述兜底），
+                 则直接采用措辞："未能自动解析当前二维码有效期，请上传新码并注明有效期"；
+                 否则按以下状态区分措辞：
+                 - 若已过期或过期当天（days_to_expiry ≤ 0）→ 内容含：
+                   · 当前二维码已过期/今日到期；
+                   · 请维护者上传新的微信群二维码图片（直接贴到本 Issue 即可）；
+                   · 说明上传后会由维护者或后续流程替换 docs/assets/wechat-group.png 并更新 README
+                     （本任务仅做提醒，不执行替换）。
+                 - 注意：二维码尚未到期（days_to_expiry > 0）时，本任务一律静默，
+                   不发任何评论（用户明确要求不要提前几天一直提醒）。
+
+              注意：本次任务只做提醒，不要修改代码、创建分支或创建 PR。
+      endStages:
+        # 可观测性：无论 npc:go 成败，都在构建日志输出运行状态，方便维护者
+        # 在构建记录中确认定时任务是否正常工作（防静默失败）。
+        - name: log qrcode reminder run status
+          image: node:22
+          script: |
+            echo "wechat-qrcode-renew-reminder 运行结束，状态=${CNB_PIPELINE_STATUS:-unknown}"
+            echo "如需验证提醒是否正常，请到 Issue #103 查看是否有新提醒评论；"
+            echo "或手动在构建记录查看本任务日志。若 8/30 及之后未收到任何提醒，请检查："
+            echo "1) crontab 定时流水线是否成功触发；2) NPC 镜像 ${CNB_DOCKER_REGISTRY}/${CNB_REPO_SLUG_LOWERCASE}:latest 是否存在；3) 合并者 CNB_TOKEN 是否具备 Issue #103 评论权限。"
+            echo "可观测闭环：若需在构建日志直接确认本次是否发表提醒，可再执行"
+            echo "  cnb issues list-comments --repo lnxsun/opencode-wps --issue-id 103 | head -5"
+            echo "查看 Issue #103 最新一条评论的发表时间是否与本次 cron 触发时间吻合。"
+
+# ============================================================
+# 本地自托管 Runner 任务（打通「本地↔云端」，Issue #242）
+# 用途：让云端 NPC 通过 @CodeBuddy 评论触发后，将任务调度到本地
+#       自托管 Windows 节点执行，从而云端能监测到本机部署、执行、报错。
+#
+# 前提（已由用户完成）：在「根组织/组织设置/构建节点」新增 Windows Runner，
+#   SELF_HOSTED_ID = f8a58804-ae57-40c3-acb1-1cd18dfe2a8a，并已在本地 PC
+#   执行连接脚本，节点状态变为「在线」。
+#
+# 调度要点（Windows 自托管节点约束）：
+#   - runner.namespace: group  → 使用当前根组织下自托管节点（必需）
+#   - runner.tags: windows     → 匹配节点标签（与创建 Runner 时填的标签一致，可改）
+#   - Windows 节点无 Docker 构建环境 → 不能用 docker.image，stage 走 PowerShell
+#   - runner.cpus 在无 Docker 节点无效，资源由宿主机决定
+#
+# 触发方式：main 分支 push 时自动调度到本地 Windows 节点执行检测，
+#   结果（环境/WPS/Node/opencode 进程）进构建日志，云端 NPC 可读取。
+# NPC 任务（Issue/PR 评论触发 NPC）
+# 可通过 options.model 指定模型 ID（如 GLM/Kimi/混元等国内模型，不指定则用平台默认）
+# 模型 ID 可在 NPC 选择器或云原生开发 Agent 设置中查看可选列表
+.npc_task: &npc_task
+  docker:
+    image: ${CNB_DOCKER_REGISTRY}/${CNB_NPC_SLUG_LOWERCASE}:latest
+  stages:
+    - name: npc go
+      type: npc:go
+      options:
+        # 指定模型 ID（取消注释并填入实际模型 ID 即可生效）
+        # 模型 ID 可在 NPC 选择器或云原生开发 Agent 设置中查看可选列表
+        # DeepSeek V4.1 Flash（npc:go 的模型，非 opencode-wps agent 模型）
+        model: deepseek-v4.1-flash
+        # model: hy3    # ✅ 免费模型（混元 3），不消耗 AI Credits 账单
+        # model: glm-5  # GLM 模型
+        # model: kimi   # Kimi 模型
+        # model: hunyuan # 混元模型
+
+# 兜底事件（仓库级别事件在此处理）
+$:
+  issue.comment@npc: [*npc_task]
+  pull_request.comment@npc: [*npc_task]
+
+  # Code Wiki：打 tag 时自动读取仓库代码 + docs/ 现有文档，生成项目 Wiki
+  # 生成后仓库首页出现 Wiki 入口，并自动入库知识库（knowledge_enabled: true，可被 AI 问答引用）
+  # 配置遵循 codewiki 插件 README 推荐模式：image 置于 stage 级 + git_doc_dir 指向工作区
+  tag_push:
+    # 方案 A：手动上传 docs/ 到 Wiki（绕过 codewiki 插件 LLM 生成缺陷，Issue #117/#204）
+    # 将 docs/（已改写为 CNB blob 绝对链接）按 4 大分类重新上传为 Wiki 页面，
+    # 从而修复 Wiki 内链接 404。CNB_TOKEN 在 tag_push（push 类）事件下具有 OCI 权限。
+    - stages:
+        - name: upload wiki docs
+          image: node:20
+          script: |
+            node scripts/upload-wiki.js
+    # codewiki 自动生成（平台侧修复 LLM 缺陷后自动生效，作为方案 A 的兜底）
+    - stages:
+        - name: generate codewiki
+          timeout: 10h
+          image: cnbcool/codewiki:latest
+          settings:
+            git_doc_dir: /${CNB_BUILD_WORKSPACE}/${CNB_REPO_SLUG}/codewiki
+            # use_codebuddy 不显式指定（默认 1 = CodeBuddy 接入点，官方 README 推荐）
+            knowledge_enabled: true   # 生成的 Wiki 自动入库仓库知识库

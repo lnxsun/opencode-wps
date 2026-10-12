@@ -1,0 +1,225 @@
+# Model Context Protocol (MCP)
+
+MCP（Model Context Protocol）是一个开放协议，用于连接 AI 应用与外部数据源和工具。
+
+> 本项目使用 MCP 协议让 OpenCode 能够调用 WPS COM 接口操作文档。
+
+---
+
+## 什么是 MCP
+
+MCP（Model Context Protocol）是 AI 应用的"USB-C 接口"——就像 USB-C 提供设备连接的标准化方式，MCP 提供 AI 应用连接外部系统的标准化方式。
+
+### MCP 能做什么
+
+- AI 助手访问 Google Calendar、Notion 等数据源
+- Claude Code 根据 Figma 设计生成整个 Web 应用
+- 企业聊天机器人连接多个数据库进行数据分析
+- AI 模型在 Blender 中创建 3D 设计并打印
+
+---
+
+## MCP 架构
+
+```
+┌─────────────────────────────────────────────────┐
+│                  AI 应用 (Host)                  │
+│                   (OpenCode)                    │
+└────────────────────┬────────────────────────────┘
+                     │ JSON-RPC
+                     │ (MCP 协议)
+┌────────────────────▼────────────────────────────┐
+│               MCP Server                        │
+│             (wps-office-mcp)                    │
+│  ┌─────────────┐  ┌─────────────┐              │
+│  │   Tools     │  │ Resources   │              │
+│  │ (WPS 操作)   │  │ (文档数据)   │              │
+│  └─────────────┘  └─────────────┘              │
+└────────────────────┬────────────────────────────┘
+                     │ COM
+                     │ (PowerShell)
+┌────────────────────▼────────────────────────────┐
+│            WPS Office Application              │
+│      (Word / Excel / PowerPoint)               │
+└─────────────────────────────────────────────────┘
+```
+
+---
+
+## MCP 核心概念
+
+### 1. Tools（工具）
+
+MCP 服务器提供可执行的工具，AI 可以调用这些工具完成任务。
+
+**工具定义示例：**
+```json
+{
+  "name": "wps_excel_get_cell_value",
+  "description": "读取 Excel 指定单元格的值",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "sheet": { "type": "string", "description": "工作表名称" },
+      "row": { "type": "number", "description": "行号（从1开始）" },
+      "col": { "type": "number", "description": "列号（从1开始）" }
+    },
+    "required": ["sheet", "row", "col"]
+  }
+}
+```
+
+### 2. Resources（资源）
+
+MCP 服务器可以提供资源供 AI 使用，如数据库表、文件内容等。
+
+### 3. Prompts（提示）
+
+MCP 服务器可以提供预定义的提示模板。
+
+---
+
+## MCP 消息格式
+
+MCP 使用 JSON-RPC 2.0 消息格式：
+
+### 请求示例
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "tools/call",
+  "params": {
+    "name": "wps_excel_get_cell_value",
+    "arguments": {
+      "sheet": "Sheet1",
+      "row": 1,
+      "col": 1
+    }
+  }
+}
+```
+
+### 响应示例
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "Hello World"
+      }
+    ]
+  }
+}
+```
+
+---
+
+## OpenCode 中的 MCP
+
+### 配置 MCP 服务器
+
+在 `~/.config/opencode/opencode.json` 中配置：
+
+```json
+{
+  "mcp": {
+    "wps-office": {
+      "type": "local",
+      "command": ["C:\\Program Files\\nodejs\\node.exe", "D:/code/opencode-wps/wps-office-mcp/dist/index.js"]
+    }
+  }
+}
+```
+
+> ⚠️ **command 首元素必须用 node 的绝对路径（`process.execPath`），不能写裸 `node`。**
+> 原因：`opencode serve` 拉起 MCP server 时，是用它**自己继承的 PATH** 去解析 `command` 里的可执行名的。而 serve 由插件 launcher 从 **WPS 进程环境** spawn（WPS 靠绝对路径拉起 launcher，该环境 PATH 里未必有 node 目录），裸 `node` 会 ENOENT 解析不到 → MCP server 静默拉不起来 → 会话里看不到任何 `wps-office_*` 工具。
+> 而你在**交互式 shell**里跑 `opencode mcp list` 时 PATH 有 node，所以 CLI 显示 connected——这就是「CLI 连得上、serve 会话看不到工具」矛盾的根因。
+> install-addons 安装时已用 `process.execPath` 写绝对路径，无需手工改；仅手动配置时注意。
+
+### 本项目的 MCP 工具
+
+本项目的 MCP 服务器采用**渐进式加载模式**——启动时只注册**内置工具**（数量以 `mcp-server.ts` 为准，见 `npm run validate:toolcounts` 输出）+ 2 个 Gateway 工具，其余工具通过 Gateway 按需发现和执行：
+
+- **内置工具** — 启动时直接注册（`wps_check_connection`、`wps_get_cell_value`、`wps_whoami` 等），**可直接调用**（Issue #382 DECISION-1：「网关强制」规则已删除，「网关专属」取消）
+- **2 个 Gateway 工具** — `wps_office_search` 搜索、`wps_office_execute` 执行
+- **注册工具** — 未注册到 MCP 但作为 TS handler 供 Gateway 优先调用（含参数校验、类型安全、详细错误信息）。数量以代码为准（`wps-office-mcp/src/tools/index.ts` 的 `allTools`），持续演进
+- **COM Actions** — Gateway 索引，无 TS handler 时透传 PS1 脚本执行 COM API。数量以代码为准（`wps-office-mcp/src/tools/gateway/com-actions.ts` 的 `COM_ACTIONS`）
+
+**执行路径（`wps_office_execute`）：**
+
+```
+用户调用 wps_office_execute("setFont", {fontName: "微软雅黑"})
+  → 查询 TOOLS_INDEX 验证工具存在
+  → 查找 HANDLER_MAP（注册工具 → 驼峰短名映射）
+  → 找到 handler → camelToSnake 转换参数（fontName → font_name）
+  → 调用 TS handler（参数校验 + 类型安全）
+  → 无 handler → 透传 PS1（wpsClient.executeMethod 兜底）
+```
+
+| 类别 | 数量 | 例子 |
+|------|------|------|
+| Excel 工具 | 见 `npm run validate:toolcounts` 输出 | 读取单元格、写入公式、创建图表、导出图片 |
+| Word 工具 | 同上 | 插入文本、应用样式、生成目录、添加页眉、文档校对 |
+| PPT 工具 | 同上 | 添加幻灯片、设置动画、美化、导出幻灯片 |
+
+---
+
+## MCP SDK
+
+官方提供多种语言的 SDK：
+
+- **TypeScript/JavaScript**: `@modelcontextprotocol/sdk`
+- **Python**: `mcp` (PyPI)
+- **Go**: `github.com/mark3labs/mcp-go`
+
+### TypeScript 客户端示例
+
+```typescript
+import { Client } from '@modelcontextprotocol/sdk/client';
+import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio';
+
+const transport = new StdioClientTransport({
+  command: 'node',
+  args: ['./dist/index.js']
+});
+
+const client = new Client({
+  name: 'wps-mcp-client',
+  version: '1.0.0'
+}, {
+  capabilities: {}
+});
+
+await client.connect(transport);
+
+// 列出可用工具
+const tools = await client.listTools();
+console.log(tools);
+
+// 调用工具
+const result = await client.callTool({
+  name: 'wps_excel_get_cell_value',
+  arguments: { sheet: 'Sheet1', row: 1, col: 1 }
+});
+```
+
+---
+
+## 官方资源
+
+- MCP 官方文档：https://modelcontextprotocol.io/
+- MCP 规范：https://modelcontextprotocol.io/specification/latest
+- OpenCode MCP 集成：https://opencode.ai/docs/mcp-servers/
+
+---
+
+## 本项目实现
+
+详见 `wps-office-mcp/` 目录：
+- MCP 服务器入口：`src/index.ts`
+- WPS 工具定义：`src/tools/`
+- PowerShell COM 桥接：`scripts/wps-com.ps1`

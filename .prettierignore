@@ -1,0 +1,91 @@
+# Prettier 忽略配置
+#
+# 说明：`npm run format` 与 `npm run format:check`（prettier）按本文件忽略范围执行。
+# format:check 聚焦**代码文件**（JS/JSON/TS）风格检查，排除文档与配置文件：
+#
+# 1. *.md 文档不纳入 prettier 门禁：
+#    - docs/ 存在大量历史格式遗留（非本任务引入），统一作为独立 issue 处理，避免大 diff；
+#    - docs/NPC_TEAM.md 与 .codebuddy/skills/npc-team/SKILL.md 依赖精确文本锚点被
+#      validate-npc-team-prompt.js 门禁校验，prettier 重排会破坏锚点与双源一致性。
+#    markdown 文档格式问题单独跟踪。
+# 2. *.html 由 WPS Chromium 内嵌渲染，历史格式非本任务范围。
+# 3. YAML/JSONC 配置文件（.cnb.yml / opencode.jsonc 等）由对应工具自身管理格式，
+#    prettier 的 trailingComma/es5 等规则可能与其解析器不兼容，不纳入门禁。
+
+# 文档
+**/*.md
+**/*.markdown
+
+# HTML
+**/*.html
+
+# 配置文件（YAML/JSONC/CNB 等）
+**/*.yml
+**/*.yaml
+**/*.jsonc
+**/*.cnb
+.cnb/**
+
+# >>> 体量闸门豁免清单（机器可读区块；BEGIN/END 之间**只允许**出现 REPORT_SOURCES ∪ GUARD_SOURCES 的成员）
+# 由 tests/validate-proofread-report-size.test.js 做**双向集合相等**断言（第 4 轮评审 R4-F1：
+# 此前只查「声明的都在 ignore 里」，加入无关文件即可静默逃出 prettier 门禁）。
+# ---BEGIN 体量闸门豁免清单---
+
+# 校对源码体量闸门（Issue #341：「只大幅压缩、绝不增加」）
+# 下列文件即 validate-proofread-report-size.js 的 **REPORT_SOURCES（校对线全部源码）**，
+# 受该守卫的**物理行数**硬闸门（S1 总量 / S2 单文件 / S3~S5 棘轮）约束。
+# prettier 的 printWidth:100 + 多行参数展开会把紧凑写法重新撑开（实测同一文件 299 → 808 行），
+# 与闸门直接冲突。故放宽 prettier 门禁，**改由体量闸门承担格式纪律**。
+# ⚠️ 清单与 REPORT_SOURCES 必须同集：改名/拆分校对源码时两处一起改（守卫 S0 会在漏改时报红）。
+wps-office-mcp/src/tools/word/proofread.ts
+wps-office-mcp/src/tools/word/proofread-rules.ts
+wps-office-mcp/src/tools/word/proofread-normalize.ts
+wps-office-mcp/src/tools/word/proofread-accumulate-helpers.ts
+wps-office-mcp/src/tools/word/proofread-report.ts
+wps-office-mcp/src/tools/word/proofread-report-copy.ts
+wps-office-mcp/src/tools/word/proofread-types.ts
+wps-office-mcp/src/tools/word/proofread-session.ts
+
+# 守卫/元数据源码（GUARD_SOURCES，Issue #352 第三刀后**自动枚举** scripts/validate-*.js + scripts/lib/*.js）
+# ——同 REPORT_SOURCES 的理由：prettier 会撑开紧凑写法，与总量棘轮 S8 直接冲突。
+# 集合由 tests/validate-proofread-report-size.test.js 与本区块做**双向集合相等**断言。
+scripts/lib/check-root-deps.js
+scripts/lib/com-action-app.js
+scripts/lib/derive-skill-docs.js
+scripts/lib/doc-drift-manifest.js
+scripts/lib/doc-drift-scope.js
+scripts/lib/e1-metrics.js
+scripts/lib/format-compare.js
+scripts/lib/guard-scopes.js
+scripts/lib/guard-sources.js
+scripts/lib/legacy-debt-manifest.js
+scripts/lib/normalize.js
+scripts/lib/npc-team-prompt-source.js
+scripts/lib/npc-team-triggers.js
+scripts/lib/proofread-p2-invariant.js
+scripts/lib/ratchet.js
+scripts/lib/ratchet-rechain.js
+scripts/lib/release-connectivity-manifest.js
+scripts/lib/release-connectivity-scope.js
+scripts/lib/semantic-anchor-manifest.js
+scripts/lib/semantic-anchor-scope.js
+scripts/lib/skill-doc-refs.js
+scripts/lib/version-sources.js
+scripts/validate-agent-no-tools.js
+scripts/validate-com-action-app.js
+scripts/validate-gateway-membership.js
+scripts/validate-hook-contract.js
+scripts/validate-npc-team-bloat.js
+scripts/validate-npc-team-prompt.js
+scripts/validate-proofread-p2-invariant.js
+scripts/ratchet-rechain.js
+scripts/validate-proofread-report-size.js
+scripts/validate-release-connectivity.js
+scripts/validate-removed-mechanisms.js
+scripts/validate-semantic-anchor-scope.js
+scripts/validate-settings.js
+scripts/validate-skill-docs.js
+scripts/validate-tool-counts.js
+scripts/validate-tool-result-payload.js
+scripts/validate-versions.js
+# ---END 体量闸门豁免清单---

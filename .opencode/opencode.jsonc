@@ -1,0 +1,65 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  // 默认模型（provider/model_id 格式）
+  "model": "ollama/qwen3.5:4b",
+  // ===== 服务端权限自动放行（Issue #179 方案A，根治外部目录读写卡授权）=====
+  // install-addons.js 会读取 opencode-wps/config.js 的 permission.mode：
+  //   mode==='auto'   → 保留本 permission（服务端直接放行所有工具 + 外部目录，长任务不卡授权）
+  //   mode==='manual' → 移除本 permission（走 opencode 默认/前端弹窗人工确认；
+  //                    若用户在 opencode.json 手动配置了精细 permission 会保留，仅移除本默认全放行）
+  // 安全提示：external_directory 用 ** 表示工作目录外的任意目录都放行（如 F 盘工程目录）；
+  // 若只想放开特定盘符，可改为 { "F:\\**": "allow" }。
+  "permission": {
+    "*": "allow",
+    "external_directory": { "**": "allow" }
+  },
+  // 自定义 AI 供应商
+  "provider": {
+    "agnes": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "Agnes AI",
+      "options": {
+        "baseURL": "https://apihub.agnes-ai.com/v1",
+        // API Key：可通过环境变量 AGNES_API_KEY 设置，或直接替换下方占位符
+        "apiKey": "___AGNES_API_KEY___"
+      },
+      "models": {
+        "agnes-2.0-flash": {
+          "name": "Agnes2.0 Flash"
+        },
+        "agnes-1.5-flash": {
+          "name": "Agnes1.5 Flash"
+        },
+        "agnes-image-2.1-flash": {
+          "name": "Agnes Image2.1 Flash"
+        },
+        "agnes-video-v2.0": {
+          "name": "Agnes Video V2.0"
+        }
+      }
+    },
+    // 本地 Ollama 模型（兼容 OpenAI API）
+    "ollama": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "Ollama (本地)",
+      "options": {
+        "baseURL": "http://localhost:11434/v1",
+        "apiKey": "ollama"
+      },
+      "models": {
+        "Monica:latest":                             { "name": "Monica" },
+        "R4C3R/minicpm5-1b-heretic:latest":          { "name": "MiniCPM5 1B Heretic" },
+        "huihui_ai/qwen3.5-abliterated:9b-Qwopus":   { "name": "Qwen3.5 9B Abliterated" },
+        "gemma4:e4b":                                { "name": "Gemma 4 4B" },
+        "gemma4:e2b":                                { "name": "Gemma 4 2B" },
+        "qwen3.5-32k:0.8b":                          { "name": "Qwen3.5 32K 0.8B" },
+        "qwen3.5-32k:2b":                            { "name": "Qwen3.5 32K 2B" },
+        "qwen3.5:2b":                                { "name": "Qwen3.5 2B" },
+        "qwen3.5:0.8b":                              { "name": "Qwen3.5 0.8B" },
+        "qianwen:latest":                            { "name": "Qianwen" },
+        "lukey03/qwen3.5-9b-abliterated:latest":     { "name": "Qwen3.5 9B Abliterated" },
+        "qwen3.5:4b":                                { "name": "Qwen3.5 4B" }
+      }
+    }
+  }
+}

@@ -1,0 +1,339 @@
+/**
+ * Input: Tool 定义与调用请求
+ * Output: Tool 执行结果
+ * Pos: MCP Tool 注册与调度中心。一旦我被修改，请更新我的头部注释，以及所属文件夹的md。
+ * Tool注册管理 - 老王的Tool管理系统
+ * 所有Tool都得在这儿注册，不注册的Tool就是野鸡Tool
+ * 这个设计遵循OCP原则：扩展开放，修改关闭
+ */
+
+import { v4 as uuidv4 } from 'uuid';
+import {
+  ToolDefinition,
+  ToolHandler,
+  RegisteredTool,
+  ToolCallRequest,
+  ToolCallResult,
+  ToolCategory,
+  ListToolsResponse,
+} from '../types/tools';
+import { createChildLogger } from '../utils/logger';
+import {
+  ToolNotFoundError,
+  ToolExecutionError,
+  InvalidParamsError,
+  McpError,
+} from '../utils/error';
+
+const logger = createChildLogger('ToolRegistry');
+
+/**
+ * 直连注册黑名单**已删除**（Issue #382 DECISION-1）。
+ *
+ * 历史：曾有一张「禁掉直连注册」的黑名单（#325），把 7 个校对工具从
+ * 「AI 在 `tools/list` 里看得见的注册工具」降级成「必须靠 `wps_office_search` 猜词才能发现的黑盒」
+ * ——`search` 无语义 + schema 残缺（`maxLength` 丢失），正是 #382 里 11 轮空转 / 5000 上限失效 /
+ * 总字数 0 的共同物理位置。
+ *
+ * 现规则（源码可验、唯一判据）：**「无 COM 方法可透传的纯 TS 逻辑工具」一律直连注册**。
+ *   · 有 PS1 同名 switch 分支 → 普通 COM Action（走网关，或直连走 `wpsClient.executeMethod`——两者等价）；
+ *   · 无 PS1 分支 且 有 TS handler → **直连注册**（AI 直接看得见，schema 完整）；
+ *   · 无 PS1 分支 且 无 TS handler → 不存在（`validate-gateway-membership.js` 判据 H 报红）。
+ * 因此注册层不再需要黑名单：`allTools` 里有什么就注册什么，一致性由守卫双向断言。
+ */
+
+/**
+ * Tool注册表 - 单例模式，全局唯一
+ */
+export class ToolRegistry {
+  private static instance: ToolRegistry;
+  private readonly tools: Map<string, RegisteredTool>;
+  private readonly categories: Map<ToolCategory, Set<string>>;
+
+  private constructor() {
+    this.tools = new Map();
+    this.categories = new Map();
+
+    // 初始化分类
+    Object.values(ToolCategory).forEach(category => {
+      this.categories.set(category, new Set());
+    });
+
+    logger.info('ToolRegistry initialized');
+  }
+
+  /**
+   * 获取单例实例
+   */
+  static getInstance(): ToolRegistry {
+    if (!ToolRegistry.instance) {
+      ToolRegistry.instance = new ToolRegistry();
+    }
+    return ToolRegistry.instance;
+  }
+
+  /**
+   * 注册Tool - 把Tool加到注册表里
+   * 遵循SRP：只负责注册，不负责其他
+   */
+  register(definition: ToolDefinition, handler: ToolHandler): void {
+    const { name, category } = definition;
+
+    // 检查是否已注册 - 跳过重复注册而非崩溃，防止过期编译产物导致启动失败
+    if (this.tools.has(name)) {
+      logger.warn(`Tool already registered, skipping: ${name}`);
+      return;
+    }
+
+    // 注册Tool
+    this.tools.set(name, { definition, handler });
+
+    // 添加到分类
+    const toolCategory = category || ToolCategory.COMMON;
+    this.categories.get(toolCategory)?.add(name);
+
+    logger.info(`Tool registered: ${name}`, { category: toolCategory });
+  }
+
+  /**
+   * 批量注册Tools - 一次注册一堆
+   */
+  registerAll(tools: Array<{ definition: ToolDefinition; handler: ToolHandler }>): void {
+    tools.forEach(({ definition, handler }) => {
+      this.register(definition, handler);
+    });
+    logger.info(`Batch registered ${tools.length} tools`);
+  }
+
+  /**
+   * 注销Tool - 把Tool从注册表里删掉
+   */
+  unregister(name: string): boolean {
+    const tool = this.tools.get(name);
+    if (!tool) {
+      return false;
+    }
+
+    this.tools.delete(name);
+
+    // 从分类中移除
+    const category = tool.definition.category || ToolCategory.COMMON;
+    this.categories.get(category)?.delete(name);
+
+    logger.info(`Tool unregistered: ${name}`);
+    return true;
+  }
+
+  /**
+   * 获取Tool定义
+   */
+  getTool(name: string): RegisteredTool | undefined {
+    return this.tools.get(name);
+  }
+
+  /**
+   * 检查Tool是否存在
+   */
+  hasTool(name: string): boolean {
+    return this.tools.has(name);
+  }
+
+  /**
+   * 获取所有Tool定义 - MCP的tools/list用的
+   */
+  listTools(): ListToolsResponse {
+    const tools = Array.from(this.tools.values()).map(t => t.definition);
+    return { tools };
+  }
+
+  /**
+   * 按分类获取Tools
+   */
+  getToolsByCategory(category: ToolCategory): ToolDefinition[] {
+    const toolNames = this.categories.get(category);
+    if (!toolNames) {
+      return [];
+    }
+
+    return Array.from(toolNames)
+      .map(name => this.tools.get(name)?.definition)
+      .filter((t): t is ToolDefinition => t !== undefined);
+  }
+
+  /**
+   * 调用Tool - 执行Tool的handler
+   * 这是核心方法，处理Tool调用请求
+   */
+  async callTool(request: ToolCallRequest): Promise<ToolCallResult> {
+    const { id, name, arguments: args } = request;
+    const startTime = Date.now();
+
+    logger.debug(`Calling tool: ${name}`, { id, args });
+
+    // 检查Tool是否存在
+    const tool = this.tools.get(name);
+    if (!tool) {
+      throw new ToolNotFoundError(name);
+    }
+
+    try {
+      // 验证参数
+      this.validateArguments(tool.definition, args);
+
+      // 执行handler
+      const result = await tool.handler(args);
+
+      const duration = Date.now() - startTime;
+      logger.info(`Tool executed: ${name}`, { id, duration, success: result.success });
+
+      return {
+        ...result,
+        id,
+      };
+    } catch (error) {
+      const duration = Date.now() - startTime;
+
+      if (error instanceof McpError) {
+        logger.error(`Tool execution failed: ${name}`, error, { id, duration });
+        return {
+          id,
+          success: false,
+          content: [{ type: 'text', text: error.message }],
+          error: error.message,
+        };
+      }
+
+      const execError = new ToolExecutionError(
+        name,
+        error instanceof Error ? error : new Error(String(error))
+      );
+
+      logger.error(`Tool execution failed: ${name}`, execError, { id, duration });
+
+      return {
+        id,
+        success: false,
+        content: [{ type: 'text', text: execError.message }],
+        error: execError.message,
+      };
+    }
+  }
+
+  /**
+   * 验证参数 - 检查必填参数是否都有
+   */
+  private validateArguments(definition: ToolDefinition, args: Record<string, unknown>): void {
+    const { inputSchema } = definition;
+    const required = inputSchema.required || [];
+    const properties = inputSchema.properties || {};
+
+    // 检查必填参数
+    for (const param of required) {
+      if (!(param in args) || args[param] === undefined || args[param] === null) {
+        throw new InvalidParamsError(`Missing required parameter: ${param}`, {
+          toolName: definition.name,
+          missingParam: param,
+        });
+      }
+    }
+
+    // 参数类型校验
+    for (const key of Object.keys(args)) {
+      const prop = properties[key];
+      if (!prop || !prop.type) continue;
+      const value = args[key];
+      if (value === undefined || value === null) continue;
+      const valid = validateType(value, prop.type as string);
+      if (!valid) {
+        throw new InvalidParamsError(
+          `Parameter '${key}' expected type '${prop.type}', got '${typeof value}'`,
+          { toolName: definition.name, param: key, expected: prop.type }
+        );
+      }
+      // 枚举值校验
+      if (Array.isArray(prop.enum) && prop.enum.length > 0) {
+        if ((prop.enum as unknown[]).indexOf(value) === -1) {
+          throw new InvalidParamsError(
+            `Parameter '${key}' must be one of [${(prop.enum as unknown[]).join(', ')}], got '${JSON.stringify(value)}'`,
+            { toolName: definition.name, param: key }
+          );
+        }
+      }
+    }
+  }
+
+  /**
+   * 获取Tool数量
+   */
+  get size(): number {
+    return this.tools.size;
+  }
+
+  /**
+   * 清空所有Tools - 测试用，生产环境别乱用
+   */
+  clear(): void {
+    this.tools.clear();
+    this.categories.forEach(set => set.clear());
+    logger.warn('All tools cleared');
+  }
+
+  /**
+   * 创建Tool调用请求 - 辅助方法
+   * 注：uuid 包仅在此处使用，如需减少依赖可替换为 crypto.randomUUID()
+   */
+  static createRequest(name: string, args: Record<string, unknown>): ToolCallRequest {
+    return {
+      id: uuidv4(),
+      name,
+      arguments: args,
+    };
+  }
+}
+
+// 导出单例
+export const toolRegistry = ToolRegistry.getInstance();
+
+/**
+ * 装饰器：注册Tool
+ * 用法：@RegisterTool(definition)
+ */
+export function RegisterTool(definition: ToolDefinition) {
+  return function (
+    _target: unknown,
+    _propertyKey: string,
+    descriptor: PropertyDescriptor
+  ): PropertyDescriptor {
+    const originalMethod = descriptor.value as ToolHandler;
+    toolRegistry.register(definition, originalMethod);
+    return descriptor;
+  };
+}
+
+/**
+ * 快捷注册函数
+ */
+export const registerTool = (definition: ToolDefinition, handler: ToolHandler): void => {
+  toolRegistry.register(definition, handler);
+};
+
+function validateType(value: unknown, expectedType: string): boolean {
+  switch (expectedType) {
+    case 'string':
+      return typeof value === 'string';
+    case 'number':
+      return typeof value === 'number';
+    case 'integer':
+      return typeof value === 'number' && Number.isInteger(value);
+    case 'boolean':
+      return typeof value === 'boolean';
+    case 'object':
+      return typeof value === 'object' && value !== null && !Array.isArray(value);
+    case 'array':
+      return Array.isArray(value);
+    default:
+      return true;
+  }
+}
+
+export default ToolRegistry;

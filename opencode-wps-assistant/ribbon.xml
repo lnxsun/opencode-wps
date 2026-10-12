@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<customUI xmlns="http://schemas.microsoft.com/office/2006/01/customui" onLoad="OnAddinLoad">
+  <ribbon startFromScratch="false">
+    <tabs>
+      <tab id="opencodeTab" label="OpenCode AI" insertAfterMso="TabView">
+        <group id="opencodeStatus" label="状态">
+          <button id="btnStatus"
+                  label="服务状态"
+                  size="large"
+                  onAction="OnStatusClick"
+                  imageMso="Info"
+                  supertip="查看 OpenCode AI 桥接状态"/>
+          <button id="btnTogglePoll"
+                  label="暂停/恢复"
+                  size="large"
+                  onAction="OnToggleClick"
+                  imageMso="Pause"
+                  supertip="暂停或恢复轮询"/>
+        </group>
+        <group id="opencodeWeb" label="对话">
+          <button id="btnOpenWeb"
+                  label="打开Web"
+                  size="large"
+                  onAction="OnOpenWebClick"
+                  imageMso="HyperlinkInsert"
+                  supertip="在浏览器中打开 OpenCode AI 对话界面 (http://127.0.0.1:14096)"/>
+        </group>
+      </tab>
+    </tabs>
+  </ribbon>
+</customUI>
