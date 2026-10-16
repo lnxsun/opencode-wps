@@ -75,6 +75,3 @@ opencode-wps/wps-addon-publish/
 
 # CodeBuddy 本地权限配置（含本地绝对路径，不入库）
 .codebuddy/settings.local.json
-
-# 发布产物 tar.gz
-*.tar.gz

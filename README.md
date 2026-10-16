@@ -111,7 +111,7 @@ Win: PowerShell COM 桥接  /  Mac·Linux: HTTP 轮询 (反向轮询插件)
 
 <img src="docs/assets/wechat-group.png" alt="OpenCode-WPS 微信交流群" width="300">
 
-> 当前二维码有效期至 **2026-10-11**（二维码不定期更新）。如二维码过期，请提交 [Issue](https://github.com/lnxsun/opencode-wps/issues) 联系维护者。
+> 当前二维码有效期至 **2026-10-18**（二维码不定期更新）。如二维码过期，请提交 [Issue](https://github.com/lnxsun/opencode-wps/issues) 联系维护者。
 
 ## License
 
